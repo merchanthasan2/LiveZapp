@@ -1,0 +1,38 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'"
+      }
+    },
+    "presentations": {
+      "$presId": {
+        ".read": "data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || data.child('status').val() === 'live'",
+        ".write": "(!data.exists() && newData.child('createdBy').val() === auth.uid) || data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        "questions": {
+          ".read": "true",
+          ".write": "data.parent().child('createdBy').val() === auth.uid"
+        }
+      }
+    },
+    "live_sessions": {
+      "$code": {
+        ".read": "true",
+        ".write": "auth != null",
+        "responses": {
+          "$questionId": {
+            "$participantId": {
+              ".write": "true"
+            }
+          }
+        },
+        "participants": {
+          "$participantId": {
+            ".write": "true"
+          }
+        }
+      }
+    }
+  }
+}
