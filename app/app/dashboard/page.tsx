@@ -155,6 +155,7 @@ export default function DashboardPage() {
     }
   }
 
+
   // ── Derived stats ──────────────────────────────────────────────────────
   const totalQuestions = presentations.reduce((a, p) => a + (p.questionsCount || 0), 0)
   const totalAudience  = presentations.reduce((a, p) => a + (p.audienceSize   || 0), 0)
