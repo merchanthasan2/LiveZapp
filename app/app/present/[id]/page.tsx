@@ -17,6 +17,7 @@ import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
 import { LiveSessionService, LiveSessionData, ParticipantResponse } from '@/lib/services/LiveSessionService'
 import { BrandingService } from '@/lib/services/BrandingService'
+import ShareJoinLink from '@/components/ShareJoinLink'
 import { generateJoinCode } from '@/types/join'
 import type {
   Presentation, Question, QuizQuestion, PollQuestion,
@@ -896,6 +897,13 @@ export default function PresentPage() {
 
           {/* Right: controls */}
           <div className="flex items-center gap-2">
+            {session && (
+              <ShareJoinLink
+                joinCode={session.joinCode}
+                presenterName={user?.name || 'Presenter'}
+                sessionTitle={presentation?.title || 'Session'}
+              />
+            )}
             <button
               onClick={isPaused ? handleResume : handlePause}
               className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
@@ -1078,6 +1086,13 @@ export default function PresentPage() {
             <span className="font-black tracking-widest text-sm" style={{ color: '#111111' }}>{session.joinCode}</span>
             {codeCopied ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#16A34A' }} /> : <Copy className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />}
           </div>
+          {session && (
+            <ShareJoinLink
+              joinCode={session.joinCode}
+              presenterName={user?.name || 'Presenter'}
+              sessionTitle={presentation?.title || 'Session'}
+            />
+          )}
           <button onClick={isPaused ? handleResume : handlePause} className="btn-ghost text-sm" style={isPaused ? { color: '#00A6A6', borderColor: 'rgba(0,166,166,0.30)' } : {}}>
             {isPaused ? <Play className="w-4 h-4" fill="currentColor" /> : <Pause className="w-4 h-4" />}
             {isPaused ? 'Resume' : 'Pause'}
