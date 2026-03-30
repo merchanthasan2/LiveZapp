@@ -154,7 +154,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Main content ──────────────────────────────────────────── */}
-      <main className="flex-1 p-5 lg:p-8" style={{ marginLeft: 200 }}>
+      <main className="flex-1 p-5 lg:p-8 lg:ml-[200px]">
         {children}
       </main>
     </div>
