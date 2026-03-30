@@ -14,16 +14,21 @@ export default function HomePage() {
   const router = useRouter()
   const { user, isAdmin, isLoading } = useAuth()
 
-  // Redirect authenticated users to their dashboard
+  // Redirect authenticated users only if coming from login/register
   useEffect(() => {
     if (isLoading) return // Wait for auth to load
-    if (user) {
-      // Redirect to appropriate dashboard based on role
-      router.replace(isAdmin ? '/admin' : '/app/dashboard')
+    if (user && typeof window !== 'undefined') {
+      // Check if user came directly from login/register page
+      const fromAuth = document.referrer.includes('/login') || document.referrer.includes('/register')
+      if (fromAuth) {
+        // Redirect to appropriate dashboard based on role
+        router.replace(isAdmin ? '/admin' : '/app/dashboard')
+      }
+      // Otherwise allow viewing home page if intentionally navigated here
     }
   }, [user, isAdmin, isLoading, router])
 
-  // Show loading state or home page
+  // Show loading state while auth loads
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -32,12 +37,7 @@ export default function HomePage() {
     )
   }
 
-  // If user is authenticated, show nothing (will redirect)
-  if (user) {
-    return null
-  }
-
-  // Not authenticated - show home page
+  // Show home page (both authenticated and unauthenticated users)
   return (
     <>
       <HeroSection />
