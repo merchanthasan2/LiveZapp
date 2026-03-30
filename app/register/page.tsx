@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Zap, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { ref, set } from 'firebase/database'
@@ -38,15 +38,49 @@ const inputClass = (hasError: boolean) =>
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [done, setDone] = useState(false)
   const [serverError, setServerError] = useState('')
+  const [promoCode, setPromoCode] = useState<string | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
+
+  // Load and validate promo code from URL
+  useEffect(() => {
+    const code = searchParams.get('promo')
+    if (code) {
+      validatePromo(code)
+    }
+  }, [searchParams])
+
+  const validatePromo = async (code: string) => {
+    try {
+      const response = await fetch('/api/promo/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setPromoCode(code.trim().toUpperCase())
+        setPromoError(null)
+      } else {
+        setPromoError(data.error || 'Invalid promo code')
+        setPromoCode(null)
+      }
+    } catch (err) {
+      setPromoError('Failed to validate promo code')
+      setPromoCode(null)
+    }
+  }
 
   const onSubmit = async (data: FormValues) => {
     setServerError('')
@@ -58,13 +92,54 @@ export default function RegisterPage() {
       )
       await updateProfile(firebaseUser, { displayName: data.name })
       const isAdmin = ['happy143@gmail.com'].includes(data.email.toLowerCase())
-      await set(ref(rtdb, `users/${firebaseUser.uid}`), {
+
+      let planId = isAdmin ? 'pro' : 'free'
+      let planExpiresAt: string | undefined
+
+      // If a valid promo code was provided, apply it
+      if (promoCode) {
+        try {
+          const redeemResponse = await fetch('/api/promo/redeem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              code: promoCode,
+              userId: firebaseUser.uid,
+            }),
+          })
+
+          if (redeemResponse.ok) {
+            const redeemData = await redeemResponse.json()
+            // Apply the target plan if specified
+            if (redeemData.promo?.targetPlanId) {
+              planId = redeemData.promo.targetPlanId
+              // Set expiry based on duration
+              if (redeemData.promo.durationMonths) {
+                const expiryDate = new Date()
+                expiryDate.setMonth(expiryDate.getMonth() + redeemData.promo.durationMonths)
+                planExpiresAt = expiryDate.toISOString()
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to redeem promo code:', err)
+          // Continue with registration even if promo redemption fails
+        }
+      }
+
+      const userPayload: any = {
         id: firebaseUser.uid,
         email: data.email,
         name: data.name,
         role: isAdmin ? 'admin' : 'user',
-        planId: isAdmin ? 'pro' : 'free',
-      })
+        planId,
+      }
+
+      if (planExpiresAt) {
+        userPayload.planExpiresAt = planExpiresAt
+      }
+
+      await set(ref(rtdb, `users/${firebaseUser.uid}`), userPayload)
       setDone(true)
       setTimeout(() => router.push('/app/dashboard'), 1500)
     } catch (err: any) {
@@ -121,6 +196,26 @@ export default function RegisterPage() {
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               {serverError}
+            </div>
+          )}
+
+          {promoCode && (
+            <div
+              className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
+              style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)', color: '#16A34A' }}
+            >
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              Promo code <strong>{promoCode}</strong> applied! You\'ll get a special discount.
+            </div>
+          )}
+
+          {promoError && (
+            <div
+              className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
+              style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.25)', color: '#FB7185' }}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              {promoError}
             </div>
           )}
 

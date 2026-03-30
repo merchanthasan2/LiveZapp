@@ -13,6 +13,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import type { User, Role } from '@/types/auth'
+import { isAdminRole } from '@/types/auth'
 import type { PlanId } from '@/types/plans'
 import { auth, rtdb } from '@/lib/firebase'
 import {
@@ -25,14 +26,18 @@ import { ref, get, set } from 'firebase/database'
 export interface AuthState {
   user: User | null
   isLoading: boolean
-  isAdmin: boolean
+  isAdmin: boolean        // true for admin OR superadmin
+  isSuperAdmin: boolean   // true only for superadmin
   error: string | null
   login: (email: string, password: string) => Promise<boolean>
   logout: () => void
 }
 
-// Emails that always receive the admin role on first login / registration
-const ADMIN_EMAILS = new Set(['happy143@gmail.com'])
+// Superadmin emails — full platform control, can manage other admins
+const SUPERADMIN_EMAILS = new Set(['happy143@gmail.com'])
+
+// Admin emails — full admin panel access but cannot manage other admins
+const ADMIN_EMAILS = new Set<string>([])
 
 export function useAuth(): AuthState {
   const router = useRouter()
@@ -57,30 +62,38 @@ export function useAuth(): AuthState {
         let userData: User
         
         if (snapshot.exists()) {
-          // Always override id with the live Firebase UID — the stored value
-          // may be missing or stale if the record was written by an older version.
           const stored = snapshot.val() as User
           const emailLower = firebaseUser.email?.toLowerCase() || ''
-          // Enforce admin role for allowlisted emails regardless of stored value
-          const shouldBeAdmin = ADMIN_EMAILS.has(emailLower)
-          if (shouldBeAdmin && stored.role !== 'admin') {
-            await set(ref(rtdb, `users/${firebaseUser.uid}/role`), 'admin')
+          const isSuperAdminEmail = SUPERADMIN_EMAILS.has(emailLower)
+          const isAdminEmail      = ADMIN_EMAILS.has(emailLower)
+          const enforcedRole: Role = isSuperAdminEmail ? 'superadmin'
+                                    : isAdminEmail      ? 'admin'
+                                    : stored.role
+
+          // Write back if role has changed (e.g. first login after email was added to allowlist)
+          if (enforcedRole !== stored.role) {
+            await set(ref(rtdb, `users/${firebaseUser.uid}/role`), enforcedRole)
+          }
+          // Superadmins and admins always get pro plan
+          const enforcedPlan: PlanId = isAdminRole(enforcedRole) ? 'pro' : stored.planId
+          if (isAdminRole(enforcedRole) && stored.planId !== 'pro') {
             await set(ref(rtdb, `users/${firebaseUser.uid}/planId`), 'pro')
           }
-          const effectiveRole: Role = shouldBeAdmin ? 'admin' : stored.role
-          const effectivePlan: PlanId = shouldBeAdmin ? 'pro' : stored.planId
-          userData = { ...stored, id: firebaseUser.uid, role: effectiveRole, planId: effectivePlan }
+
+          userData = { ...stored, id: firebaseUser.uid, role: enforcedRole, planId: enforcedPlan }
         } else {
-          // New user — create RTDB profile, granting admin to allowlisted emails
+          // New user — create RTDB profile
           const emailLower = firebaseUser.email?.toLowerCase() || ''
-          const isAdmin = ADMIN_EMAILS.has(emailLower)
+          const isSuperAdminEmail = SUPERADMIN_EMAILS.has(emailLower)
+          const isAdminEmail      = ADMIN_EMAILS.has(emailLower)
+          const role: Role = isSuperAdminEmail ? 'superadmin' : isAdminEmail ? 'admin' : 'user'
 
           userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             name: firebaseUser.displayName || 'New User',
-            role: isAdmin ? 'admin' : 'user',
-            planId: isAdmin ? 'pro' : 'free',
+            role,
+            planId: isAdminRole(role) ? 'pro' : 'free',
           }
           await set(userRef, userData)
         }
@@ -104,7 +117,8 @@ export function useAuth(): AuthState {
     return () => unsub()
   }, [])
 
-  const isAdmin = user?.role === 'admin'
+  const isAdmin      = user ? isAdminRole(user.role) : false
+  const isSuperAdmin = user?.role === 'superadmin'
 
   // 2. Login function
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
@@ -133,5 +147,5 @@ export function useAuth(): AuthState {
     }
   }, [router])
 
-  return { user, isLoading, isAdmin, error, login, logout }
+  return { user, isLoading, isAdmin, isSuperAdmin, error, login, logout }
 }

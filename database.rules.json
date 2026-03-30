@@ -1,18 +1,20 @@
 {
   "rules": {
     "users": {
+      ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
       "$uid": {
-        ".read": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
-        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'"
+        ".read":  "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
+        ".write": "$uid === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
       }
     },
     "presentations": {
+      ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
       "$presId": {
-        ".read": "data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || data.child('status').val() === 'live'",
-        ".write": "(!data.exists() && newData.child('createdBy').val() === auth.uid) || data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin'",
+        ".read":  "data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || data.child('status').val() === 'live'",
+        ".write": "(!data.exists() && newData.child('createdBy').val() === auth.uid) || data.child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
         "questions": {
-          ".read": "true",
-          ".write": "data.parent().child('createdBy').val() === auth.uid"
+          ".read": "data.parent().child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin' || data.parent().child('status').val() === 'live'",
+          ".write": "data.parent().child('createdBy').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
         }
       }
     },
@@ -33,6 +35,23 @@
           }
         }
       }
+    },
+    "promoCodes": {
+      ".read": "auth != null",
+      ".write": "auth != null && (root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin')",
+      "$code": {
+        "currentRedemptions": {
+          ".write": "false"
+        }
+      }
+    },
+    "adminLogs": {
+      ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
+    },
+    "admin": {
+      ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
+      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
     }
   }
 }

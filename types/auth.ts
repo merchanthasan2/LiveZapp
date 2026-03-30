@@ -3,7 +3,13 @@
 
 import type { PlanId } from './plans'
 
-export type Role = 'admin' | 'user'
+/**
+ * Role hierarchy (highest → lowest):
+ *   superadmin → full platform access, can manage admins
+ *   admin      → full admin panel access, can create/present Zapps
+ *   user       → create/present Zapps only, no admin panel
+ */
+export type Role = 'superadmin' | 'admin' | 'user'
 
 export interface BaseUser {
   id: string
@@ -27,6 +33,10 @@ export interface BaseUser {
   lifetimePresentationsCreated?: number
 }
 
+export interface SuperAdminUser extends BaseUser {
+  role: 'superadmin'
+}
+
 export interface AdminUser extends BaseUser {
   role: 'admin'
 }
@@ -35,5 +45,10 @@ export interface RegularUser extends BaseUser {
   role: 'user'
 }
 
-/** Discriminated union — use `user.role === 'admin'` to narrow. */
-export type User = AdminUser | RegularUser
+/** Discriminated union — use `user.role` to narrow. */
+export type User = SuperAdminUser | AdminUser | RegularUser
+
+/** True for both superadmin and admin roles */
+export function isAdminRole(role: Role): boolean {
+  return role === 'admin' || role === 'superadmin'
+}

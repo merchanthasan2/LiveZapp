@@ -8,7 +8,7 @@ import { PLANS } from '@/types/plans'
 import {
   Tag, Plus, Copy, Check, X, RefreshCw,
   Calendar, Users, Percent, DollarSign,
-  AlertCircle, CheckCircle2, Loader2,
+  AlertCircle, CheckCircle2, Loader2, ExternalLink,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +25,10 @@ interface PromoCode {
   isActive:          boolean
   createdAt:         string
   createdBy:         string
+  // Duration rules
+  durationMonths:    number | null   // null = permanent; e.g. 3 = discount lasts 3 months then drops
+  postExpiryPlanId:  string | null   // plan to drop to after duration (null = stay on plan)
+  targetPlanId:      string | null   // if set: grant user this plan (bypasses normal upgrade flow)
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -46,6 +50,8 @@ function generateCode(): string {
 
 // ─── Create modal ─────────────────────────────────────────────────────────────
 
+const SITE_URL = 'https://live-zapp.com'
+
 function CreateModal({ onClose, onCreate }: {
   onClose: () => void
   onCreate: (promo: Omit<PromoCode, 'currentRedemptions' | 'createdAt' | 'createdBy'>) => Promise<void>
@@ -56,8 +62,13 @@ function CreateModal({ onClose, onCreate }: {
   const [maxRedemptions, setMaxRedemptions] = useState('')
   const [validUntil, setValidUntil] = useState('')
   const [applicablePlans, setApplicablePlans] = useState<string[]>([])
+  const [durationMonths, setDurationMonths] = useState('')
+  const [postExpiryPlanId, setPostExpiryPlanId] = useState('free')
+  const [targetPlanId, setTargetPlanId] = useState('')
   const [isSaving, setIsSaving]     = useState(false)
   const [error, setError]           = useState('')
+
+  const promoLink = `${SITE_URL}/register?promo=${code.trim().toUpperCase() || 'CODE'}`
 
   async function handleSubmit() {
     const val = parseFloat(discountValue)
@@ -77,6 +88,9 @@ function CreateModal({ onClose, onCreate }: {
         validUntil:        validUntil ? new Date(validUntil).toISOString() : null,
         applicablePlanIds: applicablePlans,
         isActive:          true,
+        durationMonths:    durationMonths ? parseInt(durationMonths) : null,
+        postExpiryPlanId:  durationMonths ? postExpiryPlanId : null,
+        targetPlanId:      targetPlanId || null,
       })
     } catch (e: any) {
       setError(e.message || 'Failed to create promo code')
@@ -206,6 +220,86 @@ function CreateModal({ onClose, onCreate }: {
               )
             })}
           </div>
+        </div>
+
+        {/* Duration rules */}
+        <div className="rounded-xl p-4 space-y-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+          <p className="text-xs font-semibold" style={{ color: '#374151' }}>Duration rule (optional)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold mb-1.5" style={{ color: '#6B7280' }}>
+                Discount lasts (months)
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="24"
+                value={durationMonths}
+                onChange={e => setDurationMonths(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
+                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+                placeholder="Blank = permanent"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold mb-1.5" style={{ color: '#6B7280' }}>
+                Drop to plan after
+              </label>
+              <select
+                value={postExpiryPlanId}
+                onChange={e => setPostExpiryPlanId(e.target.value)}
+                disabled={!durationMonths}
+                className="w-full px-3 py-2.5 rounded-xl text-sm outline-none disabled:opacity-50"
+                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+              >
+                {PLANS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          </div>
+          {durationMonths && (
+            <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
+              After {durationMonths} month{parseInt(durationMonths) !== 1 ? 's' : ''}, user will be moved to the <strong>{postExpiryPlanId}</strong> plan automatically.
+            </p>
+          )}
+        </div>
+
+        {/* Grant specific plan */}
+        <div>
+          <label className="block text-xs font-semibold mb-2" style={{ color: '#374151' }}>
+            Grant plan on redeem <span className="font-normal" style={{ color: '#9CA3AF' }}>(optional — overrides normal upgrade)</span>
+          </label>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setTargetPlanId('')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={!targetPlanId ? { background: '#1A1A2E', color: '#FFFFFF' } : { background: '#F5F7FA', color: '#6B7280', border: '1px solid #E5E7EB' }}
+            >
+              None
+            </button>
+            {PLANS.filter(p => p.pricePerMonth > 0).map(p => (
+              <button key={p.id} onClick={() => setTargetPlanId(p.id)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all capitalize"
+                style={targetPlanId === p.id ? { background: '#1A1A2E', color: '#FFFFFF' } : { background: '#F5F7FA', color: '#6B7280', border: '1px solid #E5E7EB' }}>
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Promo link preview */}
+        <div className="rounded-xl p-4" style={{ background: 'rgba(0,166,166,0.06)', border: '1px solid rgba(0,166,166,0.20)' }}>
+          <p className="text-[11px] font-semibold mb-2" style={{ color: '#00A6A6' }}>Shareable promo link</p>
+          <div className="flex items-center gap-2">
+            <p className="text-[11px] font-mono flex-1 truncate" style={{ color: '#1A1A2E' }}>{promoLink}</p>
+            <button
+              onClick={() => navigator.clipboard.writeText(promoLink)}
+              className="p-1.5 rounded-lg flex-shrink-0"
+              style={{ background: 'rgba(0,166,166,0.12)', color: '#00A6A6' }}
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <p className="text-[10px] mt-1.5" style={{ color: '#9CA3AF' }}>User lands on register page with code pre-filled</p>
         </div>
 
         <button
@@ -367,7 +461,7 @@ export default function AdminPromosPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
-                  {['Code', 'Discount', 'Uses', 'Valid until', 'Plans', 'Status', 'Actions'].map(h => (
+                  {['Code / Link', 'Discount', 'Duration', 'Uses', 'Valid until', 'Status', 'Actions'].map(h => (
                     <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest"
                       style={{ color: '#9CA3AF' }}>{h}</th>
                   ))}
@@ -382,15 +476,23 @@ export default function AdminPromosPage() {
                       style={{ borderBottom: i < promos.length - 1 ? '1px solid #F5F7FA' : 'none' }}
                       onMouseEnter={e => (e.currentTarget.style.background = '#FAFBFF')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      {/* Code */}
+                      {/* Code + link */}
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-sm font-bold" style={{ color: '#1A1A2E' }}>{p.code}</span>
                           <button onClick={() => copyCode(p.code)}
-                            className="p-1 rounded hover:bg-gray-100 transition-colors">
+                            className="p-1 rounded hover:bg-gray-100 transition-colors" title="Copy code">
                             {copiedCode === p.code
                               ? <Check className="w-3 h-3" style={{ color: '#22C55E' }} />
                               : <Copy className="w-3 h-3" style={{ color: '#9CA3AF' }} />}
+                          </button>
+                          <button
+                            onClick={() => { const link = `${SITE_URL}/register?promo=${p.code}`; navigator.clipboard.writeText(link); setCopiedCode(`link_${p.code}`); setTimeout(() => setCopiedCode(null), 2000) }}
+                            className="p-1 rounded hover:bg-gray-100 transition-colors" title="Copy promo link"
+                          >
+                            {copiedCode === `link_${p.code}`
+                              ? <Check className="w-3 h-3" style={{ color: '#22C55E' }} />
+                              : <ExternalLink className="w-3 h-3" style={{ color: '#9CA3AF' }} />}
                           </button>
                         </div>
                         <p className="text-[11px] mt-0.5" style={{ color: '#9CA3AF' }}>
@@ -407,6 +509,22 @@ export default function AdminPromosPage() {
                             {p.discountType === 'percent' ? `${p.discountValue}% off` : `$${p.discountValue} off`}
                           </span>
                         </div>
+                        {p.targetPlanId && (
+                          <p className="text-[10px] mt-0.5" style={{ color: '#6366F1' }}>Grants {p.targetPlanId} plan</p>
+                        )}
+                      </td>
+                      {/* Duration */}
+                      <td className="px-5 py-3.5">
+                        {p.durationMonths ? (
+                          <div>
+                            <span className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>{p.durationMonths}mo</span>
+                            {p.postExpiryPlanId && (
+                              <p className="text-[10px]" style={{ color: '#9CA3AF' }}>→ {p.postExpiryPlanId} after</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs" style={{ color: '#9CA3AF' }}>Permanent</span>
+                        )}
                       </td>
                       {/* Uses */}
                       <td className="px-5 py-3.5">
@@ -421,12 +539,6 @@ export default function AdminPromosPage() {
                       <td className="px-5 py-3.5">
                         <span className="text-xs" style={{ color: expired ? '#DC2626' : '#9CA3AF' }}>
                           {fmtDate(p.validUntil)}
-                        </span>
-                      </td>
-                      {/* Plans */}
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs" style={{ color: '#6B7280' }}>
-                          {p.applicablePlanIds.length === 0 ? 'All paid' : p.applicablePlanIds.join(', ')}
                         </span>
                       </td>
                       {/* Status */}

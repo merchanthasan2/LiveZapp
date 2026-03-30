@@ -215,7 +215,7 @@ function CheckoutContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0A0E1A' }}>
         <Loader2 className="w-8 h-8 animate-spin" style={{ color: '#5478FF' }} />
       </div>
     )
@@ -226,7 +226,7 @@ function CheckoutContent() {
   // ── Success screen ──────────────────────────────────────────────────────
   if (payStatus === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4" style={{ background: '#0A0E1A' }}>
         <div
           className="text-center max-w-md mx-auto p-12 rounded-3xl"
           style={{ background: 'rgba(17,31,162,0.12)', border: '1px solid rgba(84,120,255,0.20)' }}
@@ -249,7 +249,7 @@ function CheckoutContent() {
   const canPay = profileComplete && (billing === 'annual' || recurringAck)
 
   return (
-    <div className="min-h-screen py-12 px-4">
+    <div className="min-h-screen py-12 px-4" style={{ background: '#0A0E1A' }}>
       <div className="max-w-5xl mx-auto">
 
         {/* Back */}

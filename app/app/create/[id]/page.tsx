@@ -14,129 +14,15 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
 import { PLANS } from '@/types/plans'
+import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
+import { makeQuestion } from '@/components/question-editor/makeQuestion'
+import { Q_TYPES, kindMeta, PREVIEW_META } from '@/components/question-editor/qtypes'
+import type { QuestionKind } from '@/components/question-editor/qtypes'
 import type {
   Presentation, Question,
   QuizQuestion, QAQuestion, FeedbackQuestion,
   PollQuestion, WordCloudQuestion,
 } from '@/types/domain'
-
-// ─── Question type catalogue ───────────────────────────────────────────────
-
-const Q_TYPES = [
-  {
-    kind:   'quiz' as const,
-    label:  'Quiz',
-    sub:    'Multiple choice with correct answer + timer',
-    icon:   Sparkles,
-    color:  '#00A6A6',
-    bg:     'rgba(0,166,166,0.10)',
-    border: 'rgba(0,166,166,0.22)',
-  },
-  {
-    kind:   'poll' as const,
-    label:  'Live Poll',
-    sub:    'Multiple choice — live bar-chart results, no correct answer',
-    icon:   BarChart3,
-    color:  '#F08700',
-    bg:     'rgba(240,135,0,0.10)',
-    border: 'rgba(240,135,0,0.22)',
-  },
-  {
-    kind:   'word_cloud' as const,
-    label:  'Word Cloud',
-    sub:    'Free-text words from the audience visualised as a cloud',
-    icon:   Cloud,
-    color:  '#8A7000',
-    bg:     'rgba(239,202,8,0.14)',
-    border: 'rgba(239,202,8,0.28)',
-  },
-  {
-    kind:   'qa' as const,
-    label:  'Q&A',
-    sub:    'Open questions — audience asks, others upvote',
-    icon:   MessageSquare,
-    color:  '#00A6A6',
-    bg:     'rgba(0,166,166,0.10)',
-    border: 'rgba(0,166,166,0.22)',
-  },
-  {
-    kind:   'feedback' as const,
-    label:  'Rating / Feedback',
-    sub:    'Star rating, NPS scale, or short text response',
-    icon:   Star,
-    color:  '#C07800',
-    bg:     'rgba(244,159,10,0.12)',
-    border: 'rgba(244,159,10,0.26)',
-  },
-] as const
-
-type QuestionKind = typeof Q_TYPES[number]['kind']
-
-function kindMeta(kind: QuestionKind) {
-  return Q_TYPES.find(t => t.kind === kind)!
-}
-
-// Dark-theme values used only inside QuestionPreview (simulates participant screen)
-const PREVIEW_META: Record<string, { bg: string; color: string; selectedBorder: string }> = {
-  quiz:       { bg: 'rgba(0,166,166,0.18)',   color: '#00A6A6', selectedBorder: 'rgba(0,166,166,0.50)'   },
-  poll:       { bg: 'rgba(240,135,0,0.18)',   color: '#F08700', selectedBorder: 'rgba(240,135,0,0.50)'   },
-  word_cloud: { bg: 'rgba(239,202,8,0.18)',   color: '#EFCA08', selectedBorder: 'rgba(239,202,8,0.50)'   },
-  qa:         { bg: 'rgba(0,166,166,0.18)',   color: '#00A6A6', selectedBorder: 'rgba(0,166,166,0.50)'   },
-  feedback:   { bg: 'rgba(244,159,10,0.18)',  color: '#F49F0A', selectedBorder: 'rgba(244,159,10,0.50)'  },
-}
-
-// ─── Default question factories ───────────────────────────────────────────
-
-function makeQuestion(kind: QuestionKind, orderIndex: number): Question {
-  const id = Math.random().toString(36).substring(2, 9)
-  const base = { id, orderIndex, isRequired: true }
-  switch (kind) {
-    case 'quiz':
-      return {
-        ...base, kind: 'quiz',
-        prompt: '',
-        options: [
-          { id: 'a', label: 'Option A' },
-          { id: 'b', label: 'Option B' },
-          { id: 'c', label: 'Option C' },
-          { id: 'd', label: 'Option D' },
-        ],
-        correctOptionId: 'a',
-        timerSeconds: 30,
-        points: 100,
-      } satisfies QuizQuestion
-    case 'poll':
-      return {
-        ...base, kind: 'poll',
-        prompt: '',
-        options: [
-          { id: 'a', label: 'Option A' },
-          { id: 'b', label: 'Option B' },
-          { id: 'c', label: 'Option C' },
-        ],
-        allowMultipleSelections: false,
-      } satisfies PollQuestion
-    case 'word_cloud':
-      return {
-        ...base, kind: 'word_cloud',
-        prompt: '',
-        maxWordsPerResponse: 3,
-      } satisfies WordCloudQuestion
-    case 'qa':
-      return {
-        ...base, kind: 'qa',
-        prompt: '',
-        allowMultipleSubmissions: false,
-      } satisfies QAQuestion
-    case 'feedback':
-      return {
-        ...base, kind: 'feedback',
-        prompt: '',
-        feedbackType: 'rating',
-        scaleMax: 5,
-      } satisfies FeedbackQuestion
-  }
-}
 
 // ─── Type picker modal ────────────────────────────────────────────────────
 
@@ -386,9 +272,10 @@ function QuestionPreview({ question }: { question: Question }) {
   )
 }
 
-// ─── Question editor ──────────────────────────────────────────────────────
+// ─── (QuestionEditor is imported from @/components/question-editor/QuestionEditor) ───────────────
 
-function QuestionEditor({
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _QuestionEditorInline_UNUSED({
   question, questions, setQuestions, markDirty,
 }: {
   question: Question

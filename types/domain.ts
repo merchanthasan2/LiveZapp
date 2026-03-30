@@ -5,6 +5,19 @@ export type PresentationType = 'quiz' | 'poll' | 'word_cloud' | 'qa' | 'feedback
 
 export type PresentationStatus = 'draft' | 'scheduled' | 'live' | 'completed'
 
+// ─── Sections & Scoring ───────────────────────────────────────────────────
+
+export interface Section {
+  id: string
+  name: string
+}
+
+export interface ScoringConfig {
+  showAfterEachQuestion: boolean
+  showAfterEachSection: boolean
+  showFinalScore: boolean
+}
+
 // ─── Question base ────────────────────────────────────────────────────────
 
 export interface BaseQuestion {
@@ -12,6 +25,7 @@ export interface BaseQuestion {
   prompt: string
   orderIndex: number
   isRequired: boolean
+  sectionId?: string  // Links question to a named section
 }
 
 export interface Option {
@@ -113,7 +127,10 @@ export interface Presentation {
   createdAt: string      // ISO 8601
   updatedAt: string      // ISO 8601
   // Per-presentation branding (overrides user profile branding)
-  brandName?: string     // Custom brand/organization name for this Zapp
-  brandLogoUrl?: string  // Custom logo for this Zapp (shown before questions)
+  brandName?: string        // Custom brand/organization name for this Zapp
+  brandLogoUrl?: string     // Custom logo for this Zapp (shown before questions)
   brandAccentColor?: string // Custom accent color for this Zapp
+  // Structure & scoring
+  sections?: Section[]          // Ordered section list (Quiz only)
+  scoringConfig?: ScoringConfig // When to reveal scores (Quiz only)
 }

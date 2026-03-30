@@ -28,10 +28,14 @@ interface UserRow {
   lifetimePresentationsCreated: number
   createdAt:                    string | null
   lastLoginAt:                  string | null
+  country:                      string | null
+  city:                         string | null
+  // admin-gifted = paid plan, no billing cycle set by payment
+  adminGifted:                  boolean
 }
 
 type SortKey = 'name' | 'planId' | 'presentations' | 'createdAt' | 'lastLoginAt'
-type StatusFilter = 'all' | 'active' | 'inactive' | 'suspended' | 'paid'
+type StatusFilter = 'all' | 'active' | 'inactive' | 'suspended' | 'paid' | 'admin_gift'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -58,6 +62,12 @@ const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
   pro:     { bg: '#F08700', text: '#FFFFFF' },
 }
 
+const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  superadmin: { bg: '#F08700', text: '#FFFFFF', label: 'Super Admin' },
+  admin:      { bg: 'rgba(240,135,0,0.15)', text: '#F08700', label: 'Admin' },
+  user:       { bg: '#F3F4F6', text: '#6B7280', label: 'User' },
+}
+
 function fmtDate(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -80,18 +90,23 @@ function UserDrawer({
   onSuspend,
   onRestore,
   onChangePlan,
+  onChangeRole,
   isSaving,
+  canManageRoles,
 }: {
   user: UserRow
   onClose: () => void
   onSuspend: (uid: string, reason: string) => Promise<void>
   onRestore: (uid: string) => Promise<void>
   onChangePlan: (uid: string, planId: string) => Promise<void>
+  onChangeRole: (uid: string, role: string) => Promise<void>
   isSaving: boolean
+  canManageRoles: boolean
 }) {
   const [activeTab, setActiveTab] = useState<'overview' | 'billing' | 'actions'>('overview')
   const [suspendReason, setSuspendReason] = useState('')
   const [showSuspendForm, setShowSuspendForm] = useState(false)
+  const [selectedRole, setSelectedRole] = useState(user.role)
   const [selectedPlan, setSelectedPlan] = useState(user.planId)
 
   const status = userStatus(user)
@@ -174,12 +189,10 @@ function UserDrawer({
                   {status === 'inactive' && <AlertTriangle className="w-3 h-3" />}
                   {STATUS_STYLE[status].label}
                 </span>
-                {user.role === 'admin' && (
-                  <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg"
-                    style={{ background: 'rgba(240,135,0,0.12)', color: '#F08700' }}>
-                    <Shield className="w-3 h-3" /> Admin
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg"
+                  style={{ background: ROLE_BADGE[user.role]?.bg, color: ROLE_BADGE[user.role]?.text }}>
+                  <Shield className="w-3 h-3" /> {ROLE_BADGE[user.role]?.label}
+                </span>
               </div>
 
               {/* Suspension notice */}
@@ -197,6 +210,7 @@ function UserDrawer({
                   { icon: Calendar, label: 'Joined',         val: fmtDate(user.createdAt) },
                   { icon: Calendar, label: 'Last login',     val: fmtDate(user.lastLoginAt) },
                   { icon: FileText, label: 'Presentations',  val: `${user.presentations} active · ${user.lifetimePresentationsCreated} lifetime` },
+                  ...(user.country ? [{ icon: Shield, label: 'Country', val: [user.city, user.country].filter(Boolean).join(', ') }] : []),
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex items-start gap-3">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F3F4F6' }}>
@@ -305,6 +319,41 @@ function UserDrawer({
           {/* ── ACTIONS TAB ── */}
           {activeTab === 'actions' && (
             <div className="space-y-3">
+
+              {/* Change role — superadmin only */}
+              {canManageRoles && (
+                <div className="rounded-xl p-4 space-y-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                  <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Change role</p>
+                  <div className="flex gap-2">
+                    {(['user', 'admin', 'superadmin'] as const).map(r => (
+                      <button
+                        key={r}
+                        onClick={() => setSelectedRole(r)}
+                        className="flex-1 py-2 rounded-lg text-xs font-semibold transition-all"
+                        style={selectedRole === r
+                          ? { background: ROLE_BADGE[r].bg, color: ROLE_BADGE[r].text }
+                          : { background: '#FFFFFF', color: '#6B7280', border: '1px solid #E5E7EB' }}
+                      >
+                        {ROLE_BADGE[r].label}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => onChangeRole(user.uid, selectedRole)}
+                    disabled={isSaving || selectedRole === user.role}
+                    className="w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                    style={{
+                      background: selectedRole === user.role ? '#F3F4F6' : '#1A1A2E',
+                      color: selectedRole === user.role ? '#9CA3AF' : '#FFFFFF',
+                      cursor: selectedRole === user.role ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                    {isSaving ? 'Saving…' : selectedRole === user.role ? 'Same role selected' : `Set as ${ROLE_BADGE[selectedRole].label}`}
+                  </button>
+                </div>
+              )}
+
               {/* Send password reset */}
               <button
                 className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
@@ -407,6 +456,9 @@ export default function AdminUsersPage() {
   const [search, setSearch]         = useState('')
   const [planFilter, setPlanFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [countryFilter, setCountryFilter] = useState<string>('all')
+  const [dateFrom, setDateFrom]     = useState('')
+  const [dateTo, setDateTo]         = useState('')
   const [sortKey, setSortKey]       = useState<SortKey>('createdAt')
   const [sortAsc, setSortAsc]       = useState(false)
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
@@ -427,22 +479,29 @@ export default function AdminUsersPage() {
       if (!snap.exists()) { setUsers([]); return }
       const data = snap.val() as Record<string, any>
 
-      const rows: UserRow[] = Object.entries(data).map(([uid, u]) => ({
-        uid,
-        name:                         u.name          ?? 'Unknown',
-        email:                        u.email         ?? '—',
-        planId:                       u.planId        ?? 'free',
-        billingCycle:                 u.billingCycle  ?? null,
-        planExpiresAt:                u.planExpiresAt ?? null,
-        planCancelledAt:              u.planCancelledAt ?? null,
-        role:                         u.role          ?? 'user',
-        suspended:                    u.suspended     ?? false,
-        suspendedReason:              u.suspendedReason ?? null,
-        presentations:                u.presentations ? Object.keys(u.presentations).length : 0,
-        lifetimePresentationsCreated: u.lifetimePresentationsCreated ?? 0,
-        createdAt:                    u.createdAt     ?? null,
-        lastLoginAt:                  u.lastLoginAt   ?? null,
-      }))
+      const rows: UserRow[] = Object.entries(data).map(([uid, u]) => {
+        const planId = u.planId ?? 'free'
+        const billingCycle = u.billingCycle ?? null
+        return {
+          uid,
+          name:                         u.name          ?? 'Unknown',
+          email:                        u.email         ?? '—',
+          planId,
+          billingCycle,
+          planExpiresAt:                u.planExpiresAt ?? null,
+          planCancelledAt:              u.planCancelledAt ?? null,
+          role:                         u.role          ?? 'user',
+          suspended:                    u.suspended     ?? false,
+          suspendedReason:              u.suspendedReason ?? null,
+          presentations:                u.presentations ? Object.keys(u.presentations).length : 0,
+          lifetimePresentationsCreated: u.lifetimePresentationsCreated ?? 0,
+          createdAt:                    u.createdAt     ?? null,
+          lastLoginAt:                  u.lastLoginAt   ?? null,
+          country:                      u.country       ?? null,
+          city:                         u.city          ?? null,
+          adminGifted:                  planId !== 'free' && !billingCycle,
+        }
+      })
 
       setUsers(rows)
     } catch (e) {
@@ -514,16 +573,24 @@ export default function AdminUsersPage() {
       : <ChevronDown className="w-3 h-3" style={{ color: '#00A6A6' }} />
   }
 
+  // Distinct countries for dropdown
+  const countries = Array.from(new Set(users.map(u => u.country).filter(Boolean) as string[])).sort()
+
   const filtered = sortRows(
     users.filter(u => {
       const matchSearch  = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
       const matchPlan    = planFilter === 'all' || u.planId === planFilter
       const status       = userStatus(u)
       const matchStatus  =
-        statusFilter === 'all'      ? true :
-        statusFilter === 'paid'     ? u.planId !== 'free' :
+        statusFilter === 'all'        ? true :
+        statusFilter === 'paid'       ? u.planId !== 'free' :
+        statusFilter === 'admin_gift' ? u.adminGifted :
         statusFilter === status
-      return matchSearch && matchPlan && matchStatus
+      const matchCountry = countryFilter === 'all' || u.country === countryFilter
+      const joinedTime   = u.createdAt ? new Date(u.createdAt).getTime() : null
+      const matchFrom    = !dateFrom || (joinedTime !== null && joinedTime >= new Date(dateFrom).getTime())
+      const matchTo      = !dateTo   || (joinedTime !== null && joinedTime <= new Date(dateTo + 'T23:59:59').getTime())
+      return matchSearch && matchPlan && matchStatus && matchCountry && matchFrom && matchTo
     }),
     sortKey,
     sortAsc,
@@ -623,14 +690,61 @@ export default function AdminUsersPage() {
 
         {/* Status filter */}
         <div className="flex rounded-xl overflow-hidden text-xs font-bold" style={{ border: '1px solid #E5E7EB', background: '#F5F7FA' }}>
-          {(['all', 'active', 'inactive', 'suspended', 'paid'] as StatusFilter[]).map(s => (
+          {(['all', 'active', 'inactive', 'suspended', 'paid', 'admin_gift'] as StatusFilter[]).map(s => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className="px-3 py-2.5 capitalize transition-all"
               style={statusFilter === s ? { background: '#1A1A2E', color: '#FFFFFF' } : { color: '#6B7280' }}>
-              {s}
+              {s === 'admin_gift' ? 'Admin Gift' : s}
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Second row filters: date range + country */}
+      <div className="flex flex-wrap gap-3 items-center">
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold" style={{ color: '#6B7280' }}>Joined from</label>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={e => setDateFrom(e.target.value)}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold" style={{ color: '#6B7280' }}>to</label>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={e => setDateTo(e.target.value)}
+            className="px-3 py-2 rounded-xl text-sm outline-none"
+            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+          />
+        </div>
+        {countries.length > 0 && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold" style={{ color: '#6B7280' }}>Country</label>
+            <select
+              value={countryFilter}
+              onChange={e => setCountryFilter(e.target.value)}
+              className="px-3 py-2 rounded-xl text-sm outline-none"
+              style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+            >
+              <option value="all">All countries</option>
+              {countries.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+        {(dateFrom || dateTo || countryFilter !== 'all') && (
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); setCountryFilter('all') }}
+            className="text-xs font-semibold px-3 py-2 rounded-xl"
+            style={{ background: 'rgba(239,68,68,0.08)', color: '#DC2626' }}
+          >
+            Clear filters
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -696,10 +810,10 @@ export default function AdminUsersPage() {
                           <div>
                             <p className="font-semibold leading-tight text-xs" style={{ color: '#1A1A2E' }}>
                               {u.name}
-                              {u.role === 'admin' && (
+                              {u.role !== 'user' && (
                                 <span className="ml-1.5 text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                  style={{ background: 'rgba(240,135,0,0.12)', color: '#F08700' }}>
-                                  Admin
+                                  style={{ background: ROLE_BADGE[u.role]?.bg, color: ROLE_BADGE[u.role]?.text }}>
+                                  {ROLE_BADGE[u.role]?.label}
                                 </span>
                               )}
                             </p>
@@ -710,10 +824,18 @@ export default function AdminUsersPage() {
 
                       {/* Plan */}
                       <td className="px-5 py-3.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg"
-                          style={{ background: badge.bg, color: badge.text }}>
-                          {u.planId}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg"
+                            style={{ background: badge.bg, color: badge.text }}>
+                            {u.planId}
+                          </span>
+                          {u.adminGifted && (
+                            <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md"
+                              style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>
+                              Gift
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}

@@ -157,6 +157,9 @@ export default function AdminFinancialsPage() {
   // Cancelled but still active
   const cancelledActive = paidActive.filter(u => u.planCancelledAt).length
 
+  // Admin-gifted: paid plan, no billing cycle (manually elevated without payment)
+  const adminGifted = users.filter(u => u.planId !== 'free' && !u.billingCycle)
+
   function exportCSV() {
     const rows = [
       ['Name', 'Email', 'Plan', 'Billing', 'Status', 'Expires'],
@@ -371,6 +374,65 @@ export default function AdminFinancialsPage() {
           )}
         </div>
       </div>
+
+      {/* Admin-gifted section */}
+      {adminGifted.length > 0 && (
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: '#FFFFFF', border: '1px solid rgba(99,102,241,0.25)', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+          <div className="px-6 py-4 flex items-center gap-3" style={{ background: 'rgba(99,102,241,0.05)', borderBottom: '1px solid rgba(99,102,241,0.15)' }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(99,102,241,0.12)' }}>
+              <Users className="w-4 h-4" style={{ color: '#6366F1' }} />
+            </div>
+            <div>
+              <h2 className="text-base font-bold" style={{ color: '#1A1A2E' }}>Admin-gifted accounts</h2>
+              <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{adminGifted.length} users with elevated plans — not paying</p>
+            </div>
+            <span className="ml-auto text-lg font-black" style={{ color: '#6366F1' }}>{adminGifted.length}</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
+                  {['User', 'Plan', 'Gifted at', 'Note'].map(h => (
+                    <th key={h} className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {adminGifted.map((u, i) => {
+                  const badge = { basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#EFCA08', text: '#1A1A2E' }, pro: { bg: '#F08700', text: '#FFFFFF' } }[u.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
+                  return (
+                    <tr key={u.uid}
+                      style={{ borderBottom: i < adminGifted.length - 1 ? '1px solid #F5F7FA' : 'none' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#FAFBFF')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td className="px-5 py-3.5">
+                        <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>{u.name}</p>
+                        <p className="text-[11px]" style={{ color: '#9CA3AF' }}>{u.email}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-lg" style={{ background: badge.bg, color: badge.text }}>{u.planId}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-md" style={{ background: 'rgba(99,102,241,0.12)', color: '#6366F1' }}>Gift</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs" style={{ color: '#9CA3AF' }}>
+                          {u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className="text-xs" style={{ color: '#9CA3AF' }}>No payment — admin elevated</span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Active subscriber table */}
       <div className="rounded-2xl overflow-hidden"
