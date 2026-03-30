@@ -660,7 +660,7 @@ export default function ParticipantPage() {
       )}
 
       {/* Question content */}
-      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full min-h-0">
+      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full min-h-0 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={`q-${currentQ.id}-${session.currentQuestionIndex}`}
@@ -669,9 +669,15 @@ export default function ParticipantPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.28 }}
             className="flex-1 flex flex-col min-h-0"
+            onAnimationComplete={() => {
+              if (typeof document !== 'undefined') {
+                const header = document.querySelector('[data-question-header]')
+                header?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}
           >
             {/* Question header — full-width brand color band */}
-            <div className="px-5 pt-7 pb-8 shrink-0" style={{ background: kindMeta.bg }}>
+            <div className="px-5 pt-7 pb-8 shrink-0" data-question-header style={{ background: kindMeta.bg }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.18)' }}>
                   <KindIcon className="w-3.5 h-3.5" style={{ color: kindMeta.text }} />
