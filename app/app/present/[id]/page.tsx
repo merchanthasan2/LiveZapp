@@ -685,7 +685,8 @@ export default function PresentPage() {
     if (!presentation || !user || questions.length === 0) return
     setIsStarting(true)
     try {
-      const joinCode = generateJoinCode(6)
+      // Generate a unique join code (async to check uniqueness)
+      const joinCode = await generateJoinCode(6, rtdb)
       // Fetch branding so logo appears on the join screen
       const branding = await BrandingService.getBranding(user.id).catch(() => null)
       await LiveSessionService.startSession({
