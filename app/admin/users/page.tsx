@@ -82,7 +82,84 @@ function sortRows(rows: UserRow[], key: SortKey, asc: boolean): UserRow[] {
   })
 }
 
-// ─── User Detail Drawer ───────────────────────────────────────────────────────
+// ─── Transactions Tab ─────────────────────────────────────────────────────────
+
+function TransactionsTab({ userId }: { userId: string }) {
+  const [transactions, setTransactions] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const snap = await get(ref(rtdb, `users/${userId}/transactions`))
+        if (snap.exists()) {
+          const data = snap.val()
+          const txList = Object.entries(data).map(([key, val]: [string, any]) => ({
+            id: key,
+            ...val,
+          })).sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime())
+          setTransactions(txList)
+        }
+      } catch (err) {
+        console.error('Failed to load transactions', err)
+      } finally {
+        setIsLoading(false)
+      }
+    })()
+  }, [userId])
+
+  if (isLoading) {
+    return <div style={{ color: '#9CA3AF' }}>Loading transactions…</div>
+  }
+
+  if (transactions.length === 0) {
+    return <div style={{ color: '#9CA3AF' }}>No transactions yet</div>
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}>
+      <table className="w-full text-sm">
+        <thead>
+          <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
+            {['Date', 'Plan', 'Billing', 'Amount', 'Status', 'Details'].map(h => (
+              <th key={h} className="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {transactions.map((tx, i) => (
+            <tr key={tx.id} style={{ borderBottom: i < transactions.length - 1 ? '1px solid #F5F7FA' : 'none' }}>
+              <td className="px-4 py-3" style={{ color: '#1A1A2E' }}>
+                {new Date(tx.capturedAt).toLocaleDateString()}
+              </td>
+              <td className="px-4 py-3" style={{ color: '#1A1A2E', textTransform: 'capitalize' }}>
+                {tx.planId}
+              </td>
+              <td className="px-4 py-3" style={{ color: '#1A1A2E', textTransform: 'capitalize' }}>
+                {tx.billingCycle}
+              </td>
+              <td className="px-4 py-3 font-semibold" style={{ color: '#00A6A6' }}>
+                {tx.currency} ${tx.amount.toFixed(2)}
+              </td>
+              <td className="px-4 py-3">
+                <span className="px-2 py-1 rounded text-[10px] font-semibold" style={{ background: 'rgba(34,197,94,0.10)', color: '#16A34A', textTransform: 'capitalize' }}>
+                  {tx.status}
+                </span>
+              </td>
+              <td className="px-4 py-3 text-[11px]" style={{ color: '#6B7280' }}>
+                Order: {tx.orderId.substring(0, 12)}…
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+// ─── User Detail Drawer ───────────────────────────────────────────────────────────
 
 function UserDrawer({
   user,
@@ -103,7 +180,7 @@ function UserDrawer({
   isSaving: boolean
   canManageRoles: boolean
 }) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'billing' | 'actions'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'billing' | 'actions' | 'transactions'>('overview')
   const [suspendReason, setSuspendReason] = useState('')
   const [showSuspendForm, setShowSuspendForm] = useState(false)
   const [selectedRole, setSelectedRole] = useState(user.role)
@@ -113,9 +190,10 @@ function UserDrawer({
   const planInfo = PLANS.find(p => p.id === user.planId)
 
   const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'billing',  label: 'Billing'  },
-    { key: 'actions',  label: 'Actions'  },
+    { key: 'overview',      label: 'Overview' },
+    { key: 'billing',       label: 'Billing'  },
+    { key: 'transactions',  label: 'Transactions' },
+    { key: 'actions',       label: 'Actions'  },
   ] as const
 
   return (
@@ -440,6 +518,16 @@ function UserDrawer({
                   </div>
                 </button>
               )}
+            </div>
+          )}
+
+          {/* ── TRANSACTIONS TAB ── */}
+          {activeTab === 'transactions' && (
+            <div className="space-y-3">
+              <div className="text-sm" style={{ color: '#6B7280' }}>
+                <p className="mb-4">All payments and transactions for this user</p>
+              </div>
+              <TransactionsTab userId={user.uid} />
             </div>
           )}
         </div>

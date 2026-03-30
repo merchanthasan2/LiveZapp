@@ -88,12 +88,26 @@ export async function POST(req: NextRequest) {
     const transactionId: string =
       captureUnit?.payments?.captures?.[0]?.id ?? orderId
 
+    // Extract payer details
+    const payerName = capture.payer?.name?.given_name || capture.payer?.name?.full_name || 'Unknown'
+    const payerEmail = capture.payer?.email_address || ''
+    const currency = captureUnit?.amount?.currency_code || 'USD'
+
     return NextResponse.json({
       success: true,
       planId,
       billingCycle,
       planExpiresAt,
       transactionId,
+      // Full transaction details for logging
+      orderId,
+      amount: capturedAmount,
+      currency,
+      payerName,
+      payerEmail,
+      status: 'completed',
+      capturedAt: new Date().toISOString(),
+      paymentMode: 'PayPal',
     })
   } catch (err: any) {
     console.error('[paypal/capture-order]', err)

@@ -11,7 +11,7 @@ import {
   ArrowLeft, Check, Shield, AlertTriangle, Loader2,
   CheckCircle, RefreshCw, Info, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { ref, update, get } from 'firebase/database'
+import { ref, update, get, set } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
@@ -197,6 +197,23 @@ function CheckoutContent() {
         planExpiresAt: result.planExpiresAt,
         billingCycle: result.billingCycle,
         planCancelledAt: null,
+      })
+
+      // Store full transaction details for admin dashboard + receipt generation
+      const transactionKey = `${result.orderId}-${Date.now()}`
+      await set(ref(rtdb, `users/${user!.id}/transactions/${transactionKey}`), {
+        orderId: result.orderId,
+        transactionId: result.transactionId,
+        planId: result.planId,
+        billingCycle: result.billingCycle,
+        amount: result.amount,
+        currency: result.currency,
+        payerName: result.payerName,
+        payerEmail: result.payerEmail,
+        status: result.status,
+        paymentMode: result.paymentMode,
+        capturedAt: result.capturedAt,
+        planExpiresAt: result.planExpiresAt,
       })
 
       setPayStatus('success')
