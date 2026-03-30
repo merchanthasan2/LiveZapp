@@ -16,9 +16,9 @@ import {
 import { useAuth } from '@/lib/hooks/useAuth'
 
 const sidebarLinks = [
-  { icon: LayoutDashboard, label: 'Dashboard',        href: '/app/dashboard' },
-  { icon: PlusCircle,      label: 'New Presentation', href: '/app/create'    },
-  { icon: Settings,        label: 'Settings',         href: '/app/settings'  },
+  { icon: LayoutDashboard, label: 'Dashboard',  href: '/app/dashboard' },
+  { icon: PlusCircle,      label: 'New Zapp',   href: '/app/create'    },
+  { icon: Settings,        label: 'Settings',   href: '/app/settings'  },
 ]
 
 /* Text color to use on each plan badge background */

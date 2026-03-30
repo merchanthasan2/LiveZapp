@@ -175,10 +175,10 @@ export default function AdminMembersPage() {
       {/* Summary tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total members',       value: members.length,    bg: '#00A6A6', text: '#FFFFFF', icon: Users          },
-          { label: 'Presentations made',  value: totalPresentations,bg: '#EFCA08', text: '#1A1A2E', icon: LayoutDashboard },
-          { label: 'Questions created',   value: totalQuestions,    bg: '#F49F0A', text: '#1A1A2E', icon: HelpCircle      },
-          { label: 'Sessions presented',  value: totalSessions,     bg: '#F08700', text: '#FFFFFF', icon: Radio           },
+          { label: 'Total members',     value: members.length,    bg: '#00A6A6', text: '#FFFFFF', icon: Users          },
+          { label: 'Zapps made',        value: totalPresentations,bg: '#EFCA08', text: '#1A1A2E', icon: LayoutDashboard },
+          { label: 'Questions created', value: totalQuestions,    bg: '#F49F0A', text: '#1A1A2E', icon: HelpCircle      },
+          { label: 'Sessions presented',value: totalSessions,     bg: '#F08700', text: '#FFFFFF', icon: Radio           },
         ].map(tile => {
           const Icon = tile.icon
           return (
@@ -262,12 +262,12 @@ export default function AdminMembersPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid #F0F0F0', background: '#FAFAFA' }}>
                   {([
-                    { key: 'name',          label: 'Member'      },
-                    { key: 'planId',        label: 'Plan'        },
-                    { key: 'presentations', label: 'Presentations'},
+                    { key: 'name',          label: 'Member' },
+                    { key: 'planId',        label: 'Plan'   },
+                    { key: 'presentations', label: 'Zapps'  },
                     { key: 'questions',     label: 'Questions'   },
                     { key: 'sessions',      label: 'Sessions run'},
-                    { key: 'joinedAt',      label: 'Joined'      },
+                    { key: 'joinedAt',      label: 'Joined' },
                   ] as { key: SortKey; label: string }[]).map(col => (
                     <th
                       key={col.key}

@@ -206,10 +206,10 @@ function UserDrawer({
               {/* Info grid */}
               <div className="space-y-3">
                 {[
-                  { icon: Mail,     label: 'Email',          val: user.email },
-                  { icon: Calendar, label: 'Joined',         val: fmtDate(user.createdAt) },
-                  { icon: Calendar, label: 'Last login',     val: fmtDate(user.lastLoginAt) },
-                  { icon: FileText, label: 'Presentations',  val: `${user.presentations} active · ${user.lifetimePresentationsCreated} lifetime` },
+                  { icon: Mail,     label: 'Email',    val: user.email },
+                  { icon: Calendar, label: 'Joined',   val: fmtDate(user.createdAt) },
+                  { icon: Calendar, label: 'Last login',val: fmtDate(user.lastLoginAt) },
+                  { icon: FileText, label: 'Zapps',    val: `${user.presentations} active · ${user.lifetimePresentationsCreated} lifetime` },
                   ...(user.country ? [{ icon: Shield, label: 'Country', val: [user.city, user.country].filter(Boolean).join(', ') }] : []),
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex items-start gap-3">

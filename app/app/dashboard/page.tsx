@@ -211,7 +211,7 @@ export default function DashboardPage() {
             <Search className="w-3.5 h-3.5 text-white/40 shrink-0" />
             <input
               type="text"
-              placeholder="Search presentations…"
+              placeholder="Search Zapps…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="bg-transparent text-sm text-white/70 placeholder:text-white/30 outline-none flex-1"
@@ -229,7 +229,7 @@ export default function DashboardPage() {
       {/* ── Stat cards row ────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          label="Total Presentations"
+          label="Total Zapps"
           value={presentations.length}
           bg="#00A6A6"
           textColor="#FFFFFF"
@@ -340,7 +340,7 @@ export default function DashboardPage() {
             href="/app/create"
             className="btn-primary w-full justify-center mt-4 text-sm"
           >
-            New Presentation
+            New Zapp
           </Link>
         </div>
       </div>
@@ -348,10 +348,10 @@ export default function DashboardPage() {
       {/* ── Bottom row: filtered list + plan/stats ────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Presentations table */}
+        {/* Zapps table */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-black text-[#111111]">My Presentations</h2>
+            <h2 className="text-base font-black text-[#111111]">My Zapps</h2>
             <div
               className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
               style={{ background: '#1A1A1A' }}
