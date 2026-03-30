@@ -1,7 +1,7 @@
 // types/domain.ts
 // Core domain interfaces — single source of truth for all presentation/question data.
 
-export type PresentationType = 'quiz' | 'qa' | 'feedback'
+export type PresentationType = 'quiz' | 'poll' | 'word_cloud' | 'qa' | 'feedback'
 
 export type PresentationStatus = 'draft' | 'scheduled' | 'live' | 'completed'
 
