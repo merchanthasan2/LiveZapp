@@ -81,7 +81,8 @@ export interface QuestionSet {
 // ─── Branding ─────────────────────────────────────────────────────────────
 
 export interface BrandingConfig {
-  brandName: string        // Organisation/presenter name shown to participants
+  brandName: string        // Presenter/individual name shown to participants
+  companyName: string      // Organization/company name shown to participants
   logoUrl: string          // Publicly accessible image URL
   accentColor: string      // Hex color for buttons/highlights in participant view
   showPoweredBy: boolean   // Whether "Powered by LiveZapp" footer is visible
@@ -89,6 +90,7 @@ export interface BrandingConfig {
 
 export const DEFAULT_BRANDING: BrandingConfig = {
   brandName: '',
+  companyName: '',
   logoUrl: '',
   accentColor: '#5478FF',
   showPoweredBy: true,
@@ -110,4 +112,8 @@ export interface Presentation {
   audienceSize: number   // Required for dashboard
   createdAt: string      // ISO 8601
   updatedAt: string      // ISO 8601
+  // Per-presentation branding (overrides user profile branding)
+  brandName?: string     // Custom brand/organization name for this Zapp
+  brandLogoUrl?: string  // Custom logo for this Zapp (shown before questions)
+  brandAccentColor?: string // Custom accent color for this Zapp
 }
