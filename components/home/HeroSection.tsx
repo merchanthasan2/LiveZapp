@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, Zap, BarChart3, Users, CheckCircle2, Radio, Tag, Clock, Sparkles, ChevronRight } from 'lucide-react'
+import { ArrowRight, BarChart3, Users, CheckCircle2, Radio, Tag, Clock, Sparkles, ChevronRight } from 'lucide-react'
 import { ref, get } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 
@@ -77,20 +77,17 @@ function JoinWidget() {
           />
 
           <div className="relative flex items-center justify-between gap-4">
-            {/* Left: icon + text */}
+            {/* Left: logo mark + text */}
             <div className="flex items-center gap-4">
-              {/* Animated zap icon */}
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+              {/* LiveZapp logo mark (the thunderbolt) */}
+              <motion.div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, #F08700, #EFCA08)', boxShadow: '0 8px 24px rgba(240,135,0,0.45)' }}
+                animate={{ scale: [1, 1.08, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <motion.div
-                  animate={{ scale: [1, 1.15, 1] }}
-                  transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                >
-                  <Zap className="w-7 h-7 text-white" fill="white" />
-                </motion.div>
-              </div>
+                <Image src="/LiveZapp Logo only.png" alt="Live-Zapp" width={40} height={40} className="w-9 h-9 object-contain" />
+              </motion.div>
 
               <div>
                 <div className="flex items-center gap-2 mb-1">
@@ -126,16 +123,6 @@ function JoinWidget() {
             >
               <ChevronRight className="w-5 h-5 text-white" />
             </div>
-          </div>
-
-          {/* Bottom hint */}
-          <div
-            className="relative mt-4 flex items-center gap-2 px-4 py-2.5 rounded-xl"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            <span className="text-xs font-mono font-bold tracking-widest" style={{ color: 'rgba(255,255,255,0.35)' }}>Enter code:</span>
-            <span className="text-sm font-black tracking-[0.2em]" style={{ color: 'rgba(255,255,255,0.20)' }}>_ _ _ _ _ _</span>
-            <span className="ml-auto text-xs font-bold px-2.5 py-1 rounded-lg" style={{ background: '#00A6A6', color: '#fff' }}>Go →</span>
           </div>
         </div>
       </Link>
