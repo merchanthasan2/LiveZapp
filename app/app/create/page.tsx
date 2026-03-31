@@ -16,6 +16,7 @@ import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
 import { makeQuestion } from '@/components/question-editor/makeQuestion'
 import { Q_TYPES } from '@/components/question-editor/qtypes'
 import type { PresentationType, Question, Section, ScoringConfig } from '@/types/domain'
+import type { QuestionKind } from '@/components/question-editor/qtypes'
 
 // ─── Color palettes (Pro) ─────────────────────────────────────────────────
 
@@ -84,6 +85,76 @@ function ProgressBar({ step, isQuiz }: { step: WizardStep; isQuiz: boolean }) {
   )
 }
 
+// ─── Question type picker overlay ─────────────────────────────────────────
+
+function QuestionTypePicker({
+  onSelect, onClose, defaultKind,
+}: {
+  onSelect: (kind: QuestionKind) => void
+  onClose: () => void
+  defaultKind?: QuestionKind
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ duration: 0.18 }}
+        className="w-full max-w-lg rounded-3xl overflow-hidden"
+        style={{ background: '#FFFFFF', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
+          <h3 className="text-lg font-black" style={{ color: '#1A1A2E' }}>Choose question type</h3>
+          <p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>Each question in your Zapp can be a different type</p>
+        </div>
+        <div className="p-4 space-y-2">
+          {Q_TYPES.map(qt => {
+            const Icon = qt.icon
+            const isDefault = qt.kind === defaultKind
+            return (
+              <button
+                key={qt.kind}
+                onClick={() => onSelect(qt.kind as QuestionKind)}
+                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.99]"
+                style={{
+                  background: isDefault ? qt.bg : '#F9FAFB',
+                  border: `1.5px solid ${isDefault ? qt.border : '#E5E7EB'}`,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = qt.bg; e.currentTarget.style.borderColor = qt.border }}
+                onMouseLeave={e => { e.currentTarget.style.background = isDefault ? qt.bg : '#F9FAFB'; e.currentTarget.style.borderColor = isDefault ? qt.border : '#E5E7EB' }}
+              >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${qt.color}18` }}>
+                  <Icon className="w-5 h-5" style={{ color: qt.color }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm" style={{ color: '#1A1A2E' }}>{qt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{qt.sub}</p>
+                </div>
+                {isDefault && (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0" style={{ background: qt.bg, color: qt.color }}>
+                    Default
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+        <div className="px-6 pb-5">
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all" style={{ background: '#F3F4F6', color: '#6B7280' }}>
+            Cancel
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
 // ─── Main wizard ───────────────────────────────────────────────────────────
 
 export default function CreatePage() {
@@ -109,6 +180,7 @@ export default function CreatePage() {
   })
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showTypePicker, setShowTypePicker] = useState(false)
 
   const isPro       = planLimits.plan?.id !== 'free'
   const canCreate   = planLimits.canCreatePresentation
@@ -160,17 +232,14 @@ export default function CreatePage() {
 
   // ── Questions helpers ────────────────────────────────────────────────────
 
-  function addQuestion() {
-    if (!type) return
-    const kind = type === 'quiz' ? 'quiz'
-      : type === 'poll' ? 'poll'
-      : type === 'word_cloud' ? 'word_cloud'
-      : type === 'qa' ? 'qa'
-      : 'feedback'
+  function addQuestion(kind?: QuestionKind) {
+    // If no kind given and questions exist, show the type picker
+    if (!kind) { setShowTypePicker(true); return }
     const sectionId = useSections ? activeSectionId : undefined
     const q = makeQuestion(kind, questions.length, sectionId)
     setQuestions(prev => [...prev, q])
     setSelectedQId(q.id)
+    setShowTypePicker(false)
   }
 
   function deleteQuestion(id: string) {
@@ -517,39 +586,44 @@ export default function CreatePage() {
               {visibleQuestions.length === 0 && (
                 <p className="text-xs text-center py-6" style={{ color: '#9CA3AF' }}>No questions yet</p>
               )}
-              {visibleQuestions.map((q, i) => (
-                <div
-                  key={q.id}
-                  className="flex items-center gap-2 group"
-                >
-                  <button
-                    onClick={() => setSelectedQId(q.id)}
-                    className="flex-1 text-left px-3 py-2.5 rounded-lg text-xs transition-all"
-                    style={{
-                      background: selectedQId === q.id ? 'rgba(0,166,166,0.10)' : 'transparent',
-                      color: selectedQId === q.id ? '#00A6A6' : '#374151',
-                      border: selectedQId === q.id ? '1px solid rgba(0,166,166,0.25)' : '1px solid transparent',
-                    }}
-                  >
-                    <span className="font-bold">{i + 1}.</span> {q.prompt || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Untitled</span>}
-                  </button>
-                  <button
-                    onClick={() => deleteQuestion(q.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all flex-shrink-0"
-                    style={{ color: '#D1D5DB' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+              {visibleQuestions.map((q, i) => {
+                const qMeta = Q_TYPES.find(t => t.kind === q.kind)
+                const QIcon = qMeta?.icon ?? Sparkles
+                return (
+                  <div key={q.id} className="flex items-center gap-2 group">
+                    <button
+                      onClick={() => setSelectedQId(q.id)}
+                      className="flex-1 text-left px-3 py-2.5 rounded-lg text-xs transition-all"
+                      style={{
+                        background: selectedQId === q.id ? 'rgba(0,166,166,0.10)' : 'transparent',
+                        color: selectedQId === q.id ? '#00A6A6' : '#374151',
+                        border: selectedQId === q.id ? '1px solid rgba(0,166,166,0.25)' : '1px solid transparent',
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold shrink-0" style={{ color: '#9CA3AF' }}>{i + 1}.</span>
+                        <QIcon className="w-3 h-3 shrink-0" style={{ color: qMeta?.color ?? '#00A6A6' }} />
+                        <span className="truncate">{q.prompt || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Untitled</span>}</span>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => deleteQuestion(q.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all flex-shrink-0"
+                      style={{ color: '#D1D5DB' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Add question */}
             <div className="p-3 border-t border-[#E5E7EB]">
               <button
-                onClick={addQuestion}
+                onClick={() => addQuestion()}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all"
                 style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
               >
@@ -567,9 +641,9 @@ export default function CreatePage() {
                   <Plus className="w-7 h-7" style={{ color: '#00A6A6' }} />
                 </div>
                 <p className="font-bold text-lg" style={{ color: '#1A1A2E' }}>Add your first question</p>
-                <p className="text-sm" style={{ color: '#6B7280' }}>Click the button below to start building your Zapp</p>
+                <p className="text-sm" style={{ color: '#6B7280' }}>Pick a question type to get started — you can mix types freely</p>
                 <button
-                  onClick={addQuestion}
+                  onClick={() => addQuestion()}
                   className="mt-2 px-8 py-3 rounded-xl font-black text-white text-base"
                   style={{ background: '#00A6A6', boxShadow: '0 4px 16px rgba(0,166,166,0.30)' }}
                 >
@@ -583,10 +657,10 @@ export default function CreatePage() {
                   questions={questions}
                   setQuestions={setQuestions}
                 />
-                {/* Add another question button — always visible at bottom of editor */}
+                {/* Add another question — shows type picker */}
                 <div className="px-7 pb-6 pt-2 border-t border-[#F0F0F0] flex-shrink-0">
                   <button
-                    onClick={addQuestion}
+                    onClick={() => addQuestion()}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
                     style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px dashed rgba(0,166,166,0.35)' }}
                   >
@@ -597,6 +671,17 @@ export default function CreatePage() {
             )}
           </div>
         </div>
+
+        {/* Question type picker overlay */}
+        <AnimatePresence>
+          {showTypePicker && (
+            <QuestionTypePicker
+              onSelect={kind => addQuestion(kind as QuestionKind)}
+              onClose={() => setShowTypePicker(false)}
+              defaultKind={type as QuestionKind | undefined}
+            />
+          )}
+        </AnimatePresence>
       </div>
     )
   }
