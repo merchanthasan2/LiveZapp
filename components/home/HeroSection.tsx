@@ -76,73 +76,84 @@ function JoinWidget() {
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="self-start"
     >
-      <Link href="/join" className="block group w-full sm:w-[70%]">
+      <Link href="/join" className="group inline-block w-full">
+        {/* Outer glow ring — animates on hover */}
         <div
-          className="relative overflow-hidden rounded-3xl p-5 transition-all duration-300 group-hover:scale-[1.02]"
+          className="relative rounded-2xl p-px transition-all duration-500"
           style={{
-            background: 'linear-gradient(135deg, #0A1628 0%, #002952 60%, #003D7A 100%)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)',
+            background: 'linear-gradient(135deg, rgba(0,166,166,0.6), rgba(240,135,0,0.6), rgba(0,166,166,0.4))',
+            boxShadow: '0 0 0 0 rgba(0,166,166,0)',
           }}
         >
-          {/* Animated glow blob */}
-          <div
-            className="absolute -top-12 -right-12 w-48 h-48 rounded-full opacity-20 group-hover:opacity-30 transition-opacity duration-500"
-            style={{ background: 'radial-gradient(circle, #00A6A6 0%, transparent 70%)' }}
-          />
-          <div
-            className="absolute -bottom-8 -left-8 w-36 h-36 rounded-full opacity-15 group-hover:opacity-25 transition-opacity duration-500"
-            style={{ background: 'radial-gradient(circle, #F08700 0%, transparent 70%)' }}
+          <motion.div
+            className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ boxShadow: '0 0 32px 6px rgba(0,166,166,0.35), 0 0 60px 12px rgba(240,135,0,0.15)' }}
           />
 
-          <div className="relative flex items-center justify-between gap-4">
-            {/* Left: logo mark + text */}
-            <div className="flex items-center gap-4">
-              {/* LiveZapp logo mark (the thunderbolt) */}
-              <motion.div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, #F08700, #EFCA08)', boxShadow: '0 8px 24px rgba(240,135,0,0.45)' }}
-                animate={{ scale: [1, 1.08, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Image src="/LiveZapp Logo only.png" alt="Live-Zapp" width={52} height={52} className="w-12 h-12 object-contain" />
-              </motion.div>
+          {/* Card body */}
+          <div
+            className="relative flex items-center gap-4 px-5 py-4 rounded-2xl overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #091525 0%, #0D2040 50%, #0A1830 100%)' }}
+          >
+            {/* Subtle moving background gradient */}
+            <motion.div
+              className="absolute inset-0 opacity-30"
+              style={{ background: 'radial-gradient(ellipse at 20% 50%, rgba(0,166,166,0.25) 0%, transparent 60%)' }}
+              animate={{ x: [0, 20, 0] }}
+              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+            />
 
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <motion.div
-                    className="w-2 h-2 rounded-full"
-                    style={{ background: '#22C55E' }}
-                    animate={{ opacity: [1, 0.3, 1] }}
-                    transition={{ duration: 1.4, repeat: Infinity }}
-                  />
-                  <AnimatePresence mode="wait">
-                    <motion.span
-                      key={displayCount}
-                      initial={{ opacity: 0, y: -6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 6 }}
-                      transition={{ duration: 0.3 }}
-                      className="text-xs font-bold"
-                      style={{ color: '#22C55E' }}
-                    >
-                      {displayCount} sessions live now
-                    </motion.span>
-                  </AnimatePresence>
-                </div>
-                <p className="font-black text-white text-lg leading-tight">Join a Live-Zapp</p>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.45)' }}>No account · Any device</p>
-              </div>
-            </div>
-
-            {/* Right: arrow */}
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 group-hover:translate-x-1"
-              style={{ background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}
+            {/* Logo mark */}
+            <motion.div
+              className="relative shrink-0 w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, #F08700 0%, #EFCA08 100%)', boxShadow: '0 6px 20px rgba(240,135,0,0.55)' }}
+              animate={{ boxShadow: ['0 6px 20px rgba(240,135,0,0.55)', '0 6px 28px rgba(240,135,0,0.80)', '0 6px 20px rgba(240,135,0,0.55)'] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <ChevronRight className="w-5 h-5 text-white" />
+              <Image src="/LiveZapp Logo only.png" alt="Live-Zapp" width={44} height={44} className="w-10 h-10 object-contain" />
+            </motion.div>
+
+            {/* Text block */}
+            <div className="flex-1 min-w-0">
+              {/* Live counter */}
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <motion.div
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: '#22C55E' }}
+                  animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                />
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={displayCount}
+                    initial={{ opacity: 0, y: -5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 5 }}
+                    transition={{ duration: 0.25 }}
+                    className="text-xs font-bold whitespace-nowrap"
+                    style={{ color: '#22C55E' }}
+                  >
+                    {displayCount} sessions live now
+                  </motion.span>
+                </AnimatePresence>
+              </div>
+              <p className="font-black text-white whitespace-nowrap" style={{ fontSize: '1.05rem', letterSpacing: '-0.01em' }}>
+                Join a Live-Zapp
+              </p>
+              <p className="text-xs whitespace-nowrap" style={{ color: 'rgba(255,255,255,0.40)' }}>
+                No account needed · Any device
+              </p>
             </div>
+
+            {/* Arrow button */}
+            <motion.div
+              className="relative shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-300"
+              style={{ background: 'rgba(0,166,166,0.20)', border: '1px solid rgba(0,166,166,0.35)' }}
+              whileHover={{ x: 3 }}
+            >
+              <ChevronRight className="w-4 h-4" style={{ color: '#00A6A6' }} />
+            </motion.div>
           </div>
         </div>
       </Link>
