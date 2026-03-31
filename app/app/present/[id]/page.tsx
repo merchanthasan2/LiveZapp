@@ -226,7 +226,7 @@ function ResponsePanel({ question, responses }: { question: Question; responses:
 
 function QRPanel({ joinCode }: { joinCode: string }) {
   const [lanIp, setLanIp] = useState<string | null>(null)
-  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.livezapp.com'
+  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   const isProduction = !isLocalhost && typeof window !== 'undefined'
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : prodOrigin
@@ -249,7 +249,7 @@ function QRPanel({ joinCode }: { joinCode: string }) {
       <div className="space-y-1">
         {isLocalhost && lanIp && <div><p className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: '#9CA3AF' }}>Network</p><p className="text-xs font-mono font-bold break-all" style={{ color: '#00A6A6' }}>http://{lanIp}{port ? `:${port}` : ''}/join/{joinCode}</p></div>}
         {localhostUrl && <div><p className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: '#9CA3AF' }}>Localhost</p><p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>{localhostUrl}</p></div>}
-        {!isLocalhost && <p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>livezapp.com/join/{joinCode}</p>}
+        {!isLocalhost && <p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>live-zapp.com/join/{joinCode}</p>}
       </div>
     </div>
   )
@@ -258,7 +258,7 @@ function QRPanel({ joinCode }: { joinCode: string }) {
 // ─── Fullscreen: Join/QR slide ────────────────────────────────────────────
 
 function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: string; onStart: () => void; brandLogoUrl?: string; brandName?: string }) {
-  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.livezapp.com'
+  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'
   const [lanIp, setLanIp] = useState<string | null>(null)
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   const port = typeof window !== 'undefined' ? window.location.port : ''
@@ -275,10 +275,10 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
     ? `http://${lanIp}${port ? `:${port}` : ''}/join/${joinCode}`
     : `${currentOrigin}/join/${joinCode}`
   const displayUrl = isProduction
-    ? `livezapp.com/join/${joinCode}`
+    ? `live-zapp.com/join/${joinCode}`
     : lanIp
     ? `${lanIp}${port ? `:${port}` : ''}/join/${joinCode}`
-    : `livezapp.com/join/${joinCode}`
+    : `live-zapp.com/join/${joinCode}`
 
   return (
     <motion.div
@@ -329,7 +329,7 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.40)' }}>Go to</p>
             <p className="font-bold" style={{ fontSize: '1.35rem', color: '#00A6A6' }}>
-              livezapp.com/live
+              live-zapp.com/live
             </p>
             <p className="text-sm mt-1 font-mono" style={{ color: 'rgba(255,255,255,0.35)' }}>{displayUrl}</p>
           </div>
@@ -892,7 +892,7 @@ export default function PresentPage() {
             </button>
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl" style={{ background: 'rgba(0,166,166,0.15)', border: '1px solid rgba(0,166,166,0.25)' }}>
               <Globe className="w-3.5 h-3.5" style={{ color: '#00A6A6' }} />
-              <span className="text-sm font-semibold" style={{ color: '#00A6A6' }}>livezapp.com/live</span>
+              <span className="text-sm font-semibold" style={{ color: '#00A6A6' }}>live-zapp.com/live</span>
             </div>
           </div>
 
@@ -1257,7 +1257,7 @@ export default function PresentPage() {
             <div className="flex justify-center mb-3">
               <div className="p-2.5 rounded-xl" style={{ background: '#FFFFFF' }}>
                 <QRCodeSVG
-                  value={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.livezapp.com'}/join/${session.joinCode}`}
+                  value={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'}/join/${session.joinCode}`}
                   size={96}
                   bgColor="#ffffff"
                   fgColor="#0D1117"
@@ -1266,7 +1266,7 @@ export default function PresentPage() {
               </div>
             </div>
             <p className="font-black tracking-[0.20em] text-2xl mb-1" style={{ color: '#FFFFFF' }}>{session.joinCode}</p>
-            <p className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.30)' }}>livezapp.com/live</p>
+            <p className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.30)' }}>live-zapp.com/live</p>
           </div>
 
           {/* Question list */}

@@ -17,7 +17,7 @@ export default function ShareJoinLink({
   joinCode, presenterName, sessionTitle,
   siteUrl = typeof window !== 'undefined'
     ? `${window.location.protocol}//${window.location.host}`
-    : process.env.NEXT_PUBLIC_SITE_URL || 'https://livezapp.com',
+    : process.env.NEXT_PUBLIC_SITE_URL || 'https://live-zapp.com',
 }: ShareJoinLinkProps) {
   const [copied, setCopied] = useState(false)
   const [showOptions, setShowOptions] = useState(false)

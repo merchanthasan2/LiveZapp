@@ -39,7 +39,7 @@ Disallow: /admin
 Disallow: /app
 Disallow: /join
 Disallow: /checkout
-Sitemap: https://livezapp.com/sitemap.xml`,
+Sitemap: https://live-zapp.com/sitemap.xml`,
   updatedAt: null,
   updatedBy: null,
 }
@@ -251,7 +251,7 @@ export default function AdminSeoPage() {
               hint="1200×630px image shown when pages are shared on social media"
               value={config.defaultOgImageUrl}
               onChange={v => set_('defaultOgImageUrl', v)}
-              placeholder="https://livezapp.com/og-image.png"
+              placeholder="https://live-zapp.com/og-image.png"
             />
 
             {/* SERP preview */}
@@ -259,7 +259,7 @@ export default function AdminSeoPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9CA3AF' }}>SERP preview</p>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-4 h-4 rounded-full" style={{ background: '#00A6A6' }} />
-                <span className="text-xs" style={{ color: '#1A0A6B' }}>livezapp.com</span>
+                <span className="text-xs" style={{ color: '#1A0A6B' }}>live-zapp.com</span>
               </div>
               <p className="text-base font-medium" style={{ color: '#1558D6' }}>
                 {config.siteTitle || 'Page title'}

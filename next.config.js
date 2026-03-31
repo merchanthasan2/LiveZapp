@@ -16,7 +16,7 @@ const nextConfig = {
 
   // Allow the app to know its own public URL at build-time (used for QR codes)
   env: {
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://www.livezapp.com',
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://www.live-zapp.com',
   },
 }
 
