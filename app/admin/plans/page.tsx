@@ -1,12 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ref, get } from 'firebase/database'
+import { ref, get, set } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
-import { PLANS, type Plan } from '@/types/plans'
+import { PLANS, type Plan, type PlanId, type PlanLimits } from '@/types/plans'
+import { invalidatePlanLimitsCache } from '@/lib/hooks/usePlanLimits'
 import {
   Zap, Users, FileStack, Check, Star,
-  RefreshCw, Eye, TrendingUp,
+  RefreshCw, Eye, TrendingUp, Edit2, Save, X, RotateCcw,
 } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,6 +20,8 @@ interface PlanStats {
   annualUsers: number
   mrr: number
 }
+
+type LimitOverrides = Partial<Record<PlanId, Partial<PlanLimits>>>
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -34,6 +37,11 @@ function isActive(u: any): boolean {
   return false
 }
 
+function displayLimit(val: number | 'unlimited' | undefined, defaultVal: number | 'unlimited'): string {
+  const v = val ?? defaultVal
+  return v === 'unlimited' ? '∞' : String(v)
+}
+
 const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
   free:    { bg: '#BBDEF0', text: '#1A1A2E' },
   basic:   { bg: '#00A6A6', text: '#FFFFFF' },
@@ -41,10 +49,131 @@ const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
   pro:     { bg: '#F08700', text: '#FFFFFF' },
 }
 
+// ─── Editable Limits Panel ────────────────────────────────────────────────────
+
+function EditLimitsPanel({
+  plan,
+  override,
+  onSave,
+  onReset,
+  onCancel,
+}: {
+  plan: Plan
+  override: Partial<PlanLimits>
+  onSave: (limits: Partial<PlanLimits>) => void
+  onReset: () => void
+  onCancel: () => void
+}) {
+  const defaults = plan.limits
+  const [maxPresentations, setMaxPresentations] = useState(
+    String(override.maxPresentations ?? defaults.maxPresentations)
+  )
+  const [maxParticipants, setMaxParticipants] = useState(
+    String(override.maxParticipantsPerSession ?? defaults.maxParticipantsPerSession)
+  )
+  const [maxQuestions, setMaxQuestions] = useState(
+    String(override.maxQuestionsPerPresentation ?? defaults.maxQuestionsPerPresentation)
+  )
+  const [maxSessions, setMaxSessions] = useState(
+    String(override.maxActiveSessions ?? defaults.maxActiveSessions)
+  )
+  const [saving, setSaving] = useState(false)
+
+  const parseLimit = (v: string): number | 'unlimited' => {
+    if (v === 'unlimited' || v === '∞' || v === '') return 'unlimited'
+    const n = parseInt(v, 10)
+    return isNaN(n) ? 0 : n
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    onSave({
+      maxPresentations: parseLimit(maxPresentations),
+      maxParticipantsPerSession: parseLimit(maxParticipants) as number,
+      maxQuestionsPerPresentation: parseLimit(maxQuestions) as number,
+      maxActiveSessions: parseLimit(maxSessions) as number,
+    })
+    setSaving(false)
+  }
+
+  const fields = [
+    { label: 'Lifetime sessions', value: maxPresentations, set: setMaxPresentations, hint: 'Use "unlimited" for unlimited' },
+    { label: 'Max participants / session', value: maxParticipants, set: setMaxParticipants, hint: '' },
+    { label: 'Questions / session', value: maxQuestions, set: setMaxQuestions, hint: '' },
+    { label: 'Concurrent live sessions', value: maxSessions, set: setMaxSessions, hint: '' },
+  ]
+
+  return (
+    <div className="space-y-3 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
+      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#F08700' }}>Edit limits</p>
+      {fields.map(f => (
+        <div key={f.label}>
+          <label className="block text-[11px] font-semibold mb-1" style={{ color: '#6B7280' }}>{f.label}</label>
+          <input
+            type="text"
+            value={f.value}
+            onChange={e => f.set(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl text-sm font-bold outline-none transition-all"
+            style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
+            onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
+            onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
+            placeholder={f.hint || 'Enter number'}
+          />
+          {f.hint && <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>{f.hint}</p>}
+        </div>
+      ))}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
+          style={{ background: '#00A6A6', color: '#FFFFFF' }}
+        >
+          <Save className="w-3.5 h-3.5" />
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          onClick={onReset}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
+          style={{ background: 'rgba(240,135,0,0.10)', color: '#F08700', border: '1px solid rgba(240,135,0,0.22)' }}
+          title="Reset to code defaults"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={onCancel}
+          className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
+          style={{ background: '#F3F4F6', color: '#6B7280' }}
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Plan Card ────────────────────────────────────────────────────────────────
 
-function PlanCard({ plan, stats }: { plan: Plan; stats: PlanStats }) {
+function PlanCard({
+  plan, stats, override,
+  onSaveOverride, onResetOverride,
+}: {
+  plan: Plan
+  stats: PlanStats
+  override: Partial<PlanLimits>
+  onSaveOverride: (limits: Partial<PlanLimits>) => void
+  onResetOverride: () => void
+}) {
+  const [editing, setEditing] = useState(false)
   const badge = PLAN_BADGE[plan.id] ?? PLAN_BADGE.free
+  const hasOverride = Object.keys(override).length > 0
+
+  const effectiveLimits = {
+    maxPresentations: override.maxPresentations ?? plan.limits.maxPresentations,
+    maxParticipantsPerSession: override.maxParticipantsPerSession ?? plan.limits.maxParticipantsPerSession,
+    maxQuestionsPerPresentation: override.maxQuestionsPerPresentation ?? plan.limits.maxQuestionsPerPresentation,
+    maxActiveSessions: override.maxActiveSessions ?? plan.limits.maxActiveSessions,
+  }
 
   return (
     <div className="rounded-2xl p-6 flex flex-col gap-4"
@@ -69,6 +198,11 @@ function PlanCard({ plan, stats }: { plan: Plan; stats: PlanStats }) {
         <div>
           <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
             style={{ background: badge.bg, color: badge.text }}>{plan.name}</span>
+          {hasOverride && (
+            <span className="ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(240,135,0,0.12)', color: '#F08700' }}>
+              Custom
+            </span>
+          )}
           <p className="text-xs mt-2" style={{ color: '#6B7280' }}>{plan.tagline}</p>
         </div>
         <div className="text-right">
@@ -85,42 +219,63 @@ function PlanCard({ plan, stats }: { plan: Plan; stats: PlanStats }) {
       <div className="rounded-xl p-4 space-y-2" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
         <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#9CA3AF' }}>Subscriber stats</p>
         {[
-          { label: 'Total users',    val: stats.totalUsers.toLocaleString()  },
-          { label: 'Active paid',    val: stats.activeUsers.toLocaleString() },
-          { label: 'Monthly billing',val: stats.monthlyUsers.toLocaleString() },
-          { label: 'Annual billing', val: stats.annualUsers.toLocaleString() },
-          { label: 'MRR contribution', val: fmtUSD(stats.mrr)               },
+          { label: 'Total users',       val: stats.totalUsers.toLocaleString()  },
+          { label: 'Active paid',       val: stats.activeUsers.toLocaleString() },
+          { label: 'Monthly billing',   val: stats.monthlyUsers.toLocaleString() },
+          { label: 'Annual billing',    val: stats.annualUsers.toLocaleString() },
+          { label: 'MRR contribution',  val: fmtUSD(stats.mrr) },
         ].map(({ label, val }) => (
-          <div key={label} className="flex justify-between items-center py-1"
-            style={{ borderBottom: '1px solid #F3F4F6' }}>
+          <div key={label} className="flex justify-between items-center py-1" style={{ borderBottom: '1px solid #F3F4F6' }}>
             <span className="text-xs" style={{ color: '#6B7280' }}>{label}</span>
             <span className="text-xs font-bold" style={{ color: '#1A1A2E' }}>{val}</span>
           </div>
         ))}
       </div>
 
-      {/* Limits */}
-      <div className="space-y-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Plan limits</p>
-        {[
-          { icon: FileStack, label: 'Lifetime sessions', val: plan.limits.maxPresentations === 'unlimited' ? '∞' : plan.limits.maxPresentations },
-          { icon: Users,     label: 'Max participants',  val: plan.limits.maxParticipantsPerSession.toLocaleString() },
-          { icon: Zap,       label: 'Questions / session', val: plan.limits.maxQuestionsPerPresentation },
-        ].map(({ icon: Icon, label, val }) => (
-          <div key={label} className="flex justify-between items-center">
-            <span className="text-xs flex items-center gap-1.5" style={{ color: '#6B7280' }}>
-              <Icon className="w-3 h-3" />{label}
-            </span>
-            <span className="text-xs font-bold" style={{ color: '#1A1A2E' }}>{val}</span>
+      {/* Limits (read view) */}
+      {!editing && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Plan limits</p>
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
+              style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6' }}
+            >
+              <Edit2 className="w-2.5 h-2.5" /> Edit
+            </button>
           </div>
-        ))}
-      </div>
+          {[
+            { icon: FileStack, label: 'Lifetime sessions', val: displayLimit(effectiveLimits.maxPresentations, plan.limits.maxPresentations) },
+            { icon: Users,     label: 'Max participants',  val: displayLimit(effectiveLimits.maxParticipantsPerSession, plan.limits.maxParticipantsPerSession) },
+            { icon: Zap,       label: 'Questions / session', val: displayLimit(effectiveLimits.maxQuestionsPerPresentation, plan.limits.maxQuestionsPerPresentation) },
+          ].map(({ icon: Icon, label, val }) => (
+            <div key={label} className="flex justify-between items-center">
+              <span className="text-xs flex items-center gap-1.5" style={{ color: '#6B7280' }}>
+                <Icon className="w-3 h-3" />{label}
+              </span>
+              <span className="text-xs font-bold" style={{ color: hasOverride ? '#F08700' : '#1A1A2E' }}>{val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Edit panel */}
+      {editing && (
+        <EditLimitsPanel
+          plan={plan}
+          override={override}
+          onSave={limits => { onSaveOverride(limits); setEditing(false) }}
+          onReset={() => { onResetOverride(); setEditing(false) }}
+          onCancel={() => setEditing(false)}
+        />
+      )}
 
       {/* Features */}
       <div className="space-y-1.5 pt-1" style={{ borderTop: '1px solid #F3F4F6' }}>
         {[
-          { key: 'canExportResults', label: 'Export results'    },
-          { key: 'canUseBranding',   label: 'Custom branding'   },
+          { key: 'canExportResults', label: 'Export results' },
+          { key: 'canUseBranding',   label: 'Custom branding' },
         ].map(({ key, label }) => {
           const has = plan.features[key as keyof typeof plan.features]
           return (
@@ -133,14 +288,6 @@ function PlanCard({ plan, stats }: { plan: Plan; stats: PlanStats }) {
             </div>
           )
         })}
-        {plan.features.exportFormats && plan.features.exportFormats.length > 0 && (
-          <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            {plan.features.exportFormats.map(fmt => (
-              <span key={fmt} className="text-[10px] font-bold uppercase px-2 py-0.5 rounded"
-                style={{ background: 'rgba(0,166,166,0.10)', color: '#007A7A' }}>{fmt}</span>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )
@@ -149,19 +296,35 @@ function PlanCard({ plan, stats }: { plan: Plan; stats: PlanStats }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminPlansPage() {
-  const [planStats, setPlanStats]   = useState<Record<string, PlanStats>>({})
-  const [isLoading, setIsLoading]   = useState(true)
-  const [totalMRR, setTotalMRR]     = useState(0)
-  const [totalUsers, setTotalUsers] = useState(0)
+  const [planStats,   setPlanStats]   = useState<Record<string, PlanStats>>({})
+  const [overrides,   setOverrides]   = useState<LimitOverrides>({})
+  const [isLoading,   setIsLoading]   = useState(true)
+  const [totalMRR,    setTotalMRR]    = useState(0)
+  const [totalUsers,  setTotalUsers]  = useState(0)
+  const [saveStatus,  setSaveStatus]  = useState<string>('')
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setIsLoading(true)
     try {
-      const snap = await get(ref(rtdb, 'users'))
-      if (!snap.exists()) { setIsLoading(false); return }
-      const data = snap.val() as Record<string, any>
+      const [usersSnap, configSnap] = await Promise.all([
+        get(ref(rtdb, 'users')),
+        get(ref(rtdb, 'admin/planConfig')),
+      ])
+
+      // Load overrides from Firebase
+      if (configSnap.exists()) {
+        const raw = configSnap.val() as Record<string, { limits?: Partial<PlanLimits> }>
+        const loaded: LimitOverrides = {}
+        for (const [planId, cfg] of Object.entries(raw)) {
+          if (cfg.limits) loaded[planId as PlanId] = cfg.limits
+        }
+        setOverrides(loaded)
+      }
+
+      if (!usersSnap.exists()) { setIsLoading(false); return }
+      const data = usersSnap.val() as Record<string, any>
       const allUsers = Object.values(data)
       setTotalUsers(allUsers.length)
 
@@ -169,20 +332,13 @@ export default function AdminPlansPage() {
       let totalMrrAcc = 0
 
       PLANS.forEach(plan => {
-        const planUsers = allUsers.filter((u: any) => u.planId === plan.id)
+        const planUsers  = allUsers.filter((u: any) => u.planId === plan.id)
         const activeUsers = plan.pricePerMonth > 0 ? planUsers.filter(isActive) : []
         const monthlyUsers = activeUsers.filter((u: any) => u.billingCycle !== 'annual')
         const annualUsers  = activeUsers.filter((u: any) => u.billingCycle === 'annual')
         const mrr = monthlyUsers.length * plan.pricePerMonth + annualUsers.length * (plan.pricePerYear / 12)
         totalMrrAcc += mrr
-        stats[plan.id] = {
-          planId: plan.id,
-          totalUsers: planUsers.length,
-          activeUsers: activeUsers.length,
-          monthlyUsers: monthlyUsers.length,
-          annualUsers: annualUsers.length,
-          mrr,
-        }
+        stats[plan.id] = { planId: plan.id, totalUsers: planUsers.length, activeUsers: activeUsers.length, monthlyUsers: monthlyUsers.length, annualUsers: annualUsers.length, mrr }
       })
 
       setPlanStats(stats)
@@ -191,6 +347,32 @@ export default function AdminPlansPage() {
       console.error('[admin/plans] load failed', e)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  async function saveOverride(planId: PlanId, limits: Partial<PlanLimits>) {
+    try {
+      await set(ref(rtdb, `admin/planConfig/${planId}/limits`), limits)
+      setOverrides(prev => ({ ...prev, [planId]: limits }))
+      invalidatePlanLimitsCache()
+      setSaveStatus(`${planId} limits saved`)
+      setTimeout(() => setSaveStatus(''), 3000)
+    } catch (e) {
+      console.error('Failed to save limits', e)
+      setSaveStatus('Save failed — check permissions')
+      setTimeout(() => setSaveStatus(''), 4000)
+    }
+  }
+
+  async function resetOverride(planId: PlanId) {
+    try {
+      await set(ref(rtdb, `admin/planConfig/${planId}/limits`), null)
+      setOverrides(prev => { const next = { ...prev }; delete next[planId]; return next })
+      invalidatePlanLimitsCache()
+      setSaveStatus(`${planId} limits reset to defaults`)
+      setTimeout(() => setSaveStatus(''), 3000)
+    } catch (e) {
+      console.error('Failed to reset limits', e)
     }
   }
 
@@ -216,13 +398,20 @@ export default function AdminPlansPage() {
           <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#1A1A2E' }}>
             Plans <span style={{ color: '#00A6A6' }}>& Pricing</span>
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Current plan tiers, limits, and subscriber breakdown</p>
+          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Configure plan limits and view subscriber breakdown</p>
         </div>
-        <button onClick={loadData}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold self-start"
-          style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
-          <RefreshCw className="w-4 h-4" /> Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {saveStatus && (
+            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6' }}>
+              {saveStatus}
+            </span>
+          )}
+          <button onClick={loadData}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold self-start"
+            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
+            <RefreshCw className="w-4 h-4" /> Refresh
+          </button>
+        </div>
       </div>
 
       {/* Summary strip */}
@@ -248,12 +437,13 @@ export default function AdminPlansPage() {
       {/* Notice */}
       <div className="rounded-xl p-4 flex items-start gap-3"
         style={{ background: 'rgba(0,166,166,0.06)', border: '1px solid rgba(0,166,166,0.18)' }}>
-        <Zap className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#00A6A6' }} />
+        <Edit2 className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#00A6A6' }} />
         <div>
-          <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Plans are defined in code</p>
+          <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Live overrides — no redeploy needed</p>
           <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>
-            Pricing and limits are set in <code className="font-mono text-[11px] px-1 py-0.5 rounded" style={{ background: '#E5E7EB' }}>types/plans.ts</code>.
-            To change plan pricing or limits, update the file and redeploy. Subscriber counts and MRR shown above are live from Firebase.
+            Edited limits are saved to Firebase and take effect within 5 minutes for all users.
+            Base defaults are in <code className="font-mono text-[11px] px-1 py-0.5 rounded" style={{ background: '#E5E7EB' }}>types/plans.ts</code>.
+            Use the reset button (<RotateCcw className="inline w-3 h-3" />) to revert any plan to its coded defaults.
           </p>
         </div>
       </div>
@@ -264,10 +454,10 @@ export default function AdminPlansPage() {
           <PlanCard
             key={plan.id}
             plan={plan}
-            stats={planStats[plan.id] ?? {
-              planId: plan.id, totalUsers: 0, activeUsers: 0,
-              monthlyUsers: 0, annualUsers: 0, mrr: 0,
-            }}
+            stats={planStats[plan.id] ?? { planId: plan.id, totalUsers: 0, activeUsers: 0, monthlyUsers: 0, annualUsers: 0, mrr: 0 }}
+            override={overrides[plan.id as PlanId] ?? {}}
+            onSaveOverride={limits => saveOverride(plan.id as PlanId, limits)}
+            onResetOverride={() => resetOverride(plan.id as PlanId)}
           />
         ))}
       </div>
