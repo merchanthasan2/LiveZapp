@@ -1064,29 +1064,49 @@ export default function PresentPage() {
   }
 
   // ── Dashboard (non-fullscreen) live session ────────────────────────────
-  return (
-    <div ref={presenterRef} className="flex flex-col gap-5 h-[calc(100vh-90px)] -mt-4">
+  const totalResponses = Object.keys(responses).length
+  const engagementPct = participantCount > 0 ? Math.round((totalResponses / participantCount) * 100) : 0
 
-      {/* Top bar */}
-      <div className="flex items-center justify-between shrink-0 px-4 py-3 rounded-2xl" style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl" style={{ background: '#F08700', border: '1px solid rgba(240,135,0,0.30)' }}>
+  return (
+    <div ref={presenterRef} className="flex flex-col gap-4 pb-4 -mt-2" style={{ minHeight: 'calc(100vh - 90px)' }}>
+
+      {/* ── Top banner ── */}
+      <div
+        className="shrink-0 flex items-center justify-between gap-4 px-5 py-3 rounded-2xl"
+        style={{
+          background: 'linear-gradient(135deg, #0D1117 0%, #1A2030 100%)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+        }}
+      >
+        {/* Left: LIVE + title + participant count */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl shrink-0" style={{ background: '#F08700' }}>
             <span className="live-dot" />
-            <span className="text-sm font-black uppercase tracking-widest text-white">Live</span>
+            <span className="text-xs font-black uppercase tracking-widest text-white">Live</span>
           </div>
-          <div className="flex items-center gap-1.5 text-sm" style={{ color: '#6B7280' }}>
-            <Users className="w-4 h-4" />
-            <span className="font-bold" style={{ color: '#111111' }}>{participantCount}</span>
-            <span>joined</span>
+          <h1 className="font-black truncate" style={{ color: '#FFFFFF', fontSize: '1rem' }}>
+            {presentation.title}
+          </h1>
+          <div className="flex items-center gap-1.5 shrink-0" style={{ color: 'rgba(255,255,255,0.50)' }}>
+            <Users className="w-3.5 h-3.5" />
+            <span className="font-black text-sm text-white">{participantCount}</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl cursor-pointer" style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)' }} onClick={copyCode}>
-            <span className="text-xs" style={{ color: '#9CA3AF' }}>Code</span>
-            <span className="font-black tracking-widest text-sm" style={{ color: '#111111' }}>{session.joinCode}</span>
-            {codeCopied ? <CheckCircle2 className="w-3.5 h-3.5" style={{ color: '#16A34A' }} /> : <Copy className="w-3.5 h-3.5" style={{ color: '#9CA3AF' }} />}
-          </div>
+        {/* Right: join code + share + controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={copyCode}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all"
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)' }}
+          >
+            <span className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.40)' }}>Code</span>
+            <span className="font-black tracking-[0.15em] text-sm text-white">{session.joinCode}</span>
+            {codeCopied
+              ? <CheckCircle2 className="w-3 h-3" style={{ color: '#22C55E' }} />
+              : <Copy className="w-3 h-3" style={{ color: 'rgba(255,255,255,0.35)' }} />}
+          </button>
           {session && (
             <ShareJoinLink
               joinCode={session.joinCode}
@@ -1094,61 +1114,88 @@ export default function PresentPage() {
               sessionTitle={presentation?.title || 'Session'}
             />
           )}
-          <button onClick={isPaused ? handleResume : handlePause} className="btn-ghost text-sm" style={isPaused ? { color: '#00A6A6', borderColor: 'rgba(0,166,166,0.30)' } : {}}>
-            {isPaused ? <Play className="w-4 h-4" fill="currentColor" /> : <Pause className="w-4 h-4" />}
+          <button
+            onClick={isPaused ? handleResume : handlePause}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all"
+            style={{
+              background: isPaused ? 'rgba(0,166,166,0.20)' : 'rgba(255,255,255,0.08)',
+              border: `1px solid ${isPaused ? 'rgba(0,166,166,0.40)' : 'rgba(255,255,255,0.12)'}`,
+              color: isPaused ? '#00A6A6' : 'rgba(255,255,255,0.75)',
+            }}
+          >
+            {isPaused ? <Play className="w-3.5 h-3.5" fill="currentColor" /> : <Pause className="w-3.5 h-3.5" />}
             {isPaused ? 'Resume' : 'Pause'}
           </button>
-          <button onClick={toggleFullscreen} className="btn-ghost text-sm">
-            <Maximize2 className="w-4 h-4" />
+          <button
+            onClick={toggleFullscreen}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all"
+            style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }}
+          >
+            <Maximize2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Fullscreen</span>
           </button>
-          <button onClick={handleEndSession} disabled={isEnding} className="btn-ghost text-sm disabled:opacity-40" style={{ color: '#DC2626', borderColor: 'rgba(220,38,38,0.25)' }}>
-            <Square className="w-4 h-4" /> End session
+          <button
+            onClick={handleEndSession}
+            disabled={isEnding}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all disabled:opacity-40"
+            style={{ background: 'rgba(220,38,38,0.18)', border: '1px solid rgba(220,38,38,0.30)', color: '#F87171' }}
+          >
+            <Square className="w-3.5 h-3.5" />
+            End
           </button>
         </div>
       </div>
 
-      {/* Content grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-5 min-h-0 overflow-hidden">
-
-        {/* Question sidebar */}
-        <div className="rounded-2xl overflow-y-auto scrollbar-hide" style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-          <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Questions</p>
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-3 gap-3 shrink-0">
+        {[
+          { label: 'Responses', value: totalResponses, color: '#00A6A6', bg: 'rgba(0,166,166,0.08)', border: 'rgba(0,166,166,0.18)' },
+          { label: 'Engagement', value: `${engagementPct}%`, color: '#F08700', bg: 'rgba(240,135,0,0.08)', border: 'rgba(240,135,0,0.18)' },
+          { label: 'Audience', value: participantCount, color: '#EFCA08', bg: 'rgba(239,202,8,0.08)', border: 'rgba(239,202,8,0.18)' },
+        ].map(s => (
+          <div
+            key={s.label}
+            className="rounded-2xl px-5 py-4"
+            style={{ background: s.bg, border: `1px solid ${s.border}` }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: s.color, opacity: 0.75 }}>{s.label}</p>
+            <p className="font-black" style={{ fontSize: '2rem', color: s.color, lineHeight: 1 }}>{s.value}</p>
           </div>
-          {questions.map((q, i) => {
-            const Icon = KIND_ICON[q.kind] ?? Sparkles
-            const color = KIND_COLOR[q.kind] ?? '#00A6A6'
-            const isActive = i === currentIndex
-            return (
-              <button key={q.id} onClick={() => navigateTo(i)} className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all" style={{ background: isActive ? 'rgba(0,166,166,0.07)' : 'transparent', borderLeft: isActive ? '3px solid #00A6A6' : '3px solid transparent', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
-                <span className="text-[10px] font-black w-4 text-center shrink-0" style={{ color: '#9CA3AF' }}>{i + 1}</span>
-                <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${color}18` }}>
-                  <Icon className="w-3 h-3" style={{ color }} />
-                </div>
-                <p className="text-xs truncate flex-1" style={{ color: isActive ? '#111111' : '#6B7280' }}>{q.prompt || '—'}</p>
-              </button>
-            )
-          })}
-        </div>
+        ))}
+      </div>
 
-        {/* Main panel */}
+      {/* ── Main content grid ── */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+
+        {/* ── Left: current question + responses (2 cols) ── */}
         <div className="lg:col-span-2 flex flex-col gap-4 min-h-0 overflow-y-auto scrollbar-hide">
+
+          {/* Current question card */}
           <AnimatePresence mode="wait">
             {currentQuestion && (
-              <motion.div key={currentQuestion.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="glass-card p-6 space-y-4">
-                <div className="flex items-center justify-between">
+              <motion.div
+                key={currentQuestion.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+                className="rounded-2xl p-5"
+                style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+              >
+                <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest" style={{ background: kindColor, color: kindTextColor }}>
                     <KindIcon className="w-3 h-3" />
                     {currentQuestion.kind.replace('_', ' ')}
                   </div>
-                  <span className="text-xs" style={{ color: '#9CA3AF' }}>{currentIndex + 1} / {questions.length}</span>
+                  <span className="text-xs font-medium" style={{ color: '#9CA3AF' }}>
+                    Q{currentIndex + 1} of {questions.length}
+                  </span>
                 </div>
-                <h2 style={{ fontSize: '2rem', fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.02em', color: '#111111' }}>
+                <h2 style={{ fontSize: '1.6rem', fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.02em', color: '#111111' }}>
                   {currentQuestion.prompt || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>No prompt set</span>}
                 </h2>
                 {(currentQuestion.kind === 'quiz' || currentQuestion.kind === 'poll') && (
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 mt-3">
                     {(currentQuestion as QuizQuestion | PollQuestion).options.map((opt, i) => (
                       <div key={opt.id} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm" style={{ background: 'rgba(0,0,0,0.03)', border: `1px solid ${currentQuestion.kind === 'quiz' && (currentQuestion as QuizQuestion).correctOptionId === opt.id ? 'rgba(22,163,74,0.35)' : 'rgba(0,0,0,0.08)'}` }}>
                         <span className="text-[10px] font-black" style={{ color: '#9CA3AF' }}>{String.fromCharCode(65 + i)}</span>
@@ -1164,21 +1211,99 @@ export default function PresentPage() {
             )}
           </AnimatePresence>
 
+          {/* Response visualisation */}
           {currentQuestion && <ResponsePanel question={currentQuestion} responses={responses} />}
 
-          <div className="flex items-center justify-between">
-            <button onClick={() => navigateTo(currentIndex - 1)} disabled={currentIndex === 0} className="btn-ghost text-sm disabled:opacity-30">
+          {/* Prev / Next nav */}
+          <div className="flex items-center justify-between mt-auto pt-1">
+            <button
+              onClick={() => navigateTo(currentIndex - 1)}
+              disabled={currentIndex === 0}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm disabled:opacity-30 transition-all"
+              style={{ background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.08)', color: '#6B7280' }}
+            >
               <ChevronLeft className="w-4 h-4" /> Previous
             </button>
             {currentIndex < questions.length - 1 ? (
-              <button onClick={() => navigateTo(currentIndex + 1)} className="btn-primary text-sm">
+              <button
+                onClick={() => navigateTo(currentIndex + 1)}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold text-sm transition-all"
+                style={{ background: '#00A6A6', color: '#FFFFFF', boxShadow: '0 0 20px rgba(0,166,166,0.25)' }}
+              >
                 Next question <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
-              <button onClick={handleEndSession} disabled={isEnding} className="btn-live text-sm disabled:opacity-40">
+              <button
+                onClick={handleEndSession}
+                disabled={isEnding}
+                className="flex items-center gap-1.5 px-5 py-2 rounded-xl font-bold text-sm disabled:opacity-40 transition-all"
+                style={{ background: 'rgba(220,38,38,0.12)', border: '1px solid rgba(220,38,38,0.25)', color: '#DC2626' }}
+              >
                 <Square className="w-4 h-4" /> End session
               </button>
             )}
+          </div>
+        </div>
+
+        {/* ── Right: QR + question list ── */}
+        <div className="flex flex-col gap-4 min-h-0">
+
+          {/* Join code / QR panel */}
+          <div
+            className="rounded-2xl p-4 text-center"
+            style={{ background: '#0D1117', border: '1px solid rgba(255,255,255,0.07)' }}
+          >
+            <p className="text-[9px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>Join this session</p>
+            <div className="flex justify-center mb-3">
+              <div className="p-2.5 rounded-xl" style={{ background: '#FFFFFF' }}>
+                <QRCodeSVG
+                  value={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.livezapp.com'}/join/${session.joinCode}`}
+                  size={96}
+                  bgColor="#ffffff"
+                  fgColor="#0D1117"
+                  level="M"
+                />
+              </div>
+            </div>
+            <p className="font-black tracking-[0.20em] text-2xl mb-1" style={{ color: '#FFFFFF' }}>{session.joinCode}</p>
+            <p className="text-[10px] font-mono" style={{ color: 'rgba(255,255,255,0.30)' }}>livezapp.com/live</p>
+          </div>
+
+          {/* Question list */}
+          <div
+            className="flex-1 rounded-2xl overflow-y-auto scrollbar-hide"
+            style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.07)', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+          >
+            <div className="px-4 py-3 sticky top-0" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)', background: '#FFFFFF' }}>
+              <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>
+                Questions — {currentIndex + 1}/{questions.length}
+              </p>
+            </div>
+            {questions.map((q, i) => {
+              const Icon = KIND_ICON[q.kind] ?? Sparkles
+              const color = KIND_COLOR[q.kind] ?? '#00A6A6'
+              const isActive = i === currentIndex
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => navigateTo(i)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all"
+                  style={{
+                    background: isActive ? 'rgba(0,166,166,0.07)' : 'transparent',
+                    borderLeft: isActive ? '3px solid #00A6A6' : '3px solid transparent',
+                    borderBottom: '1px solid rgba(0,0,0,0.04)',
+                  }}
+                >
+                  <span className="text-[10px] font-black w-4 text-center shrink-0" style={{ color: '#9CA3AF' }}>{i + 1}</span>
+                  <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: `${color}18` }}>
+                    <Icon className="w-3 h-3" style={{ color }} />
+                  </div>
+                  <p className="text-xs truncate flex-1" style={{ color: isActive ? '#111111' : '#6B7280' }}>
+                    {q.prompt || '—'}
+                  </p>
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
