@@ -1,949 +1,846 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  ArrowLeft, Save, Play, Plus, Trash2, Layout, Clock,
-  CheckCircle2, AlertCircle, HelpCircle, BarChart3,
-  MessageSquare, Sparkles, Eye, X, Star, Cloud,
-  ToggleLeft, ChevronRight, RefreshCw,
+  Sparkles, BarChart3, MessageSquare, Cloud, Smile,
+  ArrowRight, ArrowLeft, AlertCircle, Plus, Trash2,
+  CheckCircle2, ChevronRight, Edit2,
 } from 'lucide-react'
-import Link from 'next/link'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
-import { PLANS } from '@/types/plans'
 import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
 import { makeQuestion } from '@/components/question-editor/makeQuestion'
-import { Q_TYPES, kindMeta, PREVIEW_META } from '@/components/question-editor/qtypes'
+import { Q_TYPES } from '@/components/question-editor/qtypes'
+import type { PresentationType, Question, Section, ScoringConfig } from '@/types/domain'
 import type { QuestionKind } from '@/components/question-editor/qtypes'
-import type {
-  Presentation, Question,
-  QuizQuestion, QAQuestion, FeedbackQuestion,
-  PollQuestion, WordCloudQuestion,
-} from '@/types/domain'
 
-// ─── Type picker modal ────────────────────────────────────────────────────
+// ─── Zapp type display info ────────────────────────────────────────────────
 
-function TypePickerModal({ onPick, onClose }: {
-  onPick: (kind: QuestionKind) => void
+const ZAPP_TYPES = [
+  { type: 'quiz'       as PresentationType, name: 'Quiz',        icon: Sparkles,     color: '#00A6A6', bg: 'rgba(0,166,166,0.10)' },
+  { type: 'poll'       as PresentationType, name: 'Live Poll',   icon: BarChart3,    color: '#F08700', bg: 'rgba(240,135,0,0.10)' },
+  { type: 'qa'         as PresentationType, name: 'Q&A Session', icon: MessageSquare,color: '#EFCA08', bg: 'rgba(239,202,8,0.14)' },
+  { type: 'word_cloud' as PresentationType, name: 'Word Cloud',  icon: Cloud,        color: '#F49F0A', bg: 'rgba(244,159,10,0.12)' },
+  { type: 'feedback'   as PresentationType, name: 'Vibe Check',  icon: Smile,        color: '#BBDEF0', bg: 'rgba(187,222,240,0.15)' },
+]
+
+type EditStep = 'name' | 'sections' | 'questions' | 'scoring' | 'review'
+
+// ─── Progress bar ──────────────────────────────────────────────────────────
+
+function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
+  const steps: EditStep[] = isQuiz
+    ? ['name', 'sections', 'questions', 'scoring', 'review']
+    : ['name', 'questions', 'review']
+  const labels: Record<EditStep, string> = {
+    name: 'Name', sections: 'Sections', questions: 'Questions', scoring: 'Scoring', review: 'Review',
+  }
+  const currentIdx = steps.indexOf(step)
+
+  return (
+    <div className="flex items-center justify-center gap-1 mb-8">
+      {steps.map((s, i) => (
+        <div key={s} className="flex items-center gap-1">
+          <div className="flex flex-col items-center gap-1">
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
+              style={{
+                background: i < currentIdx ? '#00A6A6' : i === currentIdx ? '#1A1A2E' : '#E5E7EB',
+                color: i <= currentIdx ? '#fff' : '#9CA3AF',
+              }}
+            >
+              {i < currentIdx ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+            </div>
+            <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: i === currentIdx ? '#1A1A2E' : '#9CA3AF' }}>
+              {labels[s]}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className="w-8 h-0.5 mb-4 rounded-full" style={{ background: i < currentIdx ? '#00A6A6' : '#E5E7EB' }} />
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Question type picker overlay ─────────────────────────────────────────
+
+function QuestionTypePicker({
+  onSelect, onClose, defaultKind,
+}: {
+  onSelect: (kind: QuestionKind) => void
   onClose: () => void
+  defaultKind?: QuestionKind
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.40)', backdropFilter: 'blur(6px)' }}
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
       onClick={onClose}
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 16 }}
-        transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-        className="glass-card p-6 w-full max-w-lg space-y-4"
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ duration: 0.18 }}
+        className="w-full max-w-lg rounded-3xl overflow-hidden"
+        style={{ background: '#FFFFFF', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-lg font-bold" style={{ color: '#1A1A2E' }}>Add a question</h2>
-            <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>Choose the interaction type</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl transition-all"
-            style={{ color: '#9CA3AF' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
+          <h3 className="text-lg font-black" style={{ color: '#1A1A2E' }}>Choose question type</h3>
+          <p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>Each question in your Zapp can be a different type</p>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {Q_TYPES.map(t => {
-            const Icon = t.icon
+        <div className="p-4 space-y-2">
+          {Q_TYPES.map(qt => {
+            const Icon = qt.icon
+            const isDefault = qt.kind === defaultKind
             return (
               <button
-                key={t.kind}
-                onClick={() => onPick(t.kind)}
-                className="flex items-start gap-3 p-4 rounded-2xl text-left transition-all hover:-translate-y-0.5"
-                style={{ background: '#F5F7FA', border: '1px solid #E5E7EB' }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = t.bg
-                  e.currentTarget.style.borderColor = t.border.replace('0.22', '0.45').replace('0.28', '0.45').replace('0.26', '0.45')
+                key={qt.kind}
+                onClick={() => onSelect(qt.kind as QuestionKind)}
+                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.99]"
+                style={{
+                  background: isDefault ? qt.bg : '#F9FAFB',
+                  border: `1.5px solid ${isDefault ? qt.border : '#E5E7EB'}`,
                 }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = '#F5F7FA'
-                  e.currentTarget.style.borderColor = '#E5E7EB'
-                }}
+                onMouseEnter={e => { e.currentTarget.style.background = qt.bg; e.currentTarget.style.borderColor = qt.border }}
+                onMouseLeave={e => { e.currentTarget.style.background = isDefault ? qt.bg : '#F9FAFB'; e.currentTarget.style.borderColor = isDefault ? qt.border : '#E5E7EB' }}
               >
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: t.bg }}>
-                  <Icon className="w-4 h-4" style={{ color: t.color }} />
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${qt.color}18` }}>
+                  <Icon className="w-5 h-5" style={{ color: qt.color }} />
                 </div>
-                <div>
-                  <p className="text-sm font-bold" style={{ color: '#1A1A2E' }}>{t.label}</p>
-                  <p className="text-[11px] leading-snug mt-0.5" style={{ color: '#6B7280' }}>{t.sub}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm" style={{ color: '#1A1A2E' }}>{qt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{qt.sub}</p>
                 </div>
+                {isDefault && (
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0" style={{ background: qt.bg, color: qt.color }}>
+                    Default
+                  </span>
+                )}
               </button>
             )
           })}
         </div>
+        <div className="px-6 pb-5">
+          <button onClick={onClose} className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all" style={{ background: '#F3F4F6', color: '#6B7280' }}>
+            Cancel
+          </button>
+        </div>
       </motion.div>
-    </motion.div>
-  )
-}
-
-// ─── Participant preview (intentionally dark — simulates participant screen) ─
-
-function QuestionPreview({ question }: { question: Question }) {
-  const [selected, setSelected] = useState<string | null>(null)
-  const [multiSelected, setMultiSelected] = useState<string[]>([])
-  const [rating, setRating] = useState(0)
-  const [text, setText] = useState('')
-
-  useEffect(() => {
-    setSelected(null); setMultiSelected([]); setRating(0); setText('')
-  }, [question.id])
-
-  const meta = kindMeta(question.kind as QuestionKind)
-  const pm   = PREVIEW_META[question.kind] ?? PREVIEW_META.quiz
-  const mockWords = ['Innovative', 'Engaging', 'Fun', 'Clear', 'Inspiring', 'Creative', 'Useful', 'Insightful']
-
-  return (
-    <div className="flex flex-col h-full rounded-2xl overflow-hidden" style={{ background: '#0D1117' }}>
-      {/* Top bar */}
-      <div
-        className="flex items-center justify-between px-4 py-2.5"
-        style={{ background: 'rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.07)' }}
-      >
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: '#22C55E' }} />
-          <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#22C55E' }}>Live</span>
-        </div>
-        <span
-          className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md"
-          style={{ background: pm.bg, color: pm.color }}
-        >
-          {meta.label}
-        </span>
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 flex flex-col px-5 py-5 space-y-4 overflow-y-auto scrollbar-hide">
-        <p className="text-base font-bold text-white leading-snug">
-          {question.prompt || <span className="italic" style={{ color: 'rgba(255,255,255,0.25)' }}>Question text will appear here</span>}
-        </p>
-
-        {/* Quiz */}
-        {question.kind === 'quiz' && (
-          <div className="space-y-2">
-            {(question as QuizQuestion).options.map((opt, i) => (
-              <button
-                key={opt.id}
-                onClick={() => setSelected(opt.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-left transition-all"
-                style={{
-                  background: selected === opt.id ? pm.bg : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${selected === opt.id ? pm.selectedBorder : 'rgba(255,255,255,0.08)'}`,
-                  color: selected === opt.id ? '#fff' : 'rgba(255,255,255,0.65)',
-                }}
-              >
-                <span
-                  className="w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center flex-shrink-0"
-                  style={{
-                    background: selected === opt.id ? pm.color : 'rgba(255,255,255,0.08)',
-                    color: selected === opt.id ? '#fff' : 'rgba(255,255,255,0.4)',
-                  }}
-                >
-                  {String.fromCharCode(65 + i)}
-                </span>
-                {opt.label}
-              </button>
-            ))}
-            <div className="flex items-center justify-between text-[10px] pt-1" style={{ color: 'rgba(255,255,255,0.30)' }}>
-              <span><Clock className="w-3 h-3 inline mr-1" />{(question as QuizQuestion).timerSeconds}s</span>
-              <span>{(question as QuizQuestion).points} pts</span>
-            </div>
-          </div>
-        )}
-
-        {/* Poll */}
-        {question.kind === 'poll' && (
-          <div className="space-y-2">
-            {(question as PollQuestion).options.map((opt, i) => {
-              const isSelected = multiSelected.includes(opt.id)
-              const pct = [42, 31, 27][i] ?? 20
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => setMultiSelected(prev => isSelected ? prev.filter(x => x !== opt.id) : [...prev, opt.id])}
-                  className="w-full text-left rounded-xl overflow-hidden relative transition-all"
-                  style={{ border: `1px solid ${isSelected ? pm.selectedBorder : 'rgba(255,255,255,0.08)'}` }}
-                >
-                  <div className="absolute inset-0 rounded-xl" style={{ width: `${pct}%`, background: pm.bg }} />
-                  <div className="relative flex items-center justify-between px-3 py-2.5">
-                    <span className="text-sm font-medium" style={{ color: isSelected ? '#fff' : 'rgba(255,255,255,0.65)' }}>{opt.label}</span>
-                    <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.35)' }}>{pct}%</span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-
-        {/* Word cloud */}
-        {question.kind === 'word_cloud' && (
-          <div className="space-y-3">
-            <input
-              placeholder="Type a word…"
-              className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
-              style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${pm.selectedBorder}`, color: '#fff' }}
-            />
-            <div className="flex flex-wrap gap-2 pt-1">
-              {mockWords.map((w, i) => (
-                <span
-                  key={w}
-                  className="px-2.5 py-1 rounded-lg font-bold"
-                  style={{
-                    fontSize: `${11 + (mockWords.length - i) * 1.5}px`,
-                    color: pm.color,
-                    opacity: 0.4 + (mockWords.length - i) * 0.07,
-                  }}
-                >
-                  {w}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Q&A */}
-        {question.kind === 'qa' && (
-          <textarea
-            rows={3}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Ask your question…"
-            className="w-full p-3 rounded-xl text-sm resize-none outline-none"
-            style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${pm.selectedBorder}`, color: '#fff' }}
-          />
-        )}
-
-        {/* Feedback — rating */}
-        {question.kind === 'feedback' && (question as FeedbackQuestion).feedbackType === 'rating' && (
-          <div className="flex items-center justify-center gap-2 py-2">
-            {Array.from({ length: (question as FeedbackQuestion).scaleMax ?? 5 }).map((_, i) => (
-              <button key={i} onClick={() => setRating(i + 1)}>
-                <Star className={`w-7 h-7 transition-all`} style={{ color: i < rating ? '#F49F0A' : 'rgba(255,255,255,0.20)', fill: i < rating ? '#F49F0A' : 'transparent' }} />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Feedback — text */}
-        {question.kind === 'feedback' && ['short_text', 'long_text'].includes((question as FeedbackQuestion).feedbackType) && (
-          <textarea
-            rows={(question as FeedbackQuestion).feedbackType === 'long_text' ? 4 : 2}
-            value={text}
-            onChange={e => setText(e.target.value)}
-            placeholder="Your response…"
-            className="w-full p-3 rounded-xl text-sm resize-none outline-none"
-            style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${pm.selectedBorder}`, color: '#fff' }}
-          />
-        )}
-
-        {/* Submit */}
-        <button
-          className="w-full py-2.5 rounded-xl text-sm font-bold transition-all"
-          style={{ background: pm.color, color: question.kind === 'word_cloud' || question.kind === 'feedback' ? '#1A1A2E' : '#FFFFFF' }}
-        >
-          Submit
-        </button>
-      </div>
-
-      <div className="px-4 pb-3 text-center">
-        <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.20)' }}>Participant preview</p>
-      </div>
     </div>
   )
 }
 
-// ─── (QuestionEditor is imported from @/components/question-editor/QuestionEditor) ───────────────
+// ─── Main edit wizard ──────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function _QuestionEditorInline_UNUSED({
-  question, questions, setQuestions, markDirty,
-}: {
-  question: Question
-  questions: Question[]
-  setQuestions: (q: Question[]) => void
-  markDirty: () => void
-}) {
-  const meta = kindMeta(question.kind as QuestionKind)
-
-  function patch(updates: Partial<Question>) {
-    setQuestions(questions.map(q => q.id === question.id ? { ...q, ...updates } as Question : q))
-    markDirty()
-  }
-
-  const inputStyle: React.CSSProperties = {
-    background: '#FFFFFF',
-    border: '1px solid #E5E7EB',
-    borderRadius: 10,
-    color: '#1A1A2E',
-    padding: '10px 14px',
-    fontSize: 13,
-    outline: 'none',
-    width: '100%',
-    transition: 'border-color 0.15s, box-shadow 0.15s',
-  }
-  const focus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = meta.color
-    e.currentTarget.style.boxShadow = `0 0 0 3px ${meta.bg}`
-  }
-  const blur  = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.currentTarget.style.borderColor = '#E5E7EB'
-    e.currentTarget.style.boxShadow = 'none'
-  }
-
-  return (
-    <div className="flex-1 overflow-y-auto p-7 space-y-7 scrollbar-hide">
-
-      {/* Prompt */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Question prompt</label>
-        <textarea
-          rows={2}
-          placeholder="Type your question here…"
-          value={question.prompt}
-          onChange={e => patch({ prompt: e.target.value })}
-          className="w-full text-xl font-bold bg-transparent border-none focus:ring-0 resize-none outline-none"
-          style={{ color: '#1A1A2E' }}
-        />
-        <div className="h-px" style={{ background: `linear-gradient(90deg, ${meta.color}50, transparent)` }} />
-      </div>
-
-      {/* ── Quiz ─── */}
-      {question.kind === 'quiz' && (
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Answer options</label>
-          <div className="space-y-2">
-            {(question as QuizQuestion).options.map((opt, i) => {
-              const isCorrect = (question as QuizQuestion).correctOptionId === opt.id
-              return (
-                <div key={opt.id} className="flex items-center gap-2">
-                  <button
-                    title={isCorrect ? 'Correct' : 'Mark correct'}
-                    onClick={() => patch({ correctOptionId: opt.id } as Partial<QuizQuestion>)}
-                    className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center transition-all"
-                    style={{ background: isCorrect ? '#22C55E' : 'rgba(0,0,0,0.06)', color: isCorrect ? '#fff' : '#9CA3AF' }}
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </button>
-                  <input
-                    style={inputStyle}
-                    value={opt.label}
-                    placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                    onFocus={focus} onBlur={blur}
-                    onChange={e => {
-                      const q = { ...(question as QuizQuestion) }
-                      q.options = q.options.map(o => o.id === opt.id ? { ...o, label: e.target.value } : o)
-                      patch(q as Partial<Question>)
-                    }}
-                  />
-                  {(question as QuizQuestion).options.length > 2 && (
-                    <button
-                      onClick={() => {
-                        const q = { ...(question as QuizQuestion) }
-                        q.options = q.options.filter(o => o.id !== opt.id)
-                        if (q.correctOptionId === opt.id) q.correctOptionId = q.options[0]?.id ?? ''
-                        patch(q as Partial<Question>)
-                      }}
-                      className="p-1.5 rounded-lg transition-colors flex-shrink-0"
-                      style={{ color: '#D1D5DB' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          {(question as QuizQuestion).options.length < 6 && (
-            <button
-              onClick={() => {
-                const q = { ...(question as QuizQuestion) }
-                const newId = `opt_${Math.random().toString(36).substring(2, 6)}`
-                q.options = [...q.options, { id: newId, label: `Option ${String.fromCharCode(65 + q.options.length)}` }]
-                patch(q as Partial<Question>)
-              }}
-              className="text-xs font-bold px-4 py-2 rounded-xl transition-all"
-              style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
-            >
-              + Add option
-            </button>
-          )}
-          {/* Timer + Points */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Timer</label>
-              <select
-                value={(question as QuizQuestion).timerSeconds}
-                onChange={e => patch({ timerSeconds: +e.target.value } as Partial<QuizQuestion>)}
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-semibold outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
-              >
-                {[10,15,20,30,45,60,90,120].map(s => <option key={s} value={s}>{s}s</option>)}
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Points</label>
-              <select
-                value={(question as QuizQuestion).points}
-                onChange={e => patch({ points: +e.target.value } as Partial<QuizQuestion>)}
-                className="w-full px-3 py-2.5 rounded-xl text-sm font-semibold outline-none"
-                style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
-              >
-                {[50,100,200,500,1000].map(p => <option key={p} value={p}>{p} pts</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Poll ─── */}
-      {question.kind === 'poll' && (
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Poll options</label>
-          <div className="space-y-2">
-            {(question as PollQuestion).options.map((opt, i) => (
-              <div key={opt.id} className="flex items-center gap-2">
-                <span className="text-[10px] font-black w-5 text-center flex-shrink-0" style={{ color: '#9CA3AF' }}>
-                  {String.fromCharCode(65 + i)}
-                </span>
-                <input
-                  style={inputStyle}
-                  value={opt.label}
-                  placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                  onFocus={focus} onBlur={blur}
-                  onChange={e => {
-                    const q = { ...(question as PollQuestion) }
-                    q.options = q.options.map(o => o.id === opt.id ? { ...o, label: e.target.value } : o)
-                    patch(q as Partial<Question>)
-                  }}
-                />
-                {(question as PollQuestion).options.length > 2 && (
-                  <button
-                    onClick={() => {
-                      const q = { ...(question as PollQuestion) }
-                      q.options = q.options.filter(o => o.id !== opt.id)
-                      patch(q as Partial<Question>)
-                    }}
-                    className="p-1.5 rounded-lg transition-colors flex-shrink-0"
-                    style={{ color: '#D1D5DB' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          {(question as PollQuestion).options.length < 8 && (
-            <button
-              onClick={() => {
-                const q = { ...(question as PollQuestion) }
-                q.options = [...q.options, { id: `p_${Math.random().toString(36).substring(2,6)}`, label: `Option ${String.fromCharCode(65 + q.options.length)}` }]
-                patch(q as Partial<Question>)
-              }}
-              className="text-xs font-bold px-4 py-2 rounded-xl transition-all"
-              style={{ background: meta.bg, color: meta.color, border: `1px solid ${meta.border}` }}
-            >
-              + Add option
-            </button>
-          )}
-          {/* Multi-select toggle */}
-          <div
-            className="flex items-center justify-between px-4 py-3 rounded-xl"
-            style={{ background: '#F5F7FA', border: '1px solid #E5E7EB' }}
-          >
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#374151' }}>Allow multiple selections</p>
-              <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>Participants can choose more than one option</p>
-            </div>
-            <button
-              onClick={() => patch({ allowMultipleSelections: !(question as PollQuestion).allowMultipleSelections } as Partial<PollQuestion>)}
-              className="relative rounded-full transition-all flex-shrink-0"
-              style={{
-                background: (question as PollQuestion).allowMultipleSelections ? '#F08700' : 'rgba(0,0,0,0.12)',
-                minWidth: 40, height: 22,
-              }}
-            >
-              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: (question as PollQuestion).allowMultipleSelections ? '20px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Word Cloud ─── */}
-      {question.kind === 'word_cloud' && (
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Settings</label>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold" style={{ color: '#6B7280' }}>Max words per participant</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 5].map(n => (
-                <button
-                  key={n}
-                  onClick={() => patch({ maxWordsPerResponse: n } as Partial<WordCloudQuestion>)}
-                  className="w-10 h-10 rounded-xl text-sm font-bold transition-all"
-                  style={{
-                    background: (question as WordCloudQuestion).maxWordsPerResponse === n ? 'rgba(239,202,8,0.18)' : '#F5F7FA',
-                    border: `1px solid ${(question as WordCloudQuestion).maxWordsPerResponse === n ? 'rgba(239,202,8,0.50)' : '#E5E7EB'}`,
-                    color: (question as WordCloudQuestion).maxWordsPerResponse === n ? '#8A7000' : '#6B7280',
-                  }}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div
-            className="p-4 rounded-xl text-xs leading-relaxed"
-            style={{ background: 'rgba(239,202,8,0.06)', border: '1px solid rgba(239,202,8,0.20)', color: '#6B7280' }}
-          >
-            Participants type words or short phrases. The most common responses appear largest in the live word cloud.
-          </div>
-        </div>
-      )}
-
-      {/* ── Q&A ─── */}
-      {question.kind === 'qa' && (
-        <div className="space-y-4">
-          <div
-            className="flex items-center justify-between px-4 py-3 rounded-xl"
-            style={{ background: '#F5F7FA', border: '1px solid #E5E7EB' }}
-          >
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#374151' }}>Allow multiple questions</p>
-              <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>Each participant can submit more than one question</p>
-            </div>
-            <button
-              onClick={() => patch({ allowMultipleSubmissions: !(question as QAQuestion).allowMultipleSubmissions } as Partial<QAQuestion>)}
-              style={{ background: (question as QAQuestion).allowMultipleSubmissions ? '#00A6A6' : 'rgba(0,0,0,0.12)', minWidth: 40, height: 22 }}
-              className="relative rounded-full transition-all flex-shrink-0"
-            >
-              <span className="absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all" style={{ left: (question as QAQuestion).allowMultipleSubmissions ? '20px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Feedback ─── */}
-      {question.kind === 'feedback' && (
-        <div className="space-y-4">
-          <label className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Response type</label>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { id: 'rating',          label: '⭐ Rating scale' },
-              { id: 'short_text',      label: '✏️ Short text' },
-              { id: 'long_text',       label: '📝 Long text' },
-              { id: 'multiple_choice', label: '🔘 Multiple choice' },
-            ] as const).map(({ id: ft, label }) => (
-              <button
-                key={ft}
-                onClick={() => patch({ feedbackType: ft } as Partial<FeedbackQuestion>)}
-                className="p-3 rounded-xl text-xs font-bold text-left transition-all"
-                style={{
-                  background: (question as FeedbackQuestion).feedbackType === ft ? 'rgba(244,159,10,0.12)' : '#F5F7FA',
-                  border: `1px solid ${(question as FeedbackQuestion).feedbackType === ft ? 'rgba(244,159,10,0.40)' : '#E5E7EB'}`,
-                  color: (question as FeedbackQuestion).feedbackType === ft ? '#C07800' : '#6B7280',
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          {(question as FeedbackQuestion).feedbackType === 'rating' && (
-            <div
-              className="flex items-center gap-3 px-4 py-3 rounded-xl"
-              style={{ background: '#F5F7FA', border: '1px solid #E5E7EB' }}
-            >
-              <span className="text-xs font-semibold flex-1" style={{ color: '#6B7280' }}>Scale max</span>
-              <div className="flex gap-2">
-                {[5, 7, 10].map(n => (
-                  <button
-                    key={n}
-                    onClick={() => patch({ scaleMax: n } as Partial<FeedbackQuestion>)}
-                    className="w-8 h-8 rounded-lg text-xs font-bold transition-all"
-                    style={{
-                      background: (question as FeedbackQuestion).scaleMax === n ? 'rgba(244,159,10,0.12)' : '#FFFFFF',
-                      color: (question as FeedbackQuestion).scaleMax === n ? '#C07800' : '#6B7280',
-                      border: `1px solid ${(question as FeedbackQuestion).scaleMax === n ? 'rgba(244,159,10,0.40)' : '#E5E7EB'}`,
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────
-
-export default function PresentationBuilderPage() {
-  const params = useParams()
+export default function EditZappPage() {
+  const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
-  const id = params.id as string
+  const router = useRouter()
 
-  const [presentation,       setPresentation]       = useState<Presentation | null>(null)
-  const [questions,          setQuestions]          = useState<Question[]>([])
-  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
-  const [isLoading,          setIsLoading]          = useState(true)
-  const [isSaving,           setIsSaving]           = useState(false)
-  const [saveSuccess,        setSaveSuccess]        = useState(false)
-  const [error,              setError]              = useState<string | null>(null)
-  const [showPreview,        setShowPreview]        = useState(false)
-  const [showTypePicker,     setShowTypePicker]     = useState(false)
+  // ── Loading state ─────────────────────────────────────────────────────────
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const currentPlan  = PLANS.find(p => p.id === user?.planId) ?? PLANS[0]
-  const currentLimit = currentPlan.limits.maxQuestionsPerPresentation
-  const isDirtyRef   = useRef(false)
+  // ── Wizard state ──────────────────────────────────────────────────────────
+  const [step, setStep] = useState<EditStep>('name')
+  const [name, setName] = useState('')
+  const [type, setType] = useState<PresentationType | null>(null)
+  const [sections, setSections] = useState<Section[]>([{ id: 'main', name: 'Main' }])
+  const [newSectionName, setNewSectionName] = useState('')
+  const [useSections, setUseSections] = useState(false)
+  const [questions, setQuestions] = useState<Question[]>([])
+  const [selectedQId, setSelectedQId] = useState<string | null>(null)
+  const [activeSectionId, setActiveSectionId] = useState<string>('main')
+  const [scoring, setScoring] = useState<ScoringConfig>({
+    showAfterEachQuestion: false,
+    showAfterEachSection: false,
+    showFinalScore: true,
+  })
+  const [isSaving, setIsSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showTypePicker, setShowTypePicker] = useState(false)
+
+  const isQuiz = type === 'quiz'
+
+  const visibleQuestions = useSections
+    ? questions.filter(q => q.sectionId === activeSectionId)
+    : questions
+
+  const selectedQuestion = questions.find(q => q.id === selectedQId) ?? null
+
+  // ── Load existing data ────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!id || !user) return
     ;(async () => {
       try {
         const pres = await PresentationService.getPresentation(id)
-        if (!pres) { setError('Presentation not found'); return }
-        setPresentation(pres)
+        if (!pres) { setLoadError('Zapp not found'); return }
+        setName(pres.title ?? '')
+        setType(pres.type)
+        if (pres.scoringConfig) setScoring(pres.scoringConfig as ScoringConfig)
+        if (pres.sections && pres.sections.length > 0) {
+          setSections(pres.sections)
+          setUseSections(pres.sections.length > 1 || pres.sections[0]?.id !== 'main')
+          setActiveSectionId(pres.sections[0].id)
+        }
         const qs = await QuestionService.getQuestionSet(id)
         if (qs?.questions?.length) {
           setQuestions(qs.questions)
-          setSelectedQuestionId(qs.questions[0].id)
+          setSelectedQId(qs.questions[0].id)
         }
-      } catch { setError('Failed to load presentation') }
-      finally   { setIsLoading(false) }
+      } catch {
+        setLoadError('Failed to load Zapp')
+      } finally {
+        setIsLoading(false)
+      }
     })()
   }, [id, user])
 
-  function handlePickType(kind: QuestionKind) {
-    setShowTypePicker(false)
-    if (questions.length >= currentLimit) {
-      alert(`Your ${currentPlan.name} plan supports up to ${currentLimit} questions. Upgrade to add more.`)
-      return
-    }
-    const q = makeQuestion(kind, questions.length)
+  // ── Step navigation ───────────────────────────────────────────────────────
+
+  function getStepOrder(): EditStep[] {
+    return isQuiz
+      ? ['name', 'sections', 'questions', 'scoring', 'review']
+      : ['name', 'questions', 'review']
+  }
+
+  function nextStep() {
+    const order = getStepOrder()
+    const idx = order.indexOf(step)
+    if (idx < order.length - 1) setStep(order[idx + 1])
+  }
+
+  function prevStep() {
+    const order = getStepOrder()
+    const idx = order.indexOf(step)
+    if (idx > 0) setStep(order[idx - 1])
+  }
+
+  // ── Sections helpers ──────────────────────────────────────────────────────
+
+  function addSection() {
+    if (!newSectionName.trim()) return
+    const sid = `sec_${Math.random().toString(36).substring(2, 8)}`
+    setSections(prev => [...prev, { id: sid, name: newSectionName.trim() }])
+    setNewSectionName('')
+  }
+
+  function removeSection(sid: string) {
+    if (sections.length <= 1) return
+    setSections(prev => prev.filter(s => s.id !== sid))
+    const remaining = sections.filter(s => s.id !== sid)
+    const fallback = remaining[0]?.id ?? 'main'
+    setQuestions(prev => prev.map(q => q.sectionId === sid ? { ...q, sectionId: fallback } : q))
+    if (activeSectionId === sid) setActiveSectionId(fallback)
+  }
+
+  // ── Questions helpers ─────────────────────────────────────────────────────
+
+  function addQuestion(kind?: QuestionKind) {
+    if (!kind) { setShowTypePicker(true); return }
+    const sectionId = useSections ? activeSectionId : undefined
+    const q = makeQuestion(kind, questions.length, sectionId)
     setQuestions(prev => [...prev, q])
-    setSelectedQuestionId(q.id)
-    isDirtyRef.current = true
+    setSelectedQId(q.id)
+    setShowTypePicker(false)
   }
 
-  function handleDelete(qId: string) {
-    const updated = questions.filter(q => q.id !== qId).map((q, i) => ({ ...q, orderIndex: i }))
+  function deleteQuestion(qid: string) {
+    const updated = questions.filter(q => q.id !== qid).map((q, i) => ({ ...q, orderIndex: i }))
     setQuestions(updated as Question[])
-    if (selectedQuestionId === qId) setSelectedQuestionId(updated[0]?.id ?? null)
-    isDirtyRef.current = true
+    if (selectedQId === qid) setSelectedQId(updated[0]?.id ?? null)
   }
 
-  const handleSave = useCallback(async () => {
-    if (!presentation || !user) return
+  // ── Save ──────────────────────────────────────────────────────────────────
+
+  async function handleSave() {
+    if (!user || !type) return
     setIsSaving(true)
+    setError(null)
     try {
-      await QuestionService.saveQuestionSet(id, questions, presentation.type, presentation.title)
-      isDirtyRef.current = false
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 2500)
-    } catch (e) { console.error(e) }
-    finally { setIsSaving(false) }
-  }, [presentation, user, id, questions])
+      // Update presentation metadata
+      const updates: Record<string, any> = { title: name || 'Untitled Zapp' }
+      if (useSections && sections.length > 0) updates.sections = sections
+      if (isQuiz) updates.scoringConfig = scoring
+      await PresentationService.updatePresentation(id, updates)
 
-  if (isLoading) return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-      <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
-      <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading builder…</p>
-    </div>
-  )
+      // Save all questions
+      await QuestionService.saveQuestionSet(id, questions, type, name || 'Untitled Zapp')
 
-  if (error || !presentation) return (
-    <div className="glass-card p-12 text-center space-y-4 max-w-lg mx-auto mt-12">
-      <AlertCircle className="w-10 h-10 mx-auto" style={{ color: '#F08700' }} />
-      <h2 className="text-xl font-bold" style={{ color: '#1A1A2E' }}>{error ?? 'Something went wrong'}</h2>
-      <Link href="/app/dashboard" className="btn-primary inline-flex">Back to Dashboard</Link>
-    </div>
-  )
+      router.push(`/app/present/${id}`)
+    } catch (e: any) {
+      setError(e.message || 'Failed to save changes')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
-  const selectedQuestion = questions.find(q => q.id === selectedQuestionId)
+  // ── Loading / error states ────────────────────────────────────────────────
 
-  return (
-    <div className="flex flex-col h-[calc(100vh-90px)] -mt-4">
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center gap-4">
+        <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
+        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading your Zapp…</p>
+      </div>
+    )
+  }
 
-      {/* Save toast */}
-      <AnimatePresence>
-        {saveSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold"
-            style={{ background: '#22C55E', color: '#FFFFFF', boxShadow: '0 4px 16px rgba(34,197,94,0.35)' }}
-          >
-            <CheckCircle2 className="w-4 h-4" /> Saved
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Type picker modal */}
-      <AnimatePresence>
-        {showTypePicker && (
-          <TypePickerModal onPick={handlePickType} onClose={() => setShowTypePicker(false)} />
-        )}
-      </AnimatePresence>
-
-      {/* Top bar */}
-      <div className="flex items-center justify-between mb-5 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/app/dashboard"
-            className="p-2 rounded-xl transition-all"
-            style={{ color: '#9CA3AF' }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="w-px h-7" style={{ background: '#E5E7EB' }} />
-          <div>
-            <h1 className="text-base font-bold flex items-center gap-2" style={{ color: '#1A1A2E' }}>
-              {presentation.title}
-              <span
-                className="text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-md"
-                style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
-              >
-                {presentation.type}
-              </span>
-            </h1>
-            <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>
-              {questions.length}/{currentLimit} questions
-              {isDirtyRef.current && <span className="ml-2" style={{ color: '#F08700' }}>· Unsaved changes</span>}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowPreview(p => !p)}
-            className="btn-ghost text-sm"
-            style={showPreview ? { background: 'rgba(0,166,166,0.10)', borderColor: 'rgba(0,166,166,0.25)', color: '#00A6A6' } : {}}
-          >
-            {showPreview ? <X className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            <span className="hidden sm:inline">{showPreview ? 'Close preview' : 'Preview'}</span>
-          </button>
-          <button onClick={handleSave} disabled={isSaving} className="btn-secondary text-sm disabled:opacity-40">
-            {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span className="hidden sm:inline">Save</span>
-          </button>
-          <Link href={`/app/present/${id}`} className="btn-live text-sm">
-            <Play className="w-4 h-4" />
-            Go Live
-          </Link>
+  if (loadError || !type) {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-6">
+        <div className="glass-card p-12 text-center space-y-4 max-w-lg">
+          <AlertCircle className="w-10 h-10 mx-auto" style={{ color: '#F08700' }} />
+          <h2 className="text-xl font-bold" style={{ color: '#1A1A2E' }}>{loadError ?? 'Something went wrong'}</h2>
+          <button onClick={() => router.push('/app/dashboard')} className="btn-primary inline-flex">Back to Dashboard</button>
         </div>
       </div>
+    )
+  }
 
-      {/* Content area */}
-      <div className="flex-1 flex gap-5 overflow-hidden min-h-0">
+  const typeInfo = ZAPP_TYPES.find(z => z.type === type)
+  const TypeIcon = typeInfo?.icon ?? Sparkles
 
-        {/* Left sidebar: question list */}
-        <div className="w-56 flex-shrink-0 flex flex-col gap-3">
-          <div
-            className="flex-1 flex flex-col rounded-2xl overflow-hidden"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-          >
-            {/* List header */}
-            <div
-              className="px-4 py-3 flex items-center justify-between flex-shrink-0"
-              style={{ borderBottom: '1px solid #F0F0F0' }}
-            >
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Questions</span>
-              <span
-                className="text-[10px] font-bold tabular-nums"
-                style={{ color: questions.length >= currentLimit ? '#F08700' : '#9CA3AF' }}
-              >
-                {questions.length}/{currentLimit}
-              </span>
+  // ════════════════════════════════════════════════════════════════════════
+  // ── STEP 1: Name ────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+
+  if (step === 'name') {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-6">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
+          <div className="rounded-2xl p-8 shadow-lg bg-white border border-[#E5E7EB]">
+            <div className="mb-8">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: typeInfo?.bg }}>
+                  <TypeIcon className="w-4 h-4" style={{ color: typeInfo?.color }} />
+                </div>
+                <span className="text-sm font-bold px-2 py-0.5 rounded-full" style={{ background: typeInfo?.bg, color: typeInfo?.color }}>
+                  {typeInfo?.name}
+                </span>
+              </div>
+              <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>Edit Zapp</h1>
+              <p style={{ color: '#6B7280' }}>Update the name and settings for this Zapp</p>
             </div>
 
-            {/* List items */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
-              <AnimatePresence mode="popLayout">
-                {questions.map((q, idx) => {
-                  const qMeta = kindMeta(q.kind as QuestionKind)
-                  const isActive = selectedQuestionId === q.id
-                  const Icon = qMeta.icon
-                  return (
-                    <motion.div
-                      key={q.id}
-                      layout
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, scale: 0.92 }}
-                      onClick={() => setSelectedQuestionId(q.id)}
-                      className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all"
-                      style={{
-                        background: isActive ? qMeta.bg : 'transparent',
-                        border: `1px solid ${isActive ? qMeta.border : 'transparent'}`,
-                      }}
-                    >
-                      <span className="text-[9px] font-black w-4 flex-shrink-0 text-center" style={{ color: '#9CA3AF' }}>{idx + 1}</span>
-                      <div className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0" style={{ background: qMeta.bg }}>
-                        <Icon className="w-2.5 h-2.5" style={{ color: qMeta.color }} />
-                      </div>
-                      <p className="text-xs font-medium flex-1 truncate" style={{ color: isActive ? '#1A1A2E' : '#6B7280' }}>
-                        {q.prompt || 'Untitled'}
-                      </p>
-                      <button
-                        onClick={e => { e.stopPropagation(); handleDelete(q.id) }}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md transition-all"
-                        style={{ color: '#D1D5DB' }}
+            <form onSubmit={e => { e.preventDefault(); if (name.trim()) nextStep() }} className="space-y-6">
+              <div>
+                <label htmlFor="title" className="block text-sm font-semibold mb-2" style={{ color: '#1A1A2E' }}>
+                  Zapp Name
+                </label>
+                <input
+                  id="title"
+                  type="text"
+                  autoFocus
+                  placeholder="e.g. Team Quiz Night"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-lg border-2 transition-all"
+                  style={{ borderColor: name ? '#00A6A6' : '#E5E7EB', background: '#F5F7FA', color: '#1A1A2E' }}
+                  onFocus={e => (e.currentTarget.style.borderColor = '#00A6A6')}
+                  onBlur={e => (e.currentTarget.style.borderColor = name ? '#00A6A6' : '#E5E7EB')}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!name.trim()}
+                className="w-full py-2.5 px-4 rounded-lg font-bold text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                style={{ background: name.trim() ? '#00A6A6' : '#BBDEF0', cursor: name.trim() ? 'pointer' : 'not-allowed' }}
+              >
+                Next <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+          <p className="text-center text-sm mt-6" style={{ color: '#9CA3AF' }}>
+            Zapp type: <strong>{typeInfo?.name}</strong> — type cannot be changed after creation
+          </p>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── STEP 2: Sections (Quiz only) ─────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+
+  if (step === 'sections') {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] py-12 px-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto">
+          <ProgressBar step="sections" isQuiz={true} />
+
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>Does your Quiz have sections?</h1>
+            <p style={{ color: '#6B7280' }}>Sections group questions by topic — e.g. Sports, Music, Economics</p>
+          </div>
+
+          {!useSections ? (
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <button
+                onClick={() => { setUseSections(false); nextStep() }}
+                className="p-6 rounded-xl border-2 text-center transition-all"
+                style={{ background: '#FFFFFF', borderColor: '#E5E7EB' }}
+              >
+                <div className="text-3xl mb-3">📋</div>
+                <p className="font-black text-base" style={{ color: '#1A1A2E' }}>One section</p>
+                <p className="text-xs mt-1" style={{ color: '#6B7280' }}>All questions in a single list</p>
+              </button>
+              <button
+                onClick={() => setUseSections(true)}
+                className="p-6 rounded-xl border-2 text-center transition-all"
+                style={{ background: '#FFFFFF', borderColor: '#E5E7EB' }}
+              >
+                <div className="text-3xl mb-3">🗂️</div>
+                <p className="font-black text-base" style={{ color: '#1A1A2E' }}>Multiple sections</p>
+                <p className="text-xs mt-1" style={{ color: '#6B7280' }}>Group questions by topic</p>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-[#E5E7EB] p-6 mb-6 space-y-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Section name (e.g. Sports)"
+                  value={newSectionName}
+                  onChange={e => setNewSectionName(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addSection()}
+                  className="flex-1 px-3 py-2.5 rounded-lg border text-sm outline-none"
+                  style={{ borderColor: '#E5E7EB', color: '#1A1A2E', background: '#F5F7FA' }}
+                  autoFocus
+                />
+                <button
+                  onClick={addSection}
+                  disabled={!newSectionName.trim()}
+                  className="px-4 py-2.5 rounded-lg font-bold text-sm text-white disabled:opacity-50"
+                  style={{ background: '#00A6A6' }}
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {sections.map((sec, i) => (
+                  <div
+                    key={sec.id}
+                    className="flex items-center justify-between px-4 py-3 rounded-lg"
+                    style={{ background: '#F5F7FA', border: '1px solid #E5E7EB' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black w-5 h-5 rounded-full bg-[#00A6A6] text-white flex items-center justify-center">{i + 1}</span>
+                      <span className="text-sm font-semibold" style={{ color: '#1A1A2E' }}>{sec.name}</span>
+                    </div>
+                    {sections.length > 1 && (
+                      <button onClick={() => removeSection(sec.id)} className="p-1 rounded transition-colors" style={{ color: '#D1D5DB' }}
                         onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
                         onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    </motion.div>
-                  )
-                })}
-              </AnimatePresence>
+                    )}
+                  </div>
+                ))}
+              </div>
 
-              {questions.length === 0 && (
-                <div className="py-10 text-center">
-                  <HelpCircle className="w-7 h-7 mx-auto mb-2" style={{ color: '#D1D5DB' }} />
-                  <p className="text-[10px] px-3" style={{ color: '#9CA3AF' }}>No questions yet — add your first below</p>
-                </div>
+              {sections.length < 2 && (
+                <p className="text-xs" style={{ color: '#F59E0B' }}>Add at least 2 sections, or go back and choose "One section"</p>
               )}
             </div>
+          )}
 
-            {/* Add button */}
-            <div className="p-2.5 flex-shrink-0" style={{ borderTop: '1px solid #F0F0F0' }}>
+          <div className="flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            {useSections && (
               <button
-                onClick={() => setShowTypePicker(true)}
-                disabled={questions.length >= currentLimit}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-35 disabled:cursor-not-allowed"
-                style={{ background: '#00A6A6', color: '#FFFFFF', boxShadow: '0 2px 8px rgba(0,166,166,0.30)' }}
+                onClick={nextStep}
+                disabled={sections.length < 2}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-white text-sm disabled:opacity-50"
+                style={{ background: '#00A6A6' }}
               >
-                <Plus className="w-3.5 h-3.5" />
-                Add question
+                Next <ArrowRight className="w-4 h-4" />
               </button>
+            )}
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── STEP 3: Questions ────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+
+  if (step === 'questions') {
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] flex flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB]">
+          <div className="flex items-center gap-3">
+            <button onClick={prevStep} className="p-2 rounded-lg transition-colors" style={{ color: '#6B7280' }}>
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+                {isQuiz ? 'Step 3' : 'Step 2'} — Questions
+              </p>
+              <h1 className="text-lg font-black" style={{ color: '#1A1A2E' }}>{name}</h1>
             </div>
           </div>
+          <button
+            onClick={nextStep}
+            disabled={questions.length === 0}
+            className="flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm text-white disabled:opacity-50 transition-all"
+            style={{ background: '#00A6A6' }}
+          >
+            Next <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Centre: editor */}
-        <div
-          className={`flex-1 flex flex-col rounded-2xl overflow-hidden min-w-0 transition-all ${showPreview ? 'hidden lg:flex' : 'flex'}`}
-          style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}
-        >
-          <AnimatePresence mode="wait">
-            {selectedQuestion ? (
-              <motion.div
-                key={selectedQuestion.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                className="flex-1 flex flex-col overflow-hidden"
-              >
-                {/* Editor header */}
-                {(() => {
-                  const m = kindMeta(selectedQuestion.kind as QuestionKind)
-                  const Icon = m.icon
-                  return (
-                    <div
-                      className="px-7 py-4 flex items-center gap-3 flex-shrink-0"
-                      style={{ borderBottom: '1px solid #F0F0F0' }}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left sidebar */}
+          <div className="w-60 bg-white border-r border-[#E5E7EB] flex flex-col overflow-hidden flex-shrink-0">
+
+            {/* Section tabs (quiz with sections) */}
+            {isQuiz && useSections && (
+              <div className="border-b border-[#E5E7EB] p-3 space-y-1">
+                {sections.map(sec => (
+                  <button
+                    key={sec.id}
+                    onClick={() => {
+                      setActiveSectionId(sec.id)
+                      const first = questions.find(q => q.sectionId === sec.id)
+                      if (first) setSelectedQId(first.id)
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      background: activeSectionId === sec.id ? 'rgba(0,166,166,0.10)' : 'transparent',
+                      color: activeSectionId === sec.id ? '#00A6A6' : '#6B7280',
+                    }}
+                  >
+                    {sec.name}
+                    <span className="ml-1 text-[10px]">({questions.filter(q => q.sectionId === sec.id).length})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Question list */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+              {visibleQuestions.length === 0 && (
+                <p className="text-xs text-center py-6" style={{ color: '#9CA3AF' }}>No questions yet</p>
+              )}
+              {visibleQuestions.map((q, i) => {
+                const qMeta = Q_TYPES.find(t => t.kind === q.kind)
+                const QIcon = qMeta?.icon ?? Sparkles
+                return (
+                  <div key={q.id} className="flex items-center gap-2 group">
+                    <button
+                      onClick={() => setSelectedQId(q.id)}
+                      className="flex-1 text-left px-3 py-2.5 rounded-lg text-xs transition-all"
+                      style={{
+                        background: selectedQId === q.id ? 'rgba(0,166,166,0.10)' : 'transparent',
+                        color: selectedQId === q.id ? '#00A6A6' : '#374151',
+                        border: selectedQId === q.id ? '1px solid rgba(0,166,166,0.25)' : '1px solid transparent',
+                      }}
                     >
-                      <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: m.bg }}>
-                        <Icon className="w-4 h-4" style={{ color: m.color }} />
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold shrink-0" style={{ color: '#9CA3AF' }}>{i + 1}.</span>
+                        <QIcon className="w-3 h-3 shrink-0" style={{ color: qMeta?.color ?? '#00A6A6' }} />
+                        <span className="truncate">{q.prompt || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Untitled</span>}</span>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold" style={{ color: '#1A1A2E' }}>{m.label}</p>
-                        <p className="text-[10px] uppercase tracking-widest" style={{ color: '#9CA3AF' }}>{m.sub}</p>
-                      </div>
-                    </div>
-                  )
-                })()}
+                    </button>
+                    <button
+                      onClick={() => deleteQuestion(q.id)}
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all flex-shrink-0"
+                      style={{ color: '#D1D5DB' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
+                      onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Add question */}
+            <div className="p-3 border-t border-[#E5E7EB]">
+              <button
+                onClick={() => addQuestion()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all"
+                style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Question
+              </button>
+              <p className="text-[9px] text-center mt-2" style={{ color: '#9CA3AF' }}>
+                {questions.length} question{questions.length !== 1 ? 's' : ''} total
+              </p>
+            </div>
+          </div>
+
+          {/* Main editor area */}
+          <div className="flex-1 overflow-y-auto">
+            {!selectedQuestion ? (
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,166,166,0.10)' }}>
+                  <Plus className="w-7 h-7" style={{ color: '#00A6A6' }} />
+                </div>
+                <p className="font-bold text-lg" style={{ color: '#1A1A2E' }}>Add your first question</p>
+                <p className="text-sm" style={{ color: '#6B7280' }}>Pick a question type — you can mix types freely</p>
+                <button
+                  onClick={() => addQuestion()}
+                  className="mt-2 px-8 py-3 rounded-xl font-black text-white text-base"
+                  style={{ background: '#00A6A6', boxShadow: '0 4px 16px rgba(0,166,166,0.30)' }}
+                >
+                  + Add Question
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col h-full">
                 <QuestionEditor
                   question={selectedQuestion}
                   questions={questions}
-                  setQuestions={q => setQuestions(q as Question[])}
-                  markDirty={() => { isDirtyRef.current = true }}
+                  setQuestions={setQuestions}
                 />
-              </motion.div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center gap-3" style={{ opacity: 0.35 }}>
-                <div
-                  className="w-14 h-14 rounded-3xl flex items-center justify-center"
-                  style={{ background: 'rgba(0,166,166,0.10)', border: '1px solid rgba(0,166,166,0.20)' }}
-                >
-                  <Layout className="w-7 h-7" style={{ color: '#00A6A6' }} />
-                </div>
-                <p className="text-sm font-semibold" style={{ color: '#6B7280' }}>Select a question or add one to start editing</p>
-              </div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Right: preview */}
-        <AnimatePresence>
-          {showPreview && (
-            <motion.div
-              initial={{ opacity: 0, x: 30, width: 0 }}
-              animate={{ opacity: 1, x: 0, width: 300 }}
-              exit={{ opacity: 0, x: 30, width: 0 }}
-              className="flex-shrink-0 overflow-hidden"
-            >
-              <div className="w-[300px] h-full flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5" style={{ color: '#9CA3AF' }}>
-                    <Eye className="w-3 h-3" /> Preview
-                  </span>
+                <div className="px-7 pb-6 pt-2 border-t border-[#F0F0F0] flex-shrink-0">
                   <button
-                    onClick={() => setShowPreview(false)}
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: '#9CA3AF' }}
-                    onMouseEnter={e => (e.currentTarget.style.color = '#374151')}
-                    onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}
+                    onClick={() => addQuestion()}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
+                    style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px dashed rgba(0,166,166,0.35)' }}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4" /> Add another question
                   </button>
                 </div>
-                <div
-                  className="flex-1 rounded-2xl overflow-hidden"
-                  style={{ border: '1px solid #E5E7EB' }}
-                >
-                  {selectedQuestion
-                    ? <QuestionPreview question={selectedQuestion} />
-                    : (
-                      <div className="h-full flex items-center justify-center" style={{ background: '#0D1117' }}>
-                        <p className="text-xs text-center px-6" style={{ color: 'rgba(255,255,255,0.20)' }}>Select a question to preview it</p>
-                      </div>
-                    )
-                  }
-                </div>
               </div>
-            </motion.div>
+            )}
+          </div>
+        </div>
+
+        {/* Question type picker overlay */}
+        <AnimatePresence>
+          {showTypePicker && (
+            <QuestionTypePicker
+              onSelect={kind => addQuestion(kind as QuestionKind)}
+              onClose={() => setShowTypePicker(false)}
+              defaultKind={type as QuestionKind | undefined}
+            />
           )}
         </AnimatePresence>
       </div>
-    </div>
-  )
+    )
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── STEP 4: Scoring (Quiz only) ──────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+
+  if (step === 'scoring') {
+    const toggles = [
+      { key: 'showAfterEachQuestion' as keyof ScoringConfig, label: 'After each question', desc: 'Shows correct/incorrect immediately after each answer' },
+      { key: 'showAfterEachSection'  as keyof ScoringConfig, label: 'After each section',   desc: 'Running total revealed at the end of each section' },
+      { key: 'showFinalScore'        as keyof ScoringConfig, label: 'Final score at end',    desc: 'Full leaderboard shown when the Zapp ends' },
+    ]
+
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] py-12 px-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto">
+          <ProgressBar step="scoring" isQuiz={true} />
+
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>When to reveal scores?</h1>
+            <p style={{ color: '#6B7280' }}>Choose when participants see their score — you can enable multiple</p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden mb-6">
+            {toggles.map((t, i) => (
+              <div
+                key={t.key}
+                className={`flex items-center justify-between px-6 py-5 ${i < toggles.length - 1 ? 'border-b border-[#E5E7EB]' : ''}`}
+              >
+                <div>
+                  <p className="text-sm font-bold" style={{ color: '#1A1A2E' }}>{t.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{t.desc}</p>
+                </div>
+                <button
+                  onClick={() => setScoring(prev => ({ ...prev, [t.key]: !prev[t.key] }))}
+                  className="relative rounded-full transition-all flex-shrink-0 ml-4"
+                  style={{ background: scoring[t.key] ? '#00A6A6' : 'rgba(0,0,0,0.12)', minWidth: 44, height: 24 }}
+                >
+                  <span
+                    className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                    style={{ left: scoring[t.key] ? '22px' : '2px', boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }}
+                  />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <button
+              onClick={nextStep}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-white text-sm"
+              style={{ background: '#00A6A6' }}
+            >
+              Review <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  // ════════════════════════════════════════════════════════════════════════
+  // ── STEP 5: Review ────────────────────────────────────────────────────────
+  // ════════════════════════════════════════════════════════════════════════
+
+  if (step === 'review') {
+    const scoringLabels = isQuiz ? [
+      scoring.showAfterEachQuestion && 'After each question',
+      scoring.showAfterEachSection && 'After each section',
+      scoring.showFinalScore && 'Final score',
+    ].filter(Boolean) : []
+
+    const grouped = useSections
+      ? sections.map(sec => ({ section: sec, qs: questions.filter(q => q.sectionId === sec.id) }))
+      : [{ section: null, qs: questions }]
+
+    return (
+      <div className="min-h-screen bg-[#F5F7FA] py-12 px-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto">
+          <ProgressBar step="review" isQuiz={isQuiz} />
+
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>Ready to save?</h1>
+            <p style={{ color: '#6B7280' }}>Review your changes before saving</p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 rounded-lg border-l-4 flex items-start gap-3" style={{ background: 'rgba(239,68,68,0.1)', borderColor: '#EF4444' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#EF4444' }} />
+              <p style={{ color: '#7F1D1D' }}>{error}</p>
+            </div>
+          )}
+
+          {/* Summary card */}
+          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 mb-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-black" style={{ color: '#1A1A2E' }}>{name || 'Untitled Zapp'}</h2>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {typeInfo && (
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: typeInfo.bg, color: typeInfo.color }}>
+                      {typeInfo.name}
+                    </span>
+                  )}
+                  <span className="text-xs" style={{ color: '#6B7280' }}>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                  {useSections && <span className="text-xs" style={{ color: '#6B7280' }}>{sections.length} sections</span>}
+                  {isQuiz && scoringLabels.length > 0 && (
+                    <span className="text-xs" style={{ color: '#6B7280' }}>Scoring: {(scoringLabels as string[]).join(', ')}</span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setStep('name')} className="p-2 rounded-lg transition-colors" style={{ color: '#9CA3AF' }}>
+                <Edit2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Questions grouped */}
+          {questions.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 text-center mb-6">
+              <p className="font-bold" style={{ color: '#1A1A2E' }}>No questions yet</p>
+              <p className="text-sm mt-1" style={{ color: '#6B7280' }}>You can save and add questions later in the editor</p>
+              <button onClick={() => setStep('questions')} className="mt-4 text-sm font-bold" style={{ color: '#00A6A6' }}>
+                Add questions now
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 mb-6">
+              {grouped.map(({ section, qs }) => (
+                <div key={section?.id ?? 'all'} className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+                  {section && (
+                    <div className="px-5 py-3 border-b border-[#E5E7EB]" style={{ background: '#F5F7FA' }}>
+                      <p className="text-xs font-black uppercase tracking-wider" style={{ color: '#1A1A2E' }}>{section.name}</p>
+                    </div>
+                  )}
+                  {qs.map((q, i) => {
+                    const qtype = Q_TYPES.find(t => t.kind === q.kind)
+                    return (
+                      <div key={q.id} className="flex items-center justify-between px-5 py-4 border-b border-[#F5F7FA] last:border-0">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <span className="text-xs font-black w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F5F7FA', color: '#6B7280' }}>{i + 1}</span>
+                          <p className="text-sm font-medium truncate" style={{ color: q.prompt ? '#1A1A2E' : '#9CA3AF', fontStyle: q.prompt ? 'normal' : 'italic' }}>
+                            {q.prompt || 'Untitled question'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                          {qtype && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: qtype.bg, color: qtype.color }}>
+                              {qtype.label}
+                            </span>
+                          )}
+                          {q.kind === 'quiz' && (
+                            <>
+                              <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{(q as any).timerSeconds}s</span>
+                              <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{(q as any).points}pts</span>
+                            </>
+                          )}
+                          <button
+                            onClick={() => { setSelectedQId(q.id); setStep('questions') }}
+                            className="text-[10px] font-bold px-2 py-0.5 rounded transition-all"
+                            style={{ color: '#00A6A6', background: 'rgba(0,166,166,0.08)' }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-between">
+            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-white text-base transition-all disabled:opacity-50"
+              style={{ background: '#00A6A6', boxShadow: '0 4px 20px rgba(0,166,166,0.35)' }}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                <>
+                  Save Changes <ChevronRight className="w-5 h-5" />
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
+  return null
 }
