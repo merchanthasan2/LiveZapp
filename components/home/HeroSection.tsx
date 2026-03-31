@@ -70,119 +70,149 @@ function JoinWidget() {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.88 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, delay: 0.2 }}
+      transition={{ duration: 0.55, delay: 0.2, type: 'spring', stiffness: 120 }}
+      className="inline-block"
     >
-      <Link href="/join" className="group inline-flex items-center gap-4">
+      {/* White rounded card wrapper */}
+      <motion.div
+        className="inline-block bg-white rounded-3xl p-5"
+        style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)' }}
+        animate={{
+          boxShadow: [
+            '0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+            '0 12px 48px rgba(0,166,166,0.18), 0 2px 8px rgba(240,135,0,0.08)',
+            '0 8px 40px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06)',
+          ],
+        }}
+        transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+        whileHover={{ scale: 1.03, boxShadow: '0 16px 56px rgba(0,166,166,0.22), 0 4px 16px rgba(240,135,0,0.14)' }}
+      >
+        <Link href="/join" className="group inline-flex items-center gap-4">
 
-        {/* ── Logo (same visual height as badge stack) ── */}
-        <motion.div
-          className="shrink-0 w-[88px] h-[88px] rounded-2xl flex items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, #F08700 0%, #EFCA08 100%)',
-            boxShadow: '0 8px 24px rgba(240,135,0,0.5)',
-          }}
-          animate={{
-            boxShadow: [
-              '0 8px 24px rgba(240,135,0,0.5)',
-              '0 8px 36px rgba(240,135,0,0.8)',
-              '0 8px 24px rgba(240,135,0,0.5)',
-            ],
-          }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          whileHover={{ scale: 1.06 }}
-        >
-          <Image
-            src="/LiveZapp Logo only.png"
-            alt="Live-Zapp"
-            width={64}
-            height={64}
-            className="object-contain"
-            style={{ width: 64, height: 64 }}
-          />
-        </motion.div>
-
-        {/* ── Stacked badge block ── */}
-        <div className="flex flex-col items-start gap-[5px]">
-
-          {/* JOIN badge */}
+          {/* ── Logo (same visual height as badge stack) ── */}
           <motion.div
-            className="px-5 py-1.5 rounded-lg font-black text-white tracking-widest uppercase"
+            className="shrink-0 w-[88px] h-[88px] rounded-2xl flex items-center justify-center"
             style={{
-              background: '#00A6A6',
-              fontSize: '1rem',
-              letterSpacing: '0.18em',
-              boxShadow: '0 4px 14px rgba(0,166,166,0.55)',
+              background: 'linear-gradient(135deg, #F08700 0%, #EFCA08 100%)',
+              boxShadow: '0 8px 24px rgba(240,135,0,0.5)',
             }}
-            whileHover={{ scale: 1.04 }}
-          >
-            JOIN
-          </motion.div>
-
-          {/* LIVE badge — widest, dark with teal border */}
-          <motion.div
-            className="flex items-center gap-2 px-5 py-2 rounded-lg font-black text-white"
-            style={{
-              background: '#060F1E',
-              border: '2px solid #00A6A6',
-              fontSize: '1.55rem',
-              letterSpacing: '0.12em',
-              minWidth: '100%',
-              boxShadow: '0 0 18px rgba(0,166,166,0.3)',
+            animate={{
+              boxShadow: [
+                '0 8px 24px rgba(240,135,0,0.45)',
+                '0 8px 36px rgba(240,135,0,0.80)',
+                '0 8px 24px rgba(240,135,0,0.45)',
+              ],
+              rotate: [0, -2, 2, -1, 0],
             }}
-            whileHover={{ boxShadow: '0 0 28px rgba(0,166,166,0.55)' }}
+            transition={{
+              boxShadow: { duration: 2.5, repeat: Infinity, ease: 'easeInOut' },
+              rotate: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay: 1 },
+            }}
+            whileHover={{ scale: 1.08, rotate: 0 }}
           >
-            {/* Pulsing dot */}
-            <motion.span
-              className="w-3 h-3 rounded-full shrink-0"
-              style={{ background: '#F08700' }}
-              animate={{ scale: [1, 1.4, 1], opacity: [1, 0.55, 1] }}
-              transition={{ duration: 1.2, repeat: Infinity }}
+            <Image
+              src="/LiveZapp Logo only.png"
+              alt="Live-Zapp"
+              width={64}
+              height={64}
+              className="object-contain"
+              style={{ width: 64, height: 64 }}
             />
-            LIVE
           </motion.div>
 
-          {/* NOW badge */}
+          {/* ── Stacked badge block ── */}
+          <div className="flex flex-col items-start gap-[6px]">
+
+            {/* JOIN badge */}
+            <motion.div
+              className="px-5 py-1.5 rounded-lg font-black text-white tracking-widest uppercase w-full text-center"
+              style={{
+                background: '#00A6A6',
+                fontSize: '1rem',
+                letterSpacing: '0.18em',
+                boxShadow: '0 4px 14px rgba(0,166,166,0.5)',
+              }}
+              animate={{ y: [0, -2, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0 }}
+              whileHover={{ scale: 1.06 }}
+            >
+              JOIN
+            </motion.div>
+
+            {/* LIVE badge — widest, dark with teal border */}
+            <motion.div
+              className="flex items-center gap-2 px-5 py-2 rounded-lg font-black text-white w-full"
+              style={{
+                background: '#060F1E',
+                border: '2px solid #00A6A6',
+                fontSize: '1.6rem',
+                letterSpacing: '0.12em',
+                boxShadow: '0 0 18px rgba(0,166,166,0.3)',
+              }}
+              animate={{
+                boxShadow: [
+                  '0 0 14px rgba(0,166,166,0.25)',
+                  '0 0 28px rgba(0,166,166,0.55)',
+                  '0 0 14px rgba(0,166,166,0.25)',
+                ],
+              }}
+              transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <motion.span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ background: '#F08700' }}
+                animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                transition={{ duration: 1, repeat: Infinity }}
+              />
+              LIVE
+            </motion.div>
+
+            {/* NOW badge */}
+            <motion.div
+              className="px-5 py-1.5 rounded-lg font-black text-white tracking-widest uppercase self-end"
+              style={{
+                background: '#F08700',
+                fontSize: '1rem',
+                letterSpacing: '0.18em',
+                boxShadow: '0 4px 14px rgba(240,135,0,0.5)',
+              }}
+              animate={{ y: [0, 2, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
+              whileHover={{ scale: 1.06 }}
+            >
+              NOW
+            </motion.div>
+
+          </div>
+
+        </Link>
+
+        {/* Live counter inside card, below badges */}
+        <div className="flex items-center gap-1.5 mt-3 pl-1">
           <motion.div
-            className="self-end px-5 py-1.5 rounded-lg font-black text-white tracking-widest uppercase"
-            style={{
-              background: '#F08700',
-              fontSize: '1rem',
-              letterSpacing: '0.18em',
-              boxShadow: '0 4px 14px rgba(240,135,0,0.55)',
-            }}
-            whileHover={{ scale: 1.04 }}
-          >
-            NOW
-          </motion.div>
-
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ background: '#22C55E' }}
+            animate={{ scale: [1, 1.6, 1], opacity: [1, 0.4, 1] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
+          />
+          <AnimatePresence mode="wait">
+            <motion.span
+              key={displayCount}
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.2 }}
+              className="text-xs font-bold whitespace-nowrap"
+              style={{ color: '#22C55E' }}
+            >
+              {displayCount} sessions live right now
+            </motion.span>
+          </AnimatePresence>
         </div>
 
-      </Link>
-
-      {/* Live counter below */}
-      <div className="flex items-center gap-1.5 mt-2 pl-1">
-        <motion.div
-          className="w-1.5 h-1.5 rounded-full"
-          style={{ background: '#22C55E' }}
-          animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-          transition={{ duration: 1.2, repeat: Infinity }}
-        />
-        <AnimatePresence mode="wait">
-          <motion.span
-            key={displayCount}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.2 }}
-            className="text-xs font-bold whitespace-nowrap"
-            style={{ color: '#22C55E' }}
-          >
-            {displayCount} sessions live right now
-          </motion.span>
-        </AnimatePresence>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }
