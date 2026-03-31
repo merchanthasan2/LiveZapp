@@ -5,8 +5,9 @@ import { ref, get, set } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 import { PLANS, type Plan, type PlanId, type PlanLimits } from '@/types/plans'
 import { invalidatePlanLimitsCache } from '@/lib/hooks/usePlanLimits'
+import { type SupportedCurrency, type PricingConfig, type CurrencyPlanPrice, invalidatePricingCache } from '@/lib/hooks/useCurrency'
 import {
-  Zap, Users, FileStack, Check, Star,
+  Zap, Users, FileStack, Check, Star, Globe,
   RefreshCw, Eye, TrendingUp, Edit2, Save, X, RotateCcw,
 } from 'lucide-react'
 
@@ -147,6 +148,173 @@ function EditLimitsPanel({
         >
           <X className="w-3.5 h-3.5" />
         </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Currency Pricing Editor ──────────────────────────────────────────────────
+
+const CURRENCIES: { code: SupportedCurrency; label: string; symbol: string }[] = [
+  { code: 'USD', label: 'US Dollar', symbol: '$' },
+  { code: 'GBP', label: 'British Pound', symbol: '£' },
+  { code: 'INR', label: 'Indian Rupee', symbol: '₹' },
+]
+
+function CurrencyPricingEditor({
+  initialPricing,
+  onSave,
+}: {
+  initialPricing: PricingConfig
+  onSave: (currency: SupportedCurrency, planId: PlanId, prices: CurrencyPlanPrice) => void
+}) {
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
+  const [editing, setEditing] = useState<Partial<Record<PlanId, CurrencyPlanPrice>>>({})
+  const [saving, setSaving] = useState(false)
+  const [dirty, setDirty] = useState(false)
+
+  const currencyConfig = initialPricing[selectedCurrency] ?? {}
+
+  function initEditing(currency: SupportedCurrency) {
+    const cfg = initialPricing[currency] ?? {}
+    const init: Partial<Record<PlanId, CurrencyPlanPrice>> = {}
+    PLANS.filter(p => p.pricePerMonth > 0).forEach(p => {
+      init[p.id as PlanId] = cfg[p.id as PlanId] ?? {
+        monthly: Math.round(p.pricePerMonth * (currency === 'INR' ? 84 : currency === 'GBP' ? 0.79 : 1)),
+        annual:  Math.round(p.pricePerYear  * (currency === 'INR' ? 84 : currency === 'GBP' ? 0.79 : 1)),
+      }
+    })
+    setEditing(init)
+    setDirty(false)
+  }
+
+  useEffect(() => { initEditing(selectedCurrency) }, [selectedCurrency, initialPricing])
+
+  const sym = CURRENCIES.find(c => c.code === selectedCurrency)?.symbol ?? ''
+
+  async function handleSave() {
+    setSaving(true)
+    for (const [planId, prices] of Object.entries(editing)) {
+      if (prices) await onSave(selectedCurrency, planId as PlanId, prices)
+    }
+    setSaving(false)
+    setDirty(false)
+  }
+
+  return (
+    <div className="rounded-2xl p-6 space-y-5" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: '#9CA3AF' }}>Per-country pricing</p>
+          <h3 className="text-lg font-bold" style={{ color: '#1A1A2E' }}>Configure prices by currency</h3>
+          <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>Set exact prices for each currency. If not configured, exchange-rate estimates are used for display.</p>
+        </div>
+        <Globe className="w-6 h-6 shrink-0" style={{ color: '#00A6A6' }} />
+      </div>
+
+      {/* Currency selector */}
+      <div className="flex gap-2 flex-wrap">
+        {CURRENCIES.map(c => (
+          <button
+            key={c.code}
+            onClick={() => setSelectedCurrency(c.code)}
+            className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
+            style={{
+              background: selectedCurrency === c.code ? '#00A6A6' : 'rgba(0,166,166,0.08)',
+              color: selectedCurrency === c.code ? '#FFFFFF' : '#00A6A6',
+              border: `1px solid ${selectedCurrency === c.code ? '#00A6A6' : 'rgba(0,166,166,0.20)'}`,
+            }}
+          >
+            {c.symbol} {c.code} — {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Prices table */}
+      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Plan</th>
+              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Monthly ({sym})</th>
+              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Annual ({sym})</th>
+              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {PLANS.filter(p => p.pricePerMonth > 0).map((plan, i) => {
+              const planId = plan.id as PlanId
+              const prices = editing[planId]
+              const hasConfig = !!currencyConfig[planId]
+              const badge = PLAN_BADGE[plan.id]
+              return (
+                <tr key={plan.id} style={{ borderBottom: i < 2 ? '1px solid #F3F4F6' : 'none' }}>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
+                      style={{ background: badge.bg, color: badge.text }}>{plan.name}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>{sym}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={prices?.monthly ?? ''}
+                        onChange={e => { setEditing(prev => ({ ...prev, [planId]: { ...prev[planId]!, monthly: Number(e.target.value) } })); setDirty(true) }}
+                        className="w-24 px-2 py-1.5 rounded-lg text-sm font-bold outline-none"
+                        style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
+                        onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
+                        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>{sym}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={prices?.annual ?? ''}
+                        onChange={e => { setEditing(prev => ({ ...prev, [planId]: { ...prev[planId]!, annual: Number(e.target.value) } })); setDirty(true) }}
+                        className="w-24 px-2 py-1.5 rounded-lg text-sm font-bold outline-none"
+                        style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
+                        onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
+                        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
+                      />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded"
+                      style={{ background: hasConfig ? 'rgba(0,166,166,0.10)' : '#F3F4F6', color: hasConfig ? '#00A6A6' : '#9CA3AF' }}>
+                      {hasConfig ? 'Configured' : 'Rate estimate'}
+                    </span>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleSave}
+          disabled={saving || !dirty}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+          style={{ background: '#00A6A6', color: '#FFFFFF' }}
+        >
+          <Save className="w-4 h-4" />
+          {saving ? 'Saving…' : `Save ${selectedCurrency} prices`}
+        </button>
+        <button
+          onClick={() => initEditing(selectedCurrency)}
+          disabled={!dirty}
+          className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
+          style={{ background: '#F3F4F6', color: '#6B7280' }}
+        >
+          Reset
+        </button>
+        {!dirty && <span className="text-xs" style={{ color: '#9CA3AF' }}>All changes saved</span>}
       </div>
     </div>
   )
@@ -296,12 +464,13 @@ function PlanCard({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminPlansPage() {
-  const [planStats,   setPlanStats]   = useState<Record<string, PlanStats>>({})
-  const [overrides,   setOverrides]   = useState<LimitOverrides>({})
-  const [isLoading,   setIsLoading]   = useState(true)
-  const [totalMRR,    setTotalMRR]    = useState(0)
-  const [totalUsers,  setTotalUsers]  = useState(0)
-  const [saveStatus,  setSaveStatus]  = useState<string>('')
+  const [planStats,    setPlanStats]    = useState<Record<string, PlanStats>>({})
+  const [overrides,    setOverrides]    = useState<LimitOverrides>({})
+  const [pricingConfig,setPricingConfig]= useState<PricingConfig>({})
+  const [isLoading,    setIsLoading]    = useState(true)
+  const [totalMRR,     setTotalMRR]     = useState(0)
+  const [totalUsers,   setTotalUsers]   = useState(0)
+  const [saveStatus,   setSaveStatus]   = useState<string>('')
 
   useEffect(() => { loadData() }, [])
 
@@ -322,6 +491,10 @@ export default function AdminPlansPage() {
         }
         setOverrides(loaded)
       }
+
+      // Load pricing config
+      const pricingSnap = await get(ref(rtdb, 'admin/pricing'))
+      if (pricingSnap.exists()) setPricingConfig(pricingSnap.val() as PricingConfig)
 
       if (!usersSnap.exists()) { setIsLoading(false); return }
       const data = usersSnap.val() as Record<string, any>
@@ -359,6 +532,23 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus(''), 3000)
     } catch (e) {
       console.error('Failed to save limits', e)
+      setSaveStatus('Save failed — check permissions')
+      setTimeout(() => setSaveStatus(''), 4000)
+    }
+  }
+
+  async function saveCurrencyPrice(currency: SupportedCurrency, planId: PlanId, prices: CurrencyPlanPrice) {
+    try {
+      await set(ref(rtdb, `admin/pricing/${currency}/${planId}`), prices)
+      setPricingConfig(prev => ({
+        ...prev,
+        [currency]: { ...(prev[currency] ?? {}), [planId]: prices },
+      }))
+      invalidatePricingCache()
+      setSaveStatus(`${currency} prices saved`)
+      setTimeout(() => setSaveStatus(''), 3000)
+    } catch (e) {
+      console.error('Failed to save pricing', e)
       setSaveStatus('Save failed — check permissions')
       setTimeout(() => setSaveStatus(''), 4000)
     }
@@ -461,6 +651,12 @@ export default function AdminPlansPage() {
           />
         ))}
       </div>
+
+      {/* Per-currency pricing */}
+      <CurrencyPricingEditor
+        initialPricing={pricingConfig}
+        onSave={saveCurrencyPrice}
+      />
 
     </div>
   )
