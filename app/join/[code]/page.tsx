@@ -139,7 +139,7 @@ function WordCloudView({ question, onSubmit, submitted }: {
       {!submitted && !atMax && (
         <div className="flex gap-2">
           <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase…' : 'Add another…'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#EFCA08' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40" style={{ background: 'rgba(239,202,8,0.18)', color: '#8A7000', border: '2px solid rgba(239,202,8,0.40)' }}>Add</button>
+          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? '#EFCA08' : 'rgba(239,202,8,0.20)', color: '#1A1A2E', border: '2px solid transparent', boxShadow: canAdd ? '0 2px 12px rgba(239,202,8,0.35)' : 'none' }}>Add</button>
         </div>
       )}
       {!submitted && (
@@ -223,30 +223,26 @@ function NameEntryScreen({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -16 }}
-      transition={{ duration: 0.35 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
       className="min-h-screen flex flex-col"
-      style={{ background: 'linear-gradient(160deg, #E8F8F8 0%, #F0F9FF 50%, #FFF8EE 100%)' }}
+      style={{ background: '#0A0E1A' }}
     >
-      {/* Top brand strip */}
-      <div className="flex items-center justify-between px-5 pt-safe pt-5 pb-3">
+      {/* Header */}
+      <div
+        className="flex items-center justify-between px-5 py-4 shrink-0"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+      >
         <div className="flex items-center gap-2">
-          {brandLogoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={brandLogoUrl} alt={brandName || 'Brand'} className="h-8 w-auto object-contain max-w-[120px]" />
-          ) : (
-            <>
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
-                <Zap className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="text-sm font-bold" style={{ color: '#1A1A2E' }}>LiveZapp</span>
-            </>
-          )}
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
+            <Zap className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-sm font-bold text-white">LiveZapp</span>
         </div>
         {participantCount > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6' }}>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,166,166,0.15)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.25)' }}>
             <Users className="w-3 h-3" />
             {participantCount} joined
           </div>
@@ -254,36 +250,56 @@ function NameEntryScreen({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col justify-center px-6 pb-10 max-w-md mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-center px-6 pb-8 max-w-sm mx-auto w-full">
 
-        {/* Session badge */}
+        {/* Brand hero */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8 flex flex-col items-center text-center gap-3"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="mb-10 flex flex-col items-center text-center"
         >
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-1"
-            style={{ background: 'rgba(0,166,166,0.12)', border: '1.5px solid rgba(0,166,166,0.20)' }}
+          {/* Logo: presenter brand or LiveZapp */}
+          {brandLogoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={brandLogoUrl}
+              alt={brandName || 'Brand'}
+              className="h-16 w-auto object-contain max-w-[200px] mb-6"
+            />
+          ) : (
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
+              style={{
+                background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
+                boxShadow: '0 8px 32px rgba(0,166,166,0.35)',
+              }}
+            >
+              <Zap className="w-10 h-10 text-white" />
+            </div>
+          )}
+
+          {/* Session name */}
+          <p className="text-xs font-bold uppercase tracking-[0.18em] mb-3" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            You&rsquo;re joining
+          </p>
+          <h1
+            className="text-white font-black leading-tight"
+            style={{ fontSize: 'clamp(1.4rem, 5vw, 2rem)', letterSpacing: '-0.02em' }}
           >
-            <Zap className="w-8 h-8" style={{ color: '#00A6A6' }} />
-          </div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em]" style={{ color: '#9CA3AF' }}>You&rsquo;re joining</p>
-          <h2 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#1A1A2E', lineHeight: 1.3 }}>
             {sessionTitle}
-          </h2>
+          </h1>
         </motion.div>
 
-        {/* Name form */}
+        {/* Join form */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.22, duration: 0.35 }}
           className="space-y-4"
         >
           <div>
-            <label className="block text-sm font-bold mb-2" style={{ color: '#374151' }}>
+            <label className="block text-sm font-bold mb-2.5" style={{ color: 'rgba(255,255,255,0.65)' }}>
               What&rsquo;s your name?
             </label>
             <input
@@ -295,20 +311,19 @@ function NameEntryScreen({
               placeholder="Enter your name…"
               maxLength={40}
               autoComplete="given-name"
+              className="w-full outline-none transition-all"
               style={{
-                width: '100%',
                 padding: '1rem 1.25rem',
                 borderRadius: '1rem',
-                border: '2px solid #E5E7EB',
+                border: '2px solid rgba(255,255,255,0.12)',
                 fontSize: '1.1rem',
                 fontWeight: 600,
-                color: '#1A1A2E',
-                background: '#FFFFFF',
-                outline: 'none',
-                transition: 'border-color 0.2s',
+                color: '#FFFFFF',
+                background: 'rgba(255,255,255,0.07)',
+                backdropFilter: 'blur(8px)',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
-              onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.background = 'rgba(0,166,166,0.10)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
             />
           </div>
 
@@ -316,22 +331,40 @@ function NameEntryScreen({
             disabled={!nameInput.trim() || isJoining}
             onClick={onJoin}
             className="w-full flex items-center justify-center gap-3 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: '#00A6A6', color: '#FFFFFF', padding: '1.1rem', boxShadow: '0 4px 20px rgba(0,166,166,0.30)' }}
+            style={{
+              background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
+              color: '#FFFFFF',
+              padding: '1.1rem',
+              boxShadow: nameInput.trim() ? '0 6px 24px rgba(0,166,166,0.40)' : 'none',
+            }}
           >
             {isJoining ? (
               <span className="flex items-center gap-2">
-                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.30)', borderTopColor: '#FFFFFF' }} />
                 Joining…
               </span>
             ) : (
-              <>Join session <ArrowRight className="w-5 h-5" /></>
+              <>Join Session <ArrowRight className="w-5 h-5" /></>
             )}
           </button>
 
-          <p className="text-center text-xs" style={{ color: '#9CA3AF' }}>
+          <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
             No account needed · Join as a guest
           </p>
         </motion.div>
+      </div>
+
+      {/* Footer */}
+      <div
+        className="flex items-center justify-center gap-2 py-4 shrink-0"
+        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
+      >
+        <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: '#00A6A6' }}>
+          <Zap className="w-2.5 h-2.5 text-white" />
+        </div>
+        <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.25)' }}>
+          Powered by LiveZapp
+        </span>
       </div>
     </motion.div>
   )
@@ -567,18 +600,85 @@ export default function ParticipantPage() {
   // ── Session ended ──────────────────────────────────────────────────────
   if (!session.isActive) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6" style={{ background: '#F5F7FA' }}>
-        <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="text-center space-y-5 max-w-sm">
-          <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.20)' }}>
-            <CheckCircle2 className="w-10 h-10" style={{ color: '#16A34A' }} />
+      <div className="min-h-screen flex flex-col" style={{ background: '#F5F7FA' }}>
+        {/* Header */}
+        <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: '#FFFFFF' }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
+            <Zap className="w-3.5 h-3.5 text-white" />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1A1A2E' }}>Session ended</h2>
-          <p className="text-base" style={{ color: '#6B7280' }}>
-            Thanks for participating in <strong style={{ color: '#1A1A2E' }}>{session.title}</strong>!
-            {participantName && <> Great job, <strong>{participantName}</strong>!</>}
-          </p>
-          <button onClick={() => router.push('/join')} className="btn-primary mx-auto">Join another session</button>
-        </motion.div>
+          <span className="text-sm font-bold" style={{ color: '#1A1A2E' }}>LiveZapp</span>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6 max-w-sm mx-auto w-full">
+          {/* Session ended confirmation */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center space-y-4 w-full"
+          >
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.20)' }}>
+              <CheckCircle2 className="w-10 h-10" style={{ color: '#16A34A' }} />
+            </div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1A1A2E' }}>Session ended</h2>
+            <p className="text-base" style={{ color: '#6B7280' }}>
+              Thanks for joining <strong style={{ color: '#1A1A2E' }}>{session.title}</strong>
+              {participantName && <>. Great job, <strong style={{ color: '#1A1A2E' }}>{participantName}</strong>!</>}
+            </p>
+            <button
+              onClick={() => router.push('/join')}
+              className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-all"
+              style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
+            >
+              Join another session
+            </button>
+          </motion.div>
+
+          {/* Promo panel */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="w-full rounded-3xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, #0A0E1A 0%, #0F1F2E 100%)',
+              border: '1px solid rgba(0,166,166,0.20)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            }}
+          >
+            <div className="px-6 pt-6 pb-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
+                  <Zap className="w-3 h-3 text-white" />
+                </div>
+                <span className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: '#00A6A6' }}>Enjoyed the experience?</span>
+              </div>
+
+              <h3 className="font-black text-white leading-tight mb-2" style={{ fontSize: '1.2rem' }}>
+                Create your own live sessions — free
+              </h3>
+              <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                Register now and get <span className="font-bold" style={{ color: '#EFCA08' }}>Basic plan free for 3 months</span>. No credit card needed.
+              </p>
+
+              <a
+                href="/register?promo=PARTICIPANT3M"
+                className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-black text-base transition-all active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 20px rgba(0,166,166,0.35)',
+                  textDecoration: 'none',
+                }}
+              >
+                Register Free <ArrowRight className="w-4 h-4" />
+              </a>
+
+              <p className="text-center text-[11px] mt-3" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Offer auto-applied · No card required · Cancel anytime
+              </p>
+            </div>
+          </motion.div>
+        </div>
       </div>
     )
   }
