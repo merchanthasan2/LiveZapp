@@ -42,25 +42,45 @@ function bestPromo(promos: PromoCode[]): PromoCode | null {
 
 // ─── Lively Join Widget ───────────────────────────────────────────────────
 
+const DUMMY_COUNTS = [12, 18, 9, 24, 15]
+const DUMMY_MIN = Math.min(...DUMMY_COUNTS)
+
 function JoinWidget() {
   const [pulse, setPulse] = useState(0)
+  const [realCount, setRealCount] = useState<number | null>(null)
 
-  // Cycle the "live sessions" counter for visual interest
-  const liveCount = [12, 18, 9, 24, 15][pulse % 5]
+  // Cycle dummy counter
   useEffect(() => {
     const t = setInterval(() => setPulse(p => p + 1), 3000)
     return () => clearInterval(t)
   }, [])
+
+  // Subscribe to real live_sessions count
+  useEffect(() => {
+    import('firebase/database').then(({ onValue, ref: fbRef, query, orderByChild, equalTo }) => {
+      const q = query(fbRef(rtdb, 'live_sessions'), orderByChild('isActive'), equalTo(true))
+      const unsub = onValue(q, snap => {
+        setRealCount(snap.exists() ? Object.keys(snap.val()).length : 0)
+      }, () => {})
+      return unsub
+    }).catch(() => {})
+  }, [])
+
+  // Show real count only when it's >= dummy minimum, otherwise show cycling dummy
+  const displayCount = (realCount !== null && realCount >= DUMMY_MIN)
+    ? realCount
+    : DUMMY_COUNTS[pulse % DUMMY_COUNTS.length]
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: 0.2 }}
+      className="self-start"
     >
-      <Link href="/join" className="block group">
+      <Link href="/join" className="block group w-full sm:w-[70%]">
         <div
-          className="relative overflow-hidden rounded-3xl p-6 transition-all duration-300 group-hover:scale-[1.015]"
+          className="relative overflow-hidden rounded-3xl p-5 transition-all duration-300 group-hover:scale-[1.02]"
           style={{
             background: 'linear-gradient(135deg, #0A1628 0%, #002952 60%, #003D7A 100%)',
             boxShadow: '0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)',
@@ -86,7 +106,7 @@ function JoinWidget() {
                 animate={{ scale: [1, 1.08, 1] }}
                 transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <Image src="/LiveZapp Logo only.png" alt="Live-Zapp" width={40} height={40} className="w-9 h-9 object-contain" />
+                <Image src="/LiveZapp Logo only.png" alt="Live-Zapp" width={52} height={52} className="w-12 h-12 object-contain" />
               </motion.div>
 
               <div>
@@ -99,7 +119,7 @@ function JoinWidget() {
                   />
                   <AnimatePresence mode="wait">
                     <motion.span
-                      key={liveCount}
+                      key={displayCount}
                       initial={{ opacity: 0, y: -6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 6 }}
@@ -107,7 +127,7 @@ function JoinWidget() {
                       className="text-xs font-bold"
                       style={{ color: '#22C55E' }}
                     >
-                      {liveCount} sessions live now
+                      {displayCount} sessions live now
                     </motion.span>
                   </AnimatePresence>
                 </div>
