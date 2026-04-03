@@ -5,13 +5,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import {
-  Menu, X, LogOut, LayoutDashboard, Shield, Sun, Moon,
+  Menu, X, LogOut, LayoutDashboard, Shield,
   ChevronDown, User, Settings, CreditCard, TrendingUp, ArrowUpRight,
-  BarChart3, Users, Tag,
+  BarChart3, Users, Tag, Zap,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/hooks/useAuth'
-import { useTheme } from '@/lib/contexts/ThemeContext'
 import { PLANS } from '@/types/plans'
 
 const navLinks = [
@@ -21,12 +20,11 @@ const navLinks = [
   { label: 'Contact',      href: '/contact' },
 ]
 
-// Plan badge colours (on the white navbar)
 const planBadgeStyle: Record<string, { bg: string; color: string }> = {
-  free:    { bg: '#F3F4F6',  color: '#6B7280' },
-  basic:   { bg: '#00A6A6',  color: '#fff' },
-  regular: { bg: '#EFCA08',  color: '#1A1A2E' },
-  pro:     { bg: '#F08700',  color: '#fff' },
+  free:    { bg: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.70)' },
+  basic:   { bg: '#ffc300',               color: '#000814' },
+  regular: { bg: '#1e96fc',               color: '#FFFFFF' },
+  pro:     { bg: '#ffd60a',               color: '#000814' },
 }
 
 export default function Navbar() {
@@ -35,7 +33,6 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false)
   const pathname = usePathname()
   const { user, isAdmin, logout, isLoading } = useAuth()
-  const { isDark, toggleTheme } = useTheme()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,7 +43,6 @@ export default function Navbar() {
 
   useEffect(() => { setMobileOpen(false); setProfileOpen(false) }, [pathname])
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -74,26 +70,29 @@ export default function Navbar() {
       <header
         className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
         style={{
-          background: scrolled ? 'rgba(255,255,255,0.98)' : 'rgba(255,255,255,0.94)',
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderBottom: `2px solid ${scrolled ? 'rgba(0,166,166,0.30)' : 'rgba(0,166,166,0.18)'}`,
-          boxShadow: scrolled ? '0 2px 12px rgba(0,166,166,0.08)' : 'none',
+          background: scrolled
+            ? 'rgba(0,8,20,0.97)'
+            : 'rgba(0,8,20,0.90)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: `1px solid ${scrolled ? 'rgba(255,195,0,0.20)' : 'rgba(255,255,255,0.07)'}`,
+          boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.50)' : 'none',
         }}
       >
         <nav className="section-container" aria-label="Primary navigation">
           <div className="flex items-center justify-between h-20">
 
             {/* Logo */}
-            <Link href="/" aria-label="LiveZapp Home">
-              <Image
-                src="/LiveZapp Logo w_text.png"
-                alt="LiveZapp"
-                width={220}
-                height={60}
-                className="h-12 w-auto object-contain"
-                priority
-              />
+            <Link href="/" aria-label="LiveZapp Home" className="flex items-center gap-2.5 shrink-0">
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', boxShadow: '0 2px 12px rgba(255,195,0,0.40)' }}
+              >
+                <Zap className="w-4 h-4" style={{ color: '#000814' }} />
+              </div>
+              <span className="text-lg font-black tracking-tight" style={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}>
+                Live<span style={{ color: '#ffc300' }}>Zapp</span>
+              </span>
             </Link>
 
             {/* Desktop Nav */}
@@ -106,9 +105,21 @@ export default function Navbar() {
                       href={link.href}
                       className="px-4 py-2 rounded-xl text-sm transition-all duration-200"
                       style={{
-                        color: isActive ? '#00A6A6' : '#374151',
-                        background: isActive ? 'rgba(0,166,166,0.08)' : 'transparent',
+                        color: isActive ? '#ffc300' : 'rgba(255,255,255,0.65)',
+                        background: isActive ? 'rgba(255,195,0,0.10)' : 'transparent',
                         fontWeight: isActive ? 600 : 500,
+                      }}
+                      onMouseEnter={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.color = '#FFFFFF'
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isActive) {
+                          e.currentTarget.style.color = 'rgba(255,255,255,0.65)'
+                          e.currentTarget.style.background = 'transparent'
+                        }
                       }}
                     >
                       {link.label}
@@ -120,40 +131,41 @@ export default function Navbar() {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex items-center gap-2.5">
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-xl transition-all"
-                style={{ color: isDark ? '#EFCA08' : '#6B7280', background: isDark ? 'rgba(239,202,8,0.10)' : 'rgba(0,0,0,0.04)' }}
-                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-
               {!isLoading && user ? (
                 <>
-                  <Link href="/app/dashboard" className="btn-ghost text-sm px-4 py-2">
+                  <Link
+                    href="/app/dashboard"
+                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all"
+                    style={{ color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.12)'; e.currentTarget.style.color = '#ffc300'; e.currentTarget.style.borderColor = 'rgba(255,195,0,0.25)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)' }}
+                  >
                     <LayoutDashboard className="w-3.5 h-3.5" />
                     Dashboard
                   </Link>
 
-                  {/* ── Profile dropdown trigger ── */}
+                  {/* Profile dropdown */}
                   <div className="relative" ref={dropdownRef}>
                     <button
                       onClick={() => setProfileOpen(o => !o)}
-                      className="flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl transition-all hover:bg-black/5"
-                      style={{ borderLeft: '1px solid #E5E7EB' }}
+                      className="flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl transition-all"
+                      style={{
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        background: profileOpen ? 'rgba(255,195,0,0.10)' : 'transparent',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.08)' }}
+                      onMouseLeave={e => { if (!profileOpen) e.currentTarget.style.background = 'transparent' }}
                       aria-expanded={profileOpen}
                       aria-label="Account menu"
                     >
                       <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
-                        style={{ background: '#00A6A6', boxShadow: '0 2px 8px rgba(0,166,166,0.25)' }}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+                        style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814', boxShadow: '0 2px 8px rgba(255,195,0,0.30)' }}
                       >
                         {initials}
                       </div>
                       <div className="hidden lg:block text-left">
-                        <p className="text-xs font-semibold leading-tight" style={{ color: '#1A1A2E' }}>
+                        <p className="text-xs font-semibold leading-tight" style={{ color: '#FFFFFF' }}>
                           {user.name}
                         </p>
                         <span
@@ -166,13 +178,13 @@ export default function Navbar() {
                       <ChevronDown
                         className="w-3.5 h-3.5 transition-transform ml-0.5"
                         style={{
-                          color: '#9CA3AF',
+                          color: 'rgba(255,255,255,0.40)',
                           transform: profileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
                         }}
                       />
                     </button>
 
-                    {/* ── Dropdown panel ── */}
+                    {/* Dropdown panel */}
                     <AnimatePresence>
                       {profileOpen && (
                         <motion.div
@@ -182,44 +194,44 @@ export default function Navbar() {
                           transition={{ duration: 0.15 }}
                           className="absolute right-0 mt-2 w-72 rounded-2xl overflow-hidden"
                           style={{
-                            background: '#FFFFFF',
-                            border: '1px solid #E5E7EB',
-                            boxShadow: '0 16px 48px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)',
+                            background: '#001d3d',
+                            border: '1px solid rgba(255,255,255,0.10)',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.60), 0 2px 8px rgba(0,0,0,0.30)',
                             zIndex: 60,
                           }}
                         >
                           {/* Profile header */}
-                          <div className="px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
+                          <div className="px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                             <div
-                              className="w-11 h-11 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0"
-                              style={{ background: '#00A6A6', boxShadow: '0 2px 8px rgba(0,166,166,0.25)' }}
+                              className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
+                              style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814', boxShadow: '0 2px 8px rgba(255,195,0,0.30)' }}
                             >
                               {initials}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-bold truncate" style={{ color: '#111111' }}>{user.name}</p>
-                              <p className="text-xs truncate" style={{ color: '#9CA3AF' }}>{user.email}</p>
+                              <p className="text-sm font-bold truncate" style={{ color: '#FFFFFF' }}>{user.name}</p>
+                              <p className="text-xs truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>{user.email}</p>
                             </div>
                           </div>
 
                           {/* Plan status */}
                           <div
                             className="px-4 py-3 flex items-center justify-between"
-                            style={{ borderBottom: '1px solid #F3F4F6', background: '#FAFAFA' }}
+                            style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.20)' }}
                           >
                             <div>
-                              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>Current Plan</p>
+                              <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.35)' }}>Current Plan</p>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className="text-xs font-black uppercase px-2 py-0.5 rounded-md" style={{ background: badge.bg, color: badge.color }}>
                                   {plan.name}
                                 </span>
-                                {isPlanExpired && <span className="text-xs text-red-500 font-semibold">Expired</span>}
+                                {isPlanExpired && <span className="text-xs font-semibold" style={{ color: '#EF4444' }}>Expired</span>}
                                 {user.planCancelledAt && !isPlanExpired && (
-                                  <span className="text-xs font-semibold" style={{ color: '#F08700' }}>Cancelled</span>
+                                  <span className="text-xs font-semibold" style={{ color: 'rgba(255,195,0,0.80)' }}>Cancelled</span>
                                 )}
                               </div>
                               {user.planExpiresAt && plan.id !== 'free' && (
-                                <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>
+                                <p className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
                                   {isPlanExpired ? 'Expired' : user.billingCycle === 'annual' ? 'Renews' : 'Next billing'}:
                                   {' '}{new Date(user.planExpiresAt).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' })}
                                 </p>
@@ -228,8 +240,10 @@ export default function Navbar() {
                             <Link
                               href="/plans"
                               onClick={() => setProfileOpen(false)}
-                              className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors"
-                              style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6' }}
+                              className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all"
+                              style={{ background: 'rgba(255,195,0,0.15)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.25)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#ffc300'; e.currentTarget.style.color = '#000814' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.15)'; e.currentTarget.style.color = '#ffc300' }}
                             >
                               {plan.id === 'free' || isPlanExpired ? 'Upgrade' : 'Change'}
                               <ArrowUpRight className="w-3 h-3" />
@@ -238,34 +252,18 @@ export default function Navbar() {
 
                           {/* Menu items */}
                           <nav className="py-1.5">
-                            <DropdownItem
-                              icon={User}
-                              label="My Profile"
-                              sublabel="Name, phone, address"
-                              href="/app/settings?tab=profile"
-                              onClick={() => setProfileOpen(false)}
-                            />
-                            <DropdownItem
-                              icon={CreditCard}
-                              label="Subscription"
-                              sublabel="Upgrade, downgrade, cancel"
-                              href="/app/settings?tab=subscription"
-                              onClick={() => setProfileOpen(false)}
-                            />
-                            <DropdownItem
-                              icon={Settings}
-                              label="Brand Settings"
-                              sublabel="Logo, colours, session footer"
-                              href="/app/settings?tab=branding"
-                              onClick={() => setProfileOpen(false)}
-                            />
+                            <DropdownItem icon={User}       label="My Profile"     sublabel="Name, phone, address"       href="/app/settings?tab=profile"      onClick={() => setProfileOpen(false)} />
+                            <DropdownItem icon={CreditCard} label="Subscription"   sublabel="Upgrade, downgrade, cancel"  href="/app/settings?tab=subscription"  onClick={() => setProfileOpen(false)} />
+                            <DropdownItem icon={Settings}   label="Brand Settings" sublabel="Logo, colours, session footer" href="/app/settings?tab=branding"   onClick={() => setProfileOpen(false)} />
                             {plan.id === 'free' && (
                               <div className="mx-3 my-1.5">
                                 <Link
                                   href="/plans"
                                   onClick={() => setProfileOpen(false)}
                                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
-                                  style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
+                                  style={{ background: 'rgba(255,195,0,0.12)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.22)' }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = '#ffc300'; e.currentTarget.style.color = '#000814' }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.12)'; e.currentTarget.style.color = '#ffc300' }}
                                 >
                                   <TrendingUp className="w-3.5 h-3.5" />
                                   Upgrade your plan
@@ -275,48 +273,46 @@ export default function Navbar() {
                             )}
                           </nav>
 
-                          {/* Admin Panel — admins only */}
+                          {/* Admin Panel */}
                           {isAdmin && (
-                            <div className="px-3 pb-2" style={{ borderTop: '1px solid #F3F4F6' }}>
-                              <p className="text-[9px] font-bold uppercase tracking-[0.16em] px-1 pt-3 pb-1.5" style={{ color: '#9CA3AF' }}>
+                            <div className="px-3 pb-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                              <p className="text-[9px] font-bold uppercase tracking-[0.16em] px-1 pt-3 pb-1.5" style={{ color: 'rgba(255,255,255,0.30)' }}>
                                 Admin
                               </p>
                               <Link
                                 href="/admin"
                                 onClick={() => setProfileOpen(false)}
-                                className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all group"
-                                style={{ background: 'rgba(240,135,0,0.08)', border: '1px solid rgba(240,135,0,0.18)' }}
-                                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(240,135,0,0.16)')}
-                                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(240,135,0,0.08)')}
+                                className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
+                                style={{ background: 'rgba(255,195,0,0.08)', border: '1px solid rgba(255,195,0,0.18)' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.18)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.08)' }}
                               >
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#F08700' }}>
-                                  <Shield className="w-4 h-4 text-white" />
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#ffc300' }}>
+                                  <Shield className="w-4 h-4" style={{ color: '#000814' }} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-bold" style={{ color: '#1A1A2E' }}>Admin Panel</p>
-                                  <p className="text-[11px] leading-none mt-0.5" style={{ color: '#C07800' }}>Platform management</p>
+                                  <p className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Admin Panel</p>
+                                  <p className="text-[11px] leading-none mt-0.5" style={{ color: '#ffc300' }}>Platform management</p>
                                 </div>
-                                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" style={{ color: '#F08700' }} />
+                                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" style={{ color: '#ffc300' }} />
                               </Link>
-
-                              {/* Quick admin links */}
                               <div className="grid grid-cols-3 gap-1.5 mt-2">
                                 {[
-                                  { icon: Users,    label: 'Users',    href: '/admin/users' },
-                                  { icon: BarChart3, label: 'Revenue',  href: '/admin/financials' },
-                                  { icon: Tag,      label: 'Promos',   href: '/admin/promos' },
+                                  { icon: Users,    label: 'Users',   href: '/admin/users' },
+                                  { icon: BarChart3, label: 'Revenue', href: '/admin/financials' },
+                                  { icon: Tag,      label: 'Promos',  href: '/admin/promos' },
                                 ].map(({ icon: Icon, label, href }) => (
                                   <Link
                                     key={href}
                                     href={href}
                                     onClick={() => setProfileOpen(false)}
                                     className="flex flex-col items-center gap-1 py-2 rounded-xl text-center transition-all"
-                                    style={{ background: 'rgba(240,135,0,0.06)', border: '1px solid rgba(240,135,0,0.12)' }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(240,135,0,0.14)')}
-                                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(240,135,0,0.06)')}
+                                    style={{ background: 'rgba(255,195,0,0.06)', border: '1px solid rgba(255,195,0,0.12)' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.16)' }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.06)' }}
                                   >
-                                    <Icon className="w-3.5 h-3.5" style={{ color: '#F08700' }} />
-                                    <span className="text-[10px] font-semibold" style={{ color: '#374151' }}>{label}</span>
+                                    <Icon className="w-3.5 h-3.5" style={{ color: '#ffc300' }} />
+                                    <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{label}</span>
                                   </Link>
                                 ))}
                               </div>
@@ -324,15 +320,16 @@ export default function Navbar() {
                           )}
 
                           {/* Sign out */}
-                          <div style={{ borderTop: '1px solid #F3F4F6' }} className="py-1.5">
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} className="py-1.5">
                             <button
                               onClick={() => { setProfileOpen(false); logout() }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors hover:bg-red-50 group"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-all group"
+                              style={{ color: 'rgba(255,255,255,0.55)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.color = '#EF4444' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' }}
                             >
-                              <LogOut className="w-4 h-4 flex-shrink-0" style={{ color: '#9CA3AF' }} />
-                              <span style={{ color: '#374151' }} className="group-hover:text-red-600 transition-colors">
-                                Sign out
-                              </span>
+                              <LogOut className="w-4 h-4 flex-shrink-0" />
+                              Sign out
                             </button>
                           </div>
                         </motion.div>
@@ -342,16 +339,16 @@ export default function Navbar() {
                 </>
               ) : !isLoading ? (
                 <>
-                  <Link href="/login"    className="btn-ghost text-sm px-5 py-2.5">Login</Link>
-                  <Link href="/register" className="btn-primary text-sm px-5 py-2.5">Get started</Link>
+                  <Link href="/login" className="btn-ghost text-sm px-5 py-2.5">Login</Link>
+                  <Link href="/register" className="btn-primary text-sm px-5 py-2.5">Get started free</Link>
                 </>
               ) : null}
             </div>
 
             {/* Mobile hamburger */}
             <button
-              className="md:hidden p-2 rounded-xl transition-colors"
-              style={{ color: '#374151' }}
+              className="md:hidden p-2 rounded-xl transition-all"
+              style={{ color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)' }}
               onClick={() => setMobileOpen(o => !o)}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
@@ -363,21 +360,20 @@ export default function Navbar() {
         </nav>
       </header>
 
-      {/* ── Mobile slide-over ──────────────────────────────────────────────── */}
+      {/* Mobile slide-over */}
       <AnimatePresence>
         {mobileOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden"
+              className="fixed inset-0 z-40 md:hidden"
+              style={{ background: 'rgba(0,8,20,0.70)', backdropFilter: 'blur(4px)' }}
               onClick={() => setMobileOpen(false)}
               aria-hidden="true"
             />
 
-            {/* Panel */}
             <motion.div
               id="mobile-menu"
               initial={{ x: '100%' }}
@@ -387,39 +383,42 @@ export default function Navbar() {
               className="fixed top-0 right-0 bottom-0 z-50 flex flex-col md:hidden"
               style={{
                 width: 'min(288px, 88vw)',
-                background: '#FFFFFF',
-                borderLeft: '1px solid #E5E7EB',
-                boxShadow: '-4px 0 24px rgba(0,0,0,0.10)',
+                background: '#001d3d',
+                borderLeft: '1px solid rgba(255,255,255,0.08)',
+                boxShadow: '-8px 0 40px rgba(0,0,0,0.50)',
               }}
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid #E5E7EB' }}>
-                <Image src="/LiveZapp Logo w_text.png" alt="LiveZapp" width={120} height={36} className="h-8 w-auto object-contain" />
-                <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg" style={{ color: '#6B7280' }} aria-label="Close menu">
+              <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)' }}>
+                    <Zap className="w-3.5 h-3.5" style={{ color: '#000814' }} />
+                  </div>
+                  <span className="text-base font-black" style={{ color: '#FFFFFF' }}>
+                    Live<span style={{ color: '#ffc300' }}>Zapp</span>
+                  </span>
+                </div>
+                <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg transition-all" style={{ color: 'rgba(255,255,255,0.50)', background: 'rgba(255,255,255,0.07)' }} aria-label="Close menu">
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              {/* Scrollable body */}
               <div className="flex-1 overflow-y-auto">
-
                 {/* User card */}
                 {user && (
-                  <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
+                  <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: '#00A6A6' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814' }}>
                         {initials}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate" style={{ color: '#111111' }}>{user.name}</p>
-                        <p className="text-[11px] truncate" style={{ color: '#9CA3AF' }}>{user.email}</p>
+                        <p className="text-sm font-bold truncate" style={{ color: '#FFFFFF' }}>{user.name}</p>
+                        <p className="text-[11px] truncate" style={{ color: 'rgba(255,255,255,0.40)' }}>{user.email}</p>
                       </div>
                       <span className="text-[9px] font-black uppercase tracking-wide px-2 py-1 rounded-lg shrink-0" style={{ background: badge.bg, color: badge.color }}>
                         {plan.name}
                       </span>
                     </div>
-
-                    {/* Quick account links */}
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
                         { label: 'Profile',      href: '/app/settings?tab=profile' },
@@ -427,8 +426,8 @@ export default function Navbar() {
                         { label: 'Branding',     href: '/app/settings?tab=branding' },
                       ].map(({ label, href }) => (
                         <Link key={href} href={href}
-                          className="text-center text-[11px] font-semibold py-2 rounded-lg transition-colors"
-                          style={{ background: '#F3F4F6', color: '#374151' }}
+                          className="text-center text-[11px] font-semibold py-2 rounded-lg transition-all"
+                          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.08)' }}
                         >
                           {label}
                         </Link>
@@ -437,31 +436,31 @@ export default function Navbar() {
                   </div>
                 )}
 
-                {/* App nav */}
                 {user && (
-                  <div className="px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: '#9CA3AF' }}>App</p>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>App</p>
                     <Link href="/app/dashboard"
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                      style={{ color: '#1A1A2E' }}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                      style={{ color: 'rgba(255,255,255,0.75)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.10)'; e.currentTarget.style.color = '#ffc300' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)' }}
                     >
-                      <LayoutDashboard className="w-4 h-4 shrink-0" style={{ color: '#00A6A6' }} />
+                      <LayoutDashboard className="w-4 h-4 shrink-0" style={{ color: '#ffc300' }} />
                       Dashboard
                     </Link>
                   </div>
                 )}
 
-                {/* Admin section — admins only */}
                 {user && isAdmin && (
-                  <div className="px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
-                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: '#9CA3AF' }}>Admin</p>
+                  <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>Admin</p>
                     <Link href="/admin"
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold mb-2 transition-all"
-                      style={{ background: 'rgba(240,135,0,0.10)', border: '1px solid rgba(240,135,0,0.22)', color: '#1A1A2E' }}
+                      style={{ background: 'rgba(255,195,0,0.10)', border: '1px solid rgba(255,195,0,0.22)', color: '#FFFFFF' }}
                     >
-                      <Shield className="w-4 h-4 shrink-0" style={{ color: '#F08700' }} />
+                      <Shield className="w-4 h-4 shrink-0" style={{ color: '#ffc300' }} />
                       Admin Panel
-                      <ArrowUpRight className="w-3.5 h-3.5 ml-auto shrink-0" style={{ color: '#F08700' }} />
+                      <ArrowUpRight className="w-3.5 h-3.5 ml-auto shrink-0" style={{ color: '#ffc300' }} />
                     </Link>
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
@@ -473,8 +472,8 @@ export default function Navbar() {
                         { label: 'Settings', href: '/admin/settings' },
                       ].map(({ label, href }) => (
                         <Link key={href} href={href}
-                          className="text-center text-[11px] font-semibold py-2 rounded-lg transition-colors"
-                          style={{ background: 'rgba(240,135,0,0.08)', color: '#C07800', border: '1px solid rgba(240,135,0,0.15)' }}
+                          className="text-center text-[11px] font-semibold py-2 rounded-lg transition-all"
+                          style={{ background: 'rgba(255,195,0,0.08)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.15)' }}
                         >
                           {label}
                         </Link>
@@ -483,52 +482,39 @@ export default function Navbar() {
                   </div>
                 )}
 
-                {/* Public nav links */}
-                <nav className="px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: '#9CA3AF' }}>Site</p>
+                <nav className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>Site</p>
                   {navLinks.map(link => (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-                      style={{ color: '#374151' }}
+                      className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+                      style={{ color: 'rgba(255,255,255,0.65)' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.65)'; e.currentTarget.style.background = 'transparent' }}
                     >
                       {link.label}
                     </Link>
                   ))}
                 </nav>
 
-                {/* Theme toggle */}
-                <div className="px-4 py-3" style={{ borderBottom: '1px solid #F3F4F6' }}>
-                  <button
-                    onClick={toggleTheme}
-                    className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                    style={{ color: '#374151' }}
-                  >
-                    {isDark ? <Sun className="w-4 h-4 shrink-0" style={{ color: '#EFCA08' }} /> : <Moon className="w-4 h-4 shrink-0" style={{ color: '#6B7280' }} />}
-                    {isDark ? 'Light mode' : 'Dark mode'}
-                  </button>
-                </div>
-
-                {/* Auth actions */}
                 <div className="px-4 py-4">
                   {user ? (
                     <button
                       onClick={logout}
-                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                      style={{ color: '#EF4444', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)' }}
+                      className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                      style={{ color: '#EF4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}
                     >
                       <LogOut className="w-4 h-4 shrink-0" />
                       Sign out
                     </button>
                   ) : (
                     <div className="flex flex-col gap-2">
-                      <Link href="/login"    className="btn-ghost text-sm text-center">Login</Link>
+                      <Link href="/login" className="btn-ghost text-sm text-center">Login</Link>
                       <Link href="/register" className="btn-primary text-sm text-center">Get started free</Link>
                     </div>
                   )}
                 </div>
-
               </div>
             </motion.div>
           </>
@@ -538,7 +524,6 @@ export default function Navbar() {
   )
 }
 
-// ─── Reusable dropdown item ───────────────────────────────────────────────────
 function DropdownItem({
   icon: Icon, label, sublabel, href, onClick,
 }: {
@@ -552,17 +537,20 @@ function DropdownItem({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-gray-50 group"
+      className="flex items-center gap-3 px-4 py-2.5 transition-all group"
+      style={{ color: 'rgba(255,255,255,0.75)' }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.07)' }}
+      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
       <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors group-hover:bg-teal-50"
-        style={{ background: '#F3F4F6' }}
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all"
+        style={{ background: 'rgba(255,255,255,0.07)' }}
       >
-        <Icon className="w-4 h-4 transition-colors" style={{ color: '#6B7280' }} />
+        <Icon className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.50)' }} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold" style={{ color: '#374151' }}>{label}</p>
-        <p className="text-[11px] leading-none mt-0.5" style={{ color: '#9CA3AF' }}>{sublabel}</p>
+        <p className="text-sm font-semibold" style={{ color: '#FFFFFF' }}>{label}</p>
+        <p className="text-[11px] leading-none mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{sublabel}</p>
       </div>
     </Link>
   )
