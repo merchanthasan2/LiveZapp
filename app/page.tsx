@@ -31,8 +31,8 @@ export default function HomePage() {
   // Show loading state while auth loads
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#000814' }}>
+        <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(255,195,0,0.15)', borderTopColor: '#ffc300' }} />
       </div>
     )
   }

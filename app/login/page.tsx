@@ -52,25 +52,36 @@ export default function LoginPage() {
     }
   }
 
+  const inputStyle = (hasError: boolean) => ({
+    width: '100%', padding: '0.75rem 1rem', borderRadius: '1rem',
+    background: hasError ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)',
+    border: `1.5px solid ${hasError ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.12)'}`,
+    color: '#FFFFFF', fontSize: '0.875rem', outline: 'none',
+  })
+
   return (
-    <div className="min-h-screen flex items-center justify-center py-16 px-4">
-      <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: '#000814' }}>
+      {/* Background glows */}
+      <div className="absolute top-1/3 left-1/4 w-80 h-80 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(255,195,0,0.06) 0%, transparent 70%)', filter: 'blur(40px)' }} />
+      <div className="absolute bottom-1/3 right-1/4 w-64 h-64 rounded-full pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(30,150,252,0.05) 0%, transparent 70%)', filter: 'blur(40px)' }} />
 
       <div className="w-full max-w-md relative">
-        <div className="glass-card p-8 sm:p-10">
+        <div className="p-8 sm:p-10 rounded-3xl" style={{ background: '#001d3d', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 24px 64px rgba(0,0,0,0.50)' }}>
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center shadow-btn-primary mb-4">
-              <Zap className="w-6 h-6 text-white" />
+            <div
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', boxShadow: '0 4px 16px rgba(255,195,0,0.40)' }}
+            >
+              <Zap className="w-6 h-6" style={{ color: '#000814' }} />
             </div>
-            <h1 className="text-2xl font-bold text-text-primary">Welcome back</h1>
-            <p className="text-sm text-text-secondary mt-1">Sign in to your LiveZapp account</p>
+            <h1 className="text-2xl font-bold" style={{ color: '#FFFFFF' }}>Welcome back</h1>
+            <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.45)' }}>Sign in to your LiveZapp account</p>
           </div>
 
           {/* Form-level error */}
           {(authError || errors.root) && (
-            <div className="mb-5 px-4 py-3 rounded-2xl bg-red-50 border border-red-200 text-sm text-red-600" role="alert">
+            <div className="mb-5 px-4 py-3 rounded-2xl text-sm" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)', color: '#F87171' }} role="alert">
               {authError || errors.root?.message}
             </div>
           )}
@@ -78,7 +89,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
             {/* Email */}
             <div>
-              <label htmlFor="login-email" className="block text-sm font-medium text-text-primary mb-1.5">
+              <label htmlFor="login-email" className="block text-sm font-medium mb-1.5" style={{ color: 'rgba(255,255,255,0.75)' }}>
                 Email address
               </label>
               <input
@@ -87,22 +98,23 @@ export default function LoginPage() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 {...register('email')}
-                className={`w-full px-4 py-3 rounded-2xl bg-white/70 border text-sm text-text-primary placeholder:text-text-secondary/60 outline-none transition-all focus:ring-2 focus:ring-primary/30 focus:border-primary/60 ${
-                  errors.email ? 'border-red-300 bg-red-50/30' : 'border-white/60'
-                }`}
+                style={inputStyle(!!errors.email)}
+                onFocus={e => { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.background = 'rgba(255,195,0,0.06)' }}
+                onBlur={e => { e.currentTarget.style.borderColor = errors.email ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = errors.email ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)' }}
               />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">{errors.email.message}</p>
-              )}
+              {errors.email && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }} role="alert">{errors.email.message}</p>}
             </div>
 
             {/* Password */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label htmlFor="login-password" className="text-sm font-medium text-text-primary">
+                <label htmlFor="login-password" className="text-sm font-medium" style={{ color: 'rgba(255,255,255,0.75)' }}>
                   Password
                 </label>
-                <Link href="#" className="text-xs text-primary hover:underline">
+                <Link href="#" className="text-xs font-semibold transition-colors" style={{ color: '#ffc300' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#ffd60a' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#ffc300' }}
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -113,22 +125,21 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   placeholder="Your password"
                   {...register('password')}
-                  className={`w-full px-4 py-3 pr-11 rounded-2xl bg-white/70 border text-sm text-text-primary placeholder:text-text-secondary/60 outline-none transition-all focus:ring-2 focus:ring-primary/30 focus:border-primary/60 ${
-                    errors.password ? 'border-red-300 bg-red-50/30' : 'border-white/60'
-                  }`}
+                  style={{ ...inputStyle(!!errors.password), paddingRight: '2.75rem' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.background = 'rgba(255,195,0,0.06)' }}
+                  onBlur={e => { e.currentTarget.style.borderColor = errors.password ? 'rgba(239,68,68,0.45)' : 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = errors.password ? 'rgba(239,68,68,0.08)' : 'rgba(255,255,255,0.05)' }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: 'rgba(255,255,255,0.35)' }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">{errors.password.message}</p>
-              )}
+              {errors.password && <p className="mt-1.5 text-xs" style={{ color: '#F87171' }} role="alert">{errors.password.message}</p>}
             </div>
 
             <button
@@ -138,7 +149,7 @@ export default function LoginPage() {
             >
               {isSubmitting ? (
                 <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(0,8,20,0.25)', borderTopColor: '#000814' }} />
                   Signing in…
                 </>
               ) : (
@@ -147,9 +158,12 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-center text-sm text-text-secondary mt-7">
+          <p className="text-center text-sm mt-7" style={{ color: 'rgba(255,255,255,0.45)' }}>
             Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-primary font-semibold hover:underline">
+            <Link href="/register" className="font-semibold transition-colors" style={{ color: '#ffc300' }}
+              onMouseEnter={e => { e.currentTarget.style.color = '#ffd60a' }}
+              onMouseLeave={e => { e.currentTarget.style.color = '#ffc300' }}
+            >
               Get started free
             </Link>
           </p>

@@ -179,11 +179,11 @@ export default function RegisterPage() {
             <div
               className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
               style={{
-                background: 'linear-gradient(135deg, #5478FF, #53CBF3)',
-                boxShadow: '0 0 24px rgba(84,120,255,0.45)',
+                background: 'linear-gradient(135deg, #ffc300, #ffd60a)',
+                boxShadow: '0 0 24px rgba(255,195,0,0.45)',
               }}
             >
-              <Zap className="w-6 h-6 text-white" />
+              <Zap className="w-6 h-6" style={{ color: '#000814' }} />
             </div>
             <h1 className="text-2xl font-bold text-white">Create your account</h1>
             <p className="text-sm text-white/40 mt-1">Start free — no credit card required</p>
