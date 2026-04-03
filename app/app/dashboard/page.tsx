@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -118,6 +118,38 @@ function StatCard({ label, value, bg, textColor, subColor }: {
   )
 }
 
+function ActivityTrendChart({
+  points,
+  maxPoints,
+}: {
+  points: { label: string; count: number }[]
+  maxPoints: number
+}) {
+  return (
+    <div className="flex flex-col items-center w-full">
+      <div className="flex items-end justify-center gap-2 mt-2 h-[92px] w-full">
+        {points.map(p => {
+          const height = 10 + Math.round((p.count / maxPoints) * 72)
+          const isActive = p.count > 0
+          return (
+            <div key={p.label} className="flex flex-col items-center justify-end gap-2">
+              <div
+                className="w-2.5 rounded-full"
+                style={{
+                  height,
+                  background: isActive ? '#00A6A6' : 'rgba(0,0,0,0.08)',
+                  boxShadow: isActive ? '0 0 0 3px rgba(0,166,166,0.12)' : 'none',
+                }}
+              />
+              <p className="text-[9px] text-[#9CA3AF]">{p.label}</p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -161,6 +193,39 @@ export default function DashboardPage() {
   const totalAudience  = presentations.reduce((a, p) => a + (p.audienceSize   || 0), 0)
   const sessionsRun    = presentations.filter(p => p.status === 'completed').length
   const liveNow        = presentations.filter(p => p.status === 'live').length
+
+  const activitySeries = useMemo(() => {
+    const now = new Date()
+    const toDayKey = (d: Date) => {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+
+    const days = Array.from({ length: 7 }, (_, idx) => {
+      const d = new Date(now)
+      d.setDate(now.getDate() - (6 - idx))
+      return {
+        key: toDayKey(d),
+        label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      }
+    })
+
+    const counts: Record<string, number> = {}
+    for (const p of presentations) {
+      if (!p.updatedAt) continue
+      const d = new Date(p.updatedAt)
+      if (Number.isNaN(d.getTime())) continue
+      const key = toDayKey(d)
+      counts[key] = (counts[key] ?? 0) + 1
+    }
+
+    return days.map(d => ({ label: d.label, count: counts[d.key] ?? 0 }))
+  }, [presentations])
+
+  const activityTotal = activitySeries.reduce((a, p) => a + p.count, 0)
+  const activityMax = Math.max(...activitySeries.map(p => p.count), 1)
 
   const typeCounts = presentations.reduce<Record<string, number>>((acc, p) => {
     acc[p.type] = (acc[p.type] ?? 0) + 1
@@ -266,11 +331,19 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-black text-[#111111]">Activity Trend</h2>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <BarChart3 className="w-8 h-8 text-[#D1D5DB]" />
-            <p className="text-sm font-semibold text-[#6B7280]">No activity yet</p>
-            <p className="text-xs text-[#9CA3AF]">Create your first Zapp to see trends here</p>
-          </div>
+          {activityTotal === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8 text-center">
+              <BarChart3 className="w-8 h-8 text-[#D1D5DB]" />
+              <p className="text-sm font-semibold text-[#6B7280]">No activity yet</p>
+              <p className="text-xs text-[#9CA3AF]">Create your first Zapp to see trends here</p>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 py-6 text-center">
+              <ActivityTrendChart points={activitySeries} maxPoints={activityMax} />
+              <p className="text-sm font-semibold text-[#6B7280]">{activityTotal} updates</p>
+              <p className="text-xs text-[#9CA3AF]">Last 7 days (by last update)</p>
+            </div>
+          )}
         </div>
 
         {/* Donut: question types */}

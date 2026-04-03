@@ -36,25 +36,25 @@ Jest + RTL tests for Navbar and PricingCards. README.md, docs/architecture.md, d
 - [ ] Write presentation CRUD operations via `lib/presentations.ts`
 - [ ] Add React Query for data fetching and cache invalidation
 
-## 🔜 Phase 10 — Presentation Builder
-- [ ] `/app/create` — multi-step presentation creation wizard
-- [ ] Question types: multiple choice, poll, word cloud, open text
+## ✅ Phase 10 — Presentation Builder
+- [x] `/app/create` — multi-step presentation creation wizard
+- [x] Question editors (quiz, poll, word cloud, Q&A, feedback)
 - [ ] Preview mode before going live
 
-## 🔜 Phase 11 — Live Session Engine
-- [ ] Firebase RTDB or Firestore for real-time audience response updates
-- [ ] Presenter view: display live charts and results as responses arrive
-- [ ] Participant view: join by code, submit answers, see leaderboard
+## ✅ Phase 11 — Live Session Engine
+- [x] Firebase RTDB for real-time audience response updates
+- [x] Presenter view: display live charts and results as responses arrive
+- [x] Participant view: join by code, submit answers, see leaderboard
 
-## 🔜 Phase 12 — Admin Analytics
-- [ ] Connect `/admin` traffic chart to real data (Google Analytics / Firestore)
+## ✅ Phase 12 — Admin Analytics
+- [x] Connect `/admin` traffic chart to real data (RTDB analytics)
 - [ ] Replace mock stat cards with Firestore aggregation queries
-- [ ] Add date-range filtering for traffic charts
+- [x] Add date-range filtering for traffic charts
 
-## 🔜 Phase 13 — Payments & Plans
-- [ ] Integrate Stripe (or Razorpay for India) for subscription billing
-- [ ] Enforce plan limits on presentations, questions, and audience size server-side
-- [ ] Upgrade / downgrade flows with Stripe webhooks
+## ✅ Phase 13 — Payments & Plans
+- [x] PayPal subscription billing
+- [x] Enforce plan limits on presentations, questions, and audience size server-side
+- [ ] Upgrade / downgrade flows with payment-provider webhooks
 
 ## 🔜 Phase 14 — Polish & Launch
 - [ ] Add `/privacy` and `/terms` pages (legal content)

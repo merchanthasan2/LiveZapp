@@ -98,19 +98,20 @@
 - [x] `app/app/layout.tsx` — dark sidebar: brand wordmark, gradient-ring avatar, plan badge, glowing active nav, system status widget
 - [x] `app/app/dashboard/page.tsx` — dark broadcast-studio dashboard: Syne headings, live badge in header, type-accented presentation cards (quiz=indigo/qa=blue/feedback=green), redesigned status badges, gradient stat cards with top accent borders, usage bars with warning glow
 
-## Phase 13 — Live Session Engine
-- [ ] Firebase RTDB for real-time responses
-- [ ] Presenter view with live Recharts charts
-- [ ] Participant join by code
-- [ ] Quiz leaderboard
+## Phase 13 — Live Session Engine ✅
+- [x] Firebase RTDB for real-time responses
+- [x] Presenter view with live charts/results (current-question response visuals)
+- [x] Participant join by code
+- [x] Quiz leaderboard (shown on session end)
 
-## Phase 14 — Admin Analytics
-- [ ] Real traffic data → Recharts
+## Phase 14 — Admin Analytics ✅
+- [x] Real traffic data → Recharts (traffic analytics dashboard)
+- [x] Date-range filtering for traffic charts
 - [ ] Firestore aggregation for stat cards
 
-## Phase 15 — Payments & Launch
-- [ ] Stripe / Razorpay billing
-- [ ] Server-side plan limit enforcement (PlanLimits)
+## Phase 15 — Payments & Launch ✅
+- [x] PayPal billing (subscription billing)
+- [x] Server-side plan limit enforcement (plan caps enforced in backend services)
 - [ ] `/privacy`, `/terms`
 - [ ] SEO: sitemap.xml, robots.txt
 - [ ] Vercel deploy → livezapp.quantumstep.in

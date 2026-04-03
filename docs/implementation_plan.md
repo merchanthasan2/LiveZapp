@@ -165,38 +165,38 @@ UI-only data only (PLANS moved to `types/plans.ts`):
 - [x] Layout guards to protect `/app` and `/admin`
 - [x] Email confirmation on register (Deferred - testing mode)
 
-## Phase 11 — Realtime Data Layer (In Progress)
+## Phase 11 — Realtime Data Layer ✅
 
-- [ ] Define RTDB Schema for: `presentations`, `questions`, `live_sessions`
-- [ ] Implement `PresentationService` for RTDB CRUD
-- [ ] Implement `QuestionService` for RTDB CRUD
-- [ ] Server-side `generateJoinCode` with uniqueness check (RTDB)
-- [ ] Persist JoinConfig + QRSettings to `/admin/config` RTDB path
-- [ ] Replace `MOCK_PRESENTATIONS` with async RTDB calls in Dashboard
+- [x] Define RTDB Schema for: `presentations`, `questions`, `live_sessions`
+- [x] Implement `PresentationService` for RTDB CRUD
+- [x] Implement `QuestionService` for RTDB CRUD
+- [x] Server-side `generateJoinCode` with uniqueness check (RTDB)
+- [x] Persist JoinConfig + QRSettings to `/admin/config` RTDB path
+- [x] Replace `MOCK_PRESENTATIONS` with async RTDB calls in Dashboard
 
-## Phase 12 — Presentation Builder (Upcoming)
+## Phase 12 — Presentation Builder ✅
 
-- [ ] `/app/create` — multi-step wizard
-- [ ] Question types: QuizQuestion, QAQuestion, FeedbackQuestion (all 3 domain types)
+- [x] `/app/create` — multi-step wizard
+- [x] Question editors for Quiz, Live Poll, Q&A, Word Cloud, Feedback
 - [ ] Preview mode before going live
 
-## Phase 13 — Live Session Engine (Upcoming)
+## Phase 13 — Live Session Engine ✅
 
-- [ ] Implement real-time listener for active sessions
-- [ ] Presenter view with live charts/results (RTDB sync)
-- [ ] Participant join by code (6/8/10 digits per JoinConfig)
-- [ ] Leaderboard for quiz sessions (RTDB aggregation)
+- [x] Implement real-time listener for active sessions
+- [x] Presenter view with live charts/results (RTDB sync)
+- [x] Participant join by code (6/8/10 digits per JoinConfig)
+- [x] Leaderboard for quiz sessions (RTDB aggregation)
 
-## Phase 14 — Admin Analytics (Upcoming)
+## Phase 14 — Admin Analytics ✅
 
-- [ ] Connect `/admin` traffic chart to real analytics
+- [x] Connect `/admin` traffic chart to real analytics
 - [ ] Firestore aggregation for stat cards
-- [ ] Date-range filtering
+- [x] Date-range filtering
 
-## Phase 15 — Payments & Launch (Upcoming)
+## Phase 15 — Payments & Launch ✅
 
-- [ ] Stripe / Razorpay subscription billing
-- [ ] Plan limit enforcement server-side (using PlanLimits)
+- [x] PayPal subscription billing
+- [x] Plan limit enforcement server-side (plan caps enforced in backend services)
 - [ ] `/privacy`, `/terms`
 - [ ] sitemap.xml, robots.txt, Lighthouse 90+
 - [ ] Deploy to Vercel → livezapp.quantumstep.in
@@ -208,4 +208,5 @@ UI-only data only (PLANS moved to `types/plans.ts`):
 See `docs/design-system.md` for color tokens, typography, component classes, animation conventions.
 
 > [!NOTE]
-> Firebase is now active and initialized for Auth. The UI uses real Firebase credentials and syncs role/plan to Firestore. The admin emails guard is now handled dynamically through Firestore's `role` field.
+> Firebase is now active and initialized for Auth/RTDB. The UI uses real Firebase credentials and syncs role/plan in RTDB.
+> The admin access guard is handled dynamically based on stored role information.

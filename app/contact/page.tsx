@@ -22,6 +22,7 @@ const contactInfo = [
 
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const {
     register,
@@ -30,10 +31,21 @@ export default function ContactPage() {
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
   const onSubmit = async (data: FormValues) => {
-    // TODO: Replace with real form submission (e.g., email API, Firestore)
-    console.log('[Contact] Form submitted:', data)
-    await new Promise(r => setTimeout(r, 800))
-    setSubmitted(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!res.ok) {
+        const json = (await res.json().catch(() => null)) as { error?: string } | null
+        throw new Error(json?.error || 'Failed to send message.')
+      }
+      setSubmitted(true)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to send message.')
+    }
   }
 
   return (
@@ -87,6 +99,12 @@ export default function ContactPage() {
               </div>
             ) : (
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+                {error && (
+                  <div className="p-4 rounded-xl border border-red-300 bg-red-50/50 text-red-700">
+                    <p className="text-sm font-semibold">Could not send your message</p>
+                    <p className="text-xs mt-1">{error}</p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {/* Name */}
                   <div>

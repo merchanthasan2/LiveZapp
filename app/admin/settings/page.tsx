@@ -13,6 +13,7 @@ import {
   type QRSettings,
 } from '@/types/join'
 import { AdminConfigService } from '@/lib/services/AdminConfigService'
+import { QRCodeSVG } from 'qrcode.react'
 
 // ─── QR Code preview (SVG placeholder — replace with `qrcode.react` in Phase 9) ────
 function QRPreview({
@@ -26,27 +27,20 @@ function QRPreview({
 
   return (
     <div className="flex flex-col items-center gap-4 p-8 glass-card rounded-3xl">
-      {/* QR placeholder SVG — represents the QR grid visually */}
+      {/* Real QR for the join URL */}
       <div className="relative w-48 h-48 bg-white rounded-2xl shadow-glass flex items-center justify-center overflow-hidden border-2 border-primary/20">
-        {/* Simulated QR grid pattern */}
-        <div className="absolute inset-3 grid grid-cols-7 gap-0.5">
-          {Array.from({ length: 49 }).map((_, i) => (
-            <div
-              key={i}
-              className={`rounded-sm ${
-                // Simulate QR finder patterns at corners + random modules
-                (i < 7 && (i % 7 === 0 || i % 7 === 6)) ||
-                (i >= 42 && (i % 7 === 0 || i % 7 === 6)) ||
-                (i % 7 === 0 && i < 42) ||
-                (Math.sin(i * 7 + 3) > 0.2)
-                  ? 'bg-text-primary'
-                  : 'bg-transparent'
-              }`}
-            />
-          ))}
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          <QRCodeSVG
+            value={joinUrl}
+            size={168}
+            bgColor="#ffffff"
+            fgColor="#111111"
+            level="M"
+          />
         </div>
-        {/* LiveZapp logo in centre */}
-        <div className="z-10 w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-btn-primary">
+
+        {/* LiveZapp logo in centre (decorative overlay) */}
+        <div className="z-10 w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-btn-primary pointer-events-none">
           <QrCode className="w-5 h-5 text-white" />
         </div>
       </div>
@@ -322,7 +316,6 @@ export default function AdminSettingsPage() {
 
           <p className="text-[11px] text-text-secondary text-center">
             This preview updates live. The actual QR image is generated per session.
-            {/* TODO Phase 9: replace SVG placeholder with qrcode.react */}
           </p>
         </div>
       </div>

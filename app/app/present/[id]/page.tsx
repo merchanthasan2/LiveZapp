@@ -587,6 +587,10 @@ export default function PresentPage() {
   const [session, setSession] = useState<LiveSessionData | null>(null)
   const [isStarting, setIsStarting] = useState(false)
   const [isEnding, setIsEnding] = useState(false)
+  type LeaderboardEntry = { participantId: string; name: string; score: number }
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([])
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [isComputingLeaderboard, setIsComputingLeaderboard] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [participantCount, setParticipantCount] = useState(0)
   const [responses, setResponses] = useState<Record<string, ParticipantResponse>>({})
@@ -714,13 +718,48 @@ export default function PresentPage() {
     if (!confirm('End this session? Participants will be disconnected.')) return
     setIsEnding(true)
     try {
-      await LiveSessionService.endSession(session.joinCode, id)
-      setSession(null)
-      router.push('/app/dashboard')
+      const joinCode = session.joinCode
+      await LiveSessionService.endSession(joinCode, id)
+
+      // Compute quiz leaderboard (if the Zapp contains quiz questions).
+      setIsComputingLeaderboard(true)
+      const quizQuestions = questions.filter((q): q is QuizQuestion => q.kind === 'quiz')
+
+      const participants = await LiveSessionService.getParticipants(joinCode)
+      const scores: Record<string, number> = {}
+      const participantIds = new Set<string>()
+
+      if (quizQuestions.length > 0) {
+        const responsesByQuestion = await Promise.all(
+          quizQuestions.map(q => LiveSessionService.getResponsesForQuestion(joinCode, q.id))
+        )
+
+        quizQuestions.forEach((q, idx) => {
+          const responsesForQ = responsesByQuestion[idx] ?? {}
+          Object.entries(responsesForQ).forEach(([participantId, resp]) => {
+            participantIds.add(participantId)
+            if (typeof resp.answer === 'string' && resp.answer === q.correctOptionId) {
+              scores[participantId] = (scores[participantId] ?? 0) + (q.points ?? 0)
+            }
+          })
+        })
+      }
+
+      const entries = Array.from(participantIds).map(participantId => ({
+        participantId,
+        name: participants[participantId]?.name || 'Guest',
+        score: scores[participantId] ?? 0,
+      }))
+
+      entries.sort((a, b) => b.score - a.score)
+
+      setLeaderboardEntries(entries)
+      setShowLeaderboard(true)
     } catch (e: any) {
       setError(e.message || 'Failed to end session')
     } finally {
       setIsEnding(false)
+      setIsComputingLeaderboard(false)
     }
   }
 
@@ -793,6 +832,96 @@ export default function PresentPage() {
   const kindTextColor = currentQuestion ? (KIND_TEXT_COLOR[currentQuestion.kind] ?? '#FFFFFF') : '#FFFFFF'
   const KindIcon = currentQuestion ? (KIND_ICON[currentQuestion.kind] ?? Sparkles) : Sparkles
 
+  const handleCloseLeaderboard = () => {
+    setShowLeaderboard(false)
+    setLeaderboardEntries([])
+    router.push('/app/dashboard')
+  }
+
+  const leaderboardModal = showLeaderboard ? (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)' }}
+      onClick={() => !isComputingLeaderboard && handleCloseLeaderboard()}
+    >
+      <div
+        className="w-full max-w-lg rounded-3xl p-6"
+        style={{ background: '#FFFFFF', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="text-xl font-black" style={{ color: '#1A1A2E' }}>Quiz leaderboard</h3>
+            <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+              Top scores from this Zapp
+            </p>
+          </div>
+          <button
+            onClick={handleCloseLeaderboard}
+            disabled={isComputingLeaderboard}
+            className="px-3 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+            style={{ background: 'rgba(0,0,0,0.05)', color: '#6B7280' }}
+            title="Back to dashboard"
+          >
+            ✕
+          </button>
+        </div>
+
+        {isComputingLeaderboard ? (
+          <div className="py-10 flex flex-col items-center gap-3">
+            <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
+            <p className="text-sm" style={{ color: '#6B7280' }}>Calculating scores…</p>
+          </div>
+        ) : leaderboardEntries.length === 0 ? (
+          <div className="py-10 text-center">
+            <div className="w-14 h-14 rounded-3xl flex items-center justify-center mx-auto" style={{ background: 'rgba(0,166,166,0.10)', border: '1px solid rgba(0,166,166,0.20)' }}>
+              <BarChart3 className="w-7 h-7" style={{ color: '#00A6A6' }} />
+            </div>
+            <p className="text-sm font-semibold mt-4" style={{ color: '#1A1A2E' }}>No quiz leaderboard yet</p>
+            <p className="text-xs mt-2" style={{ color: '#6B7280' }}>Make sure the Zapp contains quiz questions and participants submit answers.</p>
+          </div>
+        ) : (
+          <div className="max-h-[52vh] overflow-y-auto pr-1">
+            {leaderboardEntries.slice(0, 10).map((entry, idx) => (
+              <div
+                key={entry.participantId}
+                className="flex items-center justify-between gap-4 py-3"
+                style={{ borderBottom: idx < Math.min(10, leaderboardEntries.length) - 1 ? '1px solid #F3F4F6' : 'none' }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-8 h-8 rounded-2xl flex items-center justify-center shrink-0 text-[12px] font-black"
+                    style={{ background: '#00A6A6', color: '#FFFFFF' }}
+                  >
+                    {idx + 1}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold truncate" style={{ color: '#1A1A2E' }}>{entry.name}</p>
+                    <p className="text-[11px] truncate" style={{ color: '#9CA3AF' }}>{entry.participantId.slice(0, 10)}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-black" style={{ color: '#00A6A6' }}>{entry.score}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>points</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={handleCloseLeaderboard}
+            disabled={isComputingLeaderboard}
+            className="btn-primary w-full disabled:opacity-60"
+          >
+            Back to dashboard
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
   // ── Pre-live setup ─────────────────────────────────────────────────────
   if (!session) {
     return (
@@ -858,6 +987,7 @@ export default function PresentPage() {
         className="fixed inset-0 z-50 flex flex-col select-none"
         style={{ background: '#0D1117' }}
       >
+        {leaderboardModal}
         {/* ── Top control bar ── */}
         <div
           className="flex items-center justify-between px-6 py-3 shrink-0 z-10"
@@ -1069,6 +1199,7 @@ export default function PresentPage() {
 
   return (
     <div ref={presenterRef} className="flex flex-col gap-4 pb-4 -mt-2" style={{ minHeight: 'calc(100vh - 90px)' }}>
+      {leaderboardModal}
 
       {/* ── Top banner ── */}
       <div
