@@ -77,7 +77,7 @@ function UKPostcodeLookup({ postcode, onResult }: {
         onClick={lookup}
         disabled={loading || !postcode.trim()}
         className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 whitespace-nowrap"
-        style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.25)' }}
+        style={{ background: 'rgba(255,195,0,0.10)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.25)' }}
       >
         {loading ? '…' : 'Look up'}
       </button>
@@ -100,9 +100,9 @@ const ACCENT_PRESETS = [
 
 // ─── Shared field style ───────────────────────────────────────────────────────
 const fieldBase = {
-  background: '#FFFFFF',
-  border: '1px solid rgba(0,0,0,0.12)',
-  color: '#111111',
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.12)',
+  color: '#FFFFFF',
   width: '100%',
   padding: '11px 14px',
   borderRadius: 12,
@@ -116,25 +116,25 @@ function FieldInput({
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; id: string; hint?: string; disabled?: boolean }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6B7280' }}>
+      <label htmlFor={id} className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
         {label}
       </label>
       <input
         id={id}
         disabled={disabled}
         style={{ ...fieldBase, opacity: disabled ? 0.45 : 1, cursor: disabled ? 'not-allowed' : 'text' }}
-        onFocus={e => { if (!disabled) { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,166,166,0.10)' } }}
-        onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
+        onFocus={e => { if (!disabled) { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,195,0,0.12)' } }}
+        onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
         {...rest}
       />
-      {hint && <p className="text-[10px] mt-1" style={{ color: '#9CA3AF' }}>{hint}</p>}
+      {hint && <p className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.38)' }}>{hint}</p>}
     </div>
   )
 }
 
 // ─── Participant preview ──────────────────────────────────────────────────────
 function ParticipantPreview({ branding }: { branding: BrandingConfig }) {
-  const accent = branding.accentColor || '#00A6A6'
+  const accent = branding.accentColor || '#ffc300'
   const hasLogo = branding.logoUrl.trim().length > 0
   const hasName = branding.brandName.trim().length > 0
 
@@ -209,13 +209,13 @@ async function compressToWebP(file: File, maxWidth = 640, quality = 0.82): Promi
 // ─── Locked overlay ───────────────────────────────────────────────────────────
 function LockedOverlay() {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl" style={{ background: 'rgba(255,255,255,0.88)', backdropFilter: 'blur(4px)' }}>
-      <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(0,166,166,0.10)', border: '1px solid rgba(0,166,166,0.25)' }}>
-        <Lock className="w-5 h-5" style={{ color: '#00A6A6' }} />
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-2xl" style={{ background: 'rgba(0,8,20,0.85)', backdropFilter: 'blur(4px)' }}>
+      <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-3" style={{ background: 'rgba(255,195,0,0.12)', border: '1px solid rgba(255,195,0,0.25)' }}>
+        <Lock className="w-5 h-5" style={{ color: '#ffc300' }} />
       </div>
-      <p className="text-sm font-bold text-[#111111] mb-1">Paid plan required</p>
-      <p className="text-xs text-[#6B7280] text-center mb-4 max-w-[200px]">Custom branding is available on Basic and above</p>
-      <Link href="/plans" className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl" style={{ background: '#00A6A6', color: '#fff' }}>
+      <p className="text-sm font-bold mb-1" style={{ color: '#FFFFFF' }}>Paid plan required</p>
+      <p className="text-xs text-center mb-4 max-w-[200px]" style={{ color: 'rgba(255,255,255,0.55)' }}>Custom branding is available on Basic and above</p>
+      <Link href="/plans" className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-xl" style={{ background: '#ffc300', color: '#000814' }}>
         Upgrade plan <ArrowRight className="w-3 h-3" />
       </Link>
     </div>
@@ -409,15 +409,15 @@ function SettingsContent() {
     >
       {/* Page header */}
       <motion.div variants={itemVars}>
-        <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: '#9CA3AF' }}>Account</p>
-        <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: '#111111' }}>Settings</h1>
+        <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: 'rgba(255,255,255,0.38)' }}>Account</p>
+        <h1 className="font-display text-3xl font-bold tracking-tight" style={{ color: '#FFFFFF' }}>Settings</h1>
       </motion.div>
 
       {/* Tab bar */}
       <motion.div
         variants={itemVars}
         className="flex gap-1 p-1 rounded-2xl"
-        style={{ background: '#F3F4F6' }}
+        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}
       >
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
@@ -426,8 +426,8 @@ function SettingsContent() {
             className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={
               activeTab === id
-                ? { background: '#FFFFFF', color: '#111111', boxShadow: '0 1px 4px rgba(0,0,0,0.10)' }
-                : { color: '#6B7280' }
+                ? { background: '#ffc300', color: '#000814', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }
+                : { color: 'rgba(255,255,255,0.55)' }
             }
           >
             <Icon className="w-3.5 h-3.5" />
@@ -447,8 +447,8 @@ function SettingsContent() {
                 <User className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold" style={{ color: '#111111' }}>Personal details</h2>
-                <p className="text-xs" style={{ color: '#6B7280' }}>Displayed on your invoices and account</p>
+                <h2 className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Personal details</h2>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Displayed on your invoices and account</p>
               </div>
             </div>
 
@@ -495,21 +495,21 @@ function SettingsContent() {
                 <MapPin className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold" style={{ color: '#111111' }}>Billing address</h2>
-                <p className="text-xs" style={{ color: '#6B7280' }}>Used for payment receipts</p>
+                <h2 className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Billing address</h2>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>Used for payment receipts</p>
               </div>
             </div>
 
             {/* Country — first so postcode lookup knows which behaviour to apply */}
             <div>
-              <label htmlFor="country" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6B7280' }}>Country</label>
+              <label htmlFor="country" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>Country</label>
               <select
                 id="country"
                 value={profile.country}
                 onChange={e => setProfile(p => ({ ...p, country: e.target.value }))}
                 style={{ ...fieldBase }}
-                onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,166,166,0.10)' }}
-                onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
+                onFocus={e => { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,195,0,0.10)' }}
+                onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
               >
                 <option value="">Select country…</option>
                 <optgroup label="Common">
@@ -527,7 +527,7 @@ function SettingsContent() {
 
             {/* Postcode — for UK triggers auto-fill of city + county */}
             <div>
-              <label htmlFor="postal" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: '#6B7280' }}>
+              <label htmlFor="postal" className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: 'rgba(255,255,255,0.55)' }}>
                 {profile.country === 'United Kingdom' ? 'Postcode' : 'Postal / ZIP code'}
               </label>
               <div className="flex gap-2">
@@ -538,8 +538,8 @@ function SettingsContent() {
                   value={profile.postalCode}
                   onChange={e => setProfile(p => ({ ...p, postalCode: e.target.value }))}
                   style={{ ...fieldBase, flex: 1 }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,166,166,0.10)' }}
-                  onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,195,0,0.10)' }}
+                  onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
                 />
                 {profile.country === 'United Kingdom' && (
                   <UKPostcodeLookup
@@ -584,9 +584,9 @@ function SettingsContent() {
           <div className="glass-card p-6">
             <div className="flex items-start justify-between mb-5">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: '#9CA3AF' }}>Active Plan</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(255,255,255,0.38)' }}>Active Plan</p>
                 <div className="flex items-center gap-2.5">
-                  <h2 className="text-2xl font-black" style={{ color: '#111111' }}>LiveZapp {plan.name}</h2>
+                  <h2 className="text-2xl font-black" style={{ color: '#FFFFFF' }}>LiveZapp {plan.name}</h2>
                   {isCancelled && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-lg" style={{ background: 'rgba(249,115,22,0.10)', color: '#F08700', border: '1px solid rgba(249,115,22,0.25)' }}>
                       Cancellation pending
@@ -602,15 +602,15 @@ function SettingsContent() {
               <div className="text-right">
                 {plan.pricePerMonth > 0 ? (
                   <>
-                    <p className="text-2xl font-black" style={{ color: '#111111' }}>
+                    <p className="text-2xl font-black" style={{ color: '#FFFFFF' }}>
                       ${user?.billingCycle === 'annual' ? plan.pricePerYear : plan.pricePerMonth}
                     </p>
-                    <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
                       per {user?.billingCycle === 'annual' ? 'year' : 'month'}
                     </p>
                   </>
                 ) : (
-                  <p className="text-2xl font-black" style={{ color: '#111111' }}>Free</p>
+                  <p className="text-2xl font-black" style={{ color: '#FFFFFF' }}>Free</p>
                 )}
               </div>
             </div>
@@ -620,13 +620,13 @@ function SettingsContent() {
               <div
                 className="flex items-center gap-3 px-4 py-3 rounded-xl mb-5"
                 style={{
-                  background: isPlanExpired ? 'rgba(239,68,68,0.06)' : isCancelled ? 'rgba(249,115,22,0.06)' : 'rgba(0,166,166,0.06)',
-                  border: `1px solid ${isPlanExpired ? 'rgba(239,68,68,0.18)' : isCancelled ? 'rgba(249,115,22,0.18)' : 'rgba(0,166,166,0.18)'}`,
+                  background: isPlanExpired ? 'rgba(239,68,68,0.06)' : isCancelled ? 'rgba(249,115,22,0.06)' : 'rgba(255,195,0,0.06)',
+                  border: `1px solid ${isPlanExpired ? 'rgba(239,68,68,0.18)' : isCancelled ? 'rgba(249,115,22,0.18)' : 'rgba(255,195,0,0.18)'}`,
                 }}
               >
                 <Calendar className="w-4 h-4 shrink-0" style={{ color: isPlanExpired ? '#EF4444' : isCancelled ? '#F08700' : '#00A6A6' }} />
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: '#374151' }}>
+                  <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
                     {isPlanExpired
                       ? 'Plan expired'
                       : isCancelled
@@ -636,7 +636,7 @@ function SettingsContent() {
                       : `Next charge ${new Date(user.planExpiresAt).toLocaleDateString('en', { day: 'numeric', month: 'long', year: 'numeric' })}`
                     }
                   </p>
-                  <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>
+                  <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>
                     {user.billingCycle === 'annual' ? 'Annual subscription' : 'Monthly subscription'}
                     {isCancelled ? ' — will not renew' : ''}
                   </p>
@@ -652,9 +652,9 @@ function SettingsContent() {
                 { label: 'Questions', value: `${plan.limits.maxQuestionsPerPresentation}` },
                 { label: 'Live at once', value: `${plan.limits.maxActiveSessions}` },
               ].map(({ label, value }) => (
-                <div key={label} className="text-center px-2 py-3 rounded-xl" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-                  <p className="text-lg font-black" style={{ color: '#111111' }}>{value}</p>
-                  <p className="text-[10px] font-semibold mt-0.5" style={{ color: '#9CA3AF' }}>{label}</p>
+                <div key={label} className="text-center px-2 py-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <p className="text-lg font-black" style={{ color: '#FFFFFF' }}>{value}</p>
+                  <p className="text-[10px] font-semibold mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{label}</p>
                 </div>
               ))}
             </div>
@@ -665,8 +665,8 @@ function SettingsContent() {
               style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.15)' }}
             >
               <Info className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#3B82F6' }} />
-              <p className="text-xs leading-relaxed" style={{ color: '#6B7280' }}>
-                <strong className="text-[#374151]">Recurring billing:</strong> Your {user?.billingCycle ?? 'monthly'} plan renews automatically each {user?.billingCycle === 'annual' ? 'year' : 'month'} via PayPal.
+              <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                <strong className="text-white/75">Recurring billing:</strong> Your {user?.billingCycle ?? 'monthly'} plan renews automatically each {user?.billingCycle === 'annual' ? 'year' : 'month'} via PayPal.
                 You will receive an email reminder before each charge. Cancel any time from this page — access continues until your billing period ends.
               </p>
             </div>
@@ -678,7 +678,7 @@ function SettingsContent() {
                 <Link
                   href="/plans"
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold transition-all"
-                  style={{ background: '#00A6A6', color: '#fff' }}
+                  style={{ background: '#ffc300', color: '#000814' }}
                 >
                   <TrendingUp className="w-4 h-4" />
                   {plan.id === 'free' ? 'Upgrade Plan' : 'Upgrade to Pro'}
@@ -690,7 +690,7 @@ function SettingsContent() {
                 <Link
                   href="/plans"
                   className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all"
-                  style={{ background: '#F3F4F6', color: '#374151', border: '1px solid #E5E7EB' }}
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.10)' }}
                 >
                   Downgrade Plan
                 </Link>
@@ -702,7 +702,7 @@ function SettingsContent() {
                   <button
                     onClick={handleReactivate}
                     className="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all"
-                    style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.25)' }}
+                    style={{ background: 'rgba(255,195,0,0.08)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.25)' }}
                   >
                     Reactivate subscription
                   </button>
@@ -722,7 +722,7 @@ function SettingsContent() {
                   <div className="flex-1 p-4 rounded-xl space-y-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.20)' }}>
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
-                      <p className="text-xs leading-relaxed" style={{ color: '#374151' }}>
+                      <p className="text-xs leading-relaxed" style={{ color: 'rgba(255,255,255,0.75)' }}>
                         <strong>Cancel subscription?</strong> Your {plan.name} plan will stay active until{' '}
                         <strong>{user?.planExpiresAt ? new Date(user.planExpiresAt).toLocaleDateString('en', { day: 'numeric', month: 'long' }) : 'end of billing period'}</strong>, then revert to Free.
                       </p>
@@ -732,7 +732,7 @@ function SettingsContent() {
                       <button onClick={handleCancel} className="flex-1 py-2 rounded-lg text-xs font-bold" style={{ background: '#EF4444', color: '#fff' }}>
                         Yes, cancel
                       </button>
-                      <button onClick={() => setCancelConfirm(false)} className="flex-1 py-2 rounded-lg text-xs font-semibold" style={{ background: '#F3F4F6', color: '#374151' }}>
+                      <button onClick={() => setCancelConfirm(false)} className="flex-1 py-2 rounded-lg text-xs font-semibold" style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.75)' }}>
                         Keep plan
                       </button>
                     </div>
@@ -742,7 +742,7 @@ function SettingsContent() {
 
               {/* Expired — renew */}
               {isPlanExpired && (
-                <Link href="/plans" className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold" style={{ background: '#00A6A6', color: '#fff' }}>
+                <Link href="/plans" className="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold" style={{ background: '#ffc300', color: '#000814' }}>
                   Renew Plan
                 </Link>
               )}
@@ -751,7 +751,7 @@ function SettingsContent() {
 
           {/* All plans comparison link */}
           <div className="text-center">
-            <Link href="/plans" className="text-sm font-semibold" style={{ color: '#00A6A6' }}>
+            <Link href="/plans" className="text-sm font-semibold" style={{ color: '#ffc300' }}>
               View all plans & pricing →
             </Link>
           </div>
@@ -765,14 +765,14 @@ function SettingsContent() {
         <motion.div variants={itemVars}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold" style={{ color: '#111111' }}>Brand Identity</h2>
-              <p className="text-sm" style={{ color: '#6B7280' }}>Customise what participants see when they join your sessions.</p>
+              <h2 className="text-base font-bold" style={{ color: '#FFFFFF' }}>Brand Identity</h2>
+              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>Customise what participants see when they join your sessions.</p>
             </div>
             <div
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold"
               style={canBrand
-                ? { background: 'rgba(0,166,166,0.10)', border: '1px solid rgba(0,166,166,0.25)', color: '#00A6A6' }
-                : { background: 'rgba(0,0,0,0.04)', border: '1px solid rgba(0,0,0,0.10)', color: '#6B7280' }
+                ? { background: 'rgba(255,195,0,0.10)', border: '1px solid rgba(255,195,0,0.25)', color: '#ffc300' }
+                : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }
               }
             >
               {canBrand ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
@@ -794,18 +794,18 @@ function SettingsContent() {
                 {!canBrand && <LockedOverlay />}
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-xl flex items-center justify-center icon-bg-primary"><Type className="w-4 h-4" /></div>
-                  <h3 className="text-sm font-bold" style={{ color: '#111111' }}>Brand name & logo</h3>
+                  <h3 className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Brand name & logo</h3>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: '#6B7280' }}>Brand name</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider mb-1.5 block" style={{ color: 'rgba(255,255,255,0.55)' }}>Brand name</label>
                   <input
                     type="text" value={branding.brandName}
                     onChange={e => updateBrand({ brandName: e.target.value })}
                     disabled={!canBrand} placeholder="e.g. Acme Corp" maxLength={60}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all disabled:opacity-40"
-                    style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.12)', color: '#111111' }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,166,166,0.10)' }}
-                    onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#ffc300'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(255,195,0,0.10)' }}
+                    onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.boxShadow = 'none' }}
                   />
                 </div>
                 {/* Logo upload */}
@@ -813,24 +813,24 @@ function SettingsContent() {
                   <div className="flex items-center gap-4 px-4 py-3 rounded-xl" style={{ background: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.08)' }}>
                     <img src={branding.logoUrl} alt="Logo" className="h-9 max-w-[80px] object-contain rounded" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold truncate" style={{ color: '#374151' }}>{branding.logoUrl.split('/').pop()}</p>
+                      <p className="text-xs font-semibold truncate" style={{ color: 'rgba(255,255,255,0.75)' }}>{branding.logoUrl.split('/').pop()}</p>
                     </div>
                     <div className="flex gap-2">
-                      <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer" style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}>
+                      <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer" style={{ background: 'rgba(255,195,0,0.08)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.20)' }}>
                         <RefreshCw className="w-3 h-3" /> Replace
                         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                       </label>
-                      <button onClick={() => updateBrand({ logoUrl: '' })} disabled={!canBrand} className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-red-500 transition-colors">
+                      <button onClick={() => updateBrand({ logoUrl: '' })} disabled={!canBrand} className="p-1.5 rounded-lg hover:text-red-500 transition-colors" style={{ color: 'rgba(255,255,255,0.38)' }}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <label className="flex flex-col items-center justify-center gap-3 py-8 rounded-xl cursor-pointer" style={{ background: 'rgba(0,166,166,0.04)', border: '2px dashed rgba(0,166,166,0.20)' }}>
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(0,166,166,0.10)' }}>
-                      {uploading ? <RefreshCw className="w-5 h-5 animate-spin" style={{ color: '#00A6A6' }} /> : <Upload className="w-5 h-5" style={{ color: '#00A6A6' }} />}
+                  <label className="flex flex-col items-center justify-center gap-3 py-8 rounded-xl cursor-pointer" style={{ background: 'rgba(255,195,0,0.04)', border: '2px dashed rgba(255,195,0,0.20)' }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,195,0,0.10)' }}>
+                      {uploading ? <RefreshCw className="w-5 h-5 animate-spin" style={{ color: '#ffc300' }} /> : <Upload className="w-5 h-5" style={{ color: '#ffc300' }} />}
                     </div>
-                    <p className="text-sm font-semibold" style={{ color: '#6B7280' }}>{uploading ? 'Uploading…' : 'Click to upload logo'}</p>
+                    <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>{uploading ? 'Uploading…' : 'Click to upload logo'}</p>
                     <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                   </label>
                 )}
@@ -841,7 +841,7 @@ function SettingsContent() {
               {/* Accent colour */}
               <div className="relative glass-card p-6 space-y-4">
                 {!canBrand && <LockedOverlay />}
-                <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl flex items-center justify-center icon-bg-secondary"><Palette className="w-4 h-4" /></div><h3 className="text-sm font-bold" style={{ color: '#111111' }}>Accent colour</h3></div>
+                <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-xl flex items-center justify-center icon-bg-secondary"><Palette className="w-4 h-4" /></div><h3 className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Accent colour</h3></div>
                 <div className="flex flex-wrap gap-2">
                   {ACCENT_PRESETS.map(p => (
                     <button key={p.value} disabled={!canBrand} onClick={() => updateBrand({ accentColor: p.value })} title={p.label}
@@ -853,11 +853,11 @@ function SettingsContent() {
                   <div className="w-10 h-10 rounded-xl shrink-0" style={{ background: branding.accentColor }} />
                   <input type="text" value={branding.accentColor}
                     onChange={e => { const v = e.target.value; if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) updateBrand({ accentColor: v }) }}
-                    disabled={!canBrand} placeholder="#00A6A6" maxLength={7}
+                    disabled={!canBrand} placeholder="#ffc300" maxLength={7}
                     className="flex-1 px-3 py-2 rounded-xl text-sm font-mono outline-none disabled:opacity-40"
-                    style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.12)', color: '#111111' }}
-                    onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
-                    onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(0,0,0,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = '#ffc300' }}
+                    onBlur={e  => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)' }}
                   />
                 </div>
               </div>
@@ -869,14 +869,14 @@ function SettingsContent() {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center icon-bg-accent"><Eye className="w-4 h-4" /></div>
                     <div>
-                      <p className="text-sm font-bold" style={{ color: '#111111' }}>Show "Powered by LiveZapp"</p>
-                      <p className="text-xs mt-0.5" style={{ color: '#9CA3AF' }}>Displays credit in participant session footer</p>
+                      <p className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Show "Powered by LiveZapp"</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>Displays credit in participant session footer</p>
                     </div>
                   </div>
                   <button disabled={!canBrand} onClick={() => updateBrand({ showPoweredBy: !branding.showPoweredBy })}
                     className="relative w-11 h-6 rounded-full flex-shrink-0 transition-all disabled:opacity-40"
-                    style={{ background: branding.showPoweredBy ? '#00A6A6' : 'rgba(0,0,0,0.12)' }}>
-                    <span className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all" style={{ left: branding.showPoweredBy ? '22px' : '2px', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
+                    style={{ background: branding.showPoweredBy ? '#ffc300' : 'rgba(255,255,255,0.15)' }}>
+                    <span className="absolute top-0.5 w-5 h-5 rounded-full transition-all" style={{ left: branding.showPoweredBy ? '22px' : '2px', background: branding.showPoweredBy ? '#000814' : '#FFFFFF', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
                   </button>
                 </div>
               </div>
@@ -894,7 +894,7 @@ function SettingsContent() {
 
             {/* Preview */}
             <div className="lg:sticky lg:top-8 self-start">
-              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: '#9CA3AF' }}>Preview</p>
+              <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(255,255,255,0.38)' }}>Preview</p>
               <ParticipantPreview branding={branding} />
             </div>
           </div>
@@ -906,7 +906,7 @@ function SettingsContent() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="py-12 text-center text-sm" style={{ color: '#9CA3AF' }}>Loading…</div>}>
+    <Suspense fallback={<div className="py-12 text-center text-sm" style={{ color: 'rgba(255,255,255,0.38)' }}>Loading…</div>}>
       <SettingsContent />
     </Suspense>
   )
