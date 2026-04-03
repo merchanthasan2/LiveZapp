@@ -17,11 +17,11 @@ import type { Presentation, PresentationStatus } from '@/types/domain'
 // ─── Constants ────────────────────────────────────────────────────────────
 
 const TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  quiz:      { label: 'Quiz',       bg: '#00A6A6', color: '#FFFFFF' }, // teal   → white text
-  qa:        { label: 'Q&A',        bg: '#EFCA08', color: '#111111' }, // amber  → black text
-  feedback:  { label: 'Feedback',   bg: '#BBDEF0', color: '#111111' }, // sky    → black text
-  poll:      { label: 'Poll',       bg: '#F49F0A', color: '#111111' }, // golden → black text (NOT white — too low contrast)
-  word_cloud:{ label: 'Word Cloud', bg: '#F08700', color: '#FFFFFF' }, // tiger  → white text
+  quiz:      { label: 'Quiz',       bg: '#ffc300',               color: '#000814' },
+  qa:        { label: 'Q&A',        bg: '#1e96fc',               color: '#FFFFFF' },
+  feedback:  { label: 'Feedback',   bg: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' },
+  poll:      { label: 'Poll',       bg: '#ffd60a',               color: '#000814' },
+  word_cloud:{ label: 'Word Cloud', bg: '#072ac8',               color: '#FFFFFF' },
 }
 
 const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -29,10 +29,10 @@ const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 
 const STATUS_CFG: Record<PresentationStatus, { label: string; bg: string; color: string; dot?: boolean }> = {
-  draft:     { label: 'Draft',     bg: '#BBDEF0', color: '#111111' }, // sky    → dark text
-  scheduled: { label: 'Scheduled', bg: '#EFCA08', color: '#111111' }, // amber  → dark text
-  live:      { label: 'Live',      bg: '#F08700', color: '#FFFFFF', dot: true }, // tiger → white text
-  completed: { label: 'Done',      bg: '#00A6A6', color: '#FFFFFF' }, // teal   → white text
+  draft:     { label: 'Draft',     bg: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.60)' },
+  scheduled: { label: 'Scheduled', bg: '#ffd60a',               color: '#000814' },
+  live:      { label: 'Live',      bg: '#ffc300',               color: '#000814', dot: true },
+  completed: { label: 'Done',      bg: 'rgba(30,150,252,0.20)', color: '#1e96fc' },
 }
 
 
@@ -74,8 +74,8 @@ function DonutChart({ total, segments }: {
           ))}
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-2xl font-black text-[#111111]">{total}</p>
-          <p className="text-[9px] text-[#9CA3AF] font-bold uppercase tracking-wide">TYPES</p>
+          <p className="text-2xl font-black" style={{ color: '#FFFFFF' }}>{total}</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.38)' }}>TYPES</p>
         </div>
       </div>
 
@@ -84,9 +84,9 @@ function DonutChart({ total, segments }: {
           <div key={i} className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />
-              <span className="text-[11px] text-[#6B7280]">{s.label}</span>
+              <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.55)' }}>{s.label}</span>
             </div>
-            <span className="text-[11px] font-bold text-[#374151]">{s.value}</span>
+            <span className="text-[11px] font-bold" style={{ color: 'rgba(255,255,255,0.75)' }}>{s.value}</span>
           </div>
         ))}
       </div>
@@ -137,11 +137,11 @@ function ActivityTrendChart({
                 className="w-2.5 rounded-full"
                 style={{
                   height,
-                  background: isActive ? '#00A6A6' : 'rgba(0,0,0,0.08)',
-                  boxShadow: isActive ? '0 0 0 3px rgba(0,166,166,0.12)' : 'none',
+                  background: isActive ? '#ffc300' : 'rgba(255,255,255,0.07)',
+                  boxShadow: isActive ? '0 0 0 3px rgba(255,195,0,0.18)' : 'none',
                 }}
               />
-              <p className="text-[9px] text-[#9CA3AF]">{p.label}</p>
+              <p className="text-[9px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{p.label}</p>
             </div>
           )
         })}
@@ -233,11 +233,11 @@ export default function DashboardPage() {
   }, {})
 
   const donutSegments = [
-    { value: typeCounts.quiz       ?? 0, color: '#00A6A6', label: 'Quiz' },
-    { value: typeCounts.qa         ?? 0, color: '#EFCA08', label: 'Q&A' },
-    { value: typeCounts.feedback   ?? 0, color: '#F08700', label: 'Feedback' },
-    { value: typeCounts.poll       ?? 0, color: '#F49F0A', label: 'Poll' },
-    { value: typeCounts.word_cloud ?? 0, color: '#6BBDD4', label: 'Word Cloud' }, // mid-blue — #BBDEF0 is too faint against white card
+    { value: typeCounts.quiz       ?? 0, color: '#ffc300', label: 'Quiz' },
+    { value: typeCounts.qa         ?? 0, color: '#1e96fc', label: 'Q&A' },
+    { value: typeCounts.feedback   ?? 0, color: '#ffd60a', label: 'Feedback' },
+    { value: typeCounts.poll       ?? 0, color: '#072ac8', label: 'Poll' },
+    { value: typeCounts.word_cloud ?? 0, color: '#a2d6f9', label: 'Word Cloud' },
   ].filter(s => s.value > 0)
 
   const donutTotal = donutSegments.reduce((a, s) => a + s.value, 0)
@@ -258,7 +258,7 @@ export default function DashboardPage() {
       {/* ── Header ────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-[#111111] tracking-tight">Dashboard</h1>
+          <h1 className="text-3xl font-black tracking-tight" style={{ color: '#FFFFFF' }}>Dashboard</h1>
           {liveNow > 0 && (
             <p className="text-sm text-[#6B7280] mt-0.5 flex items-center gap-1.5">
               <span className="live-badge"><span className="live-dot" />{liveNow} live</span>
@@ -271,9 +271,9 @@ export default function DashboardPage() {
           {/* Search */}
           <div
             className="hidden sm:flex items-center gap-2.5 px-4 py-2.5 rounded-full"
-            style={{ background: '#1A1A1A', minWidth: 260 }}
+            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)', minWidth: 260 }}
           >
-            <Search className="w-3.5 h-3.5 text-white/40 shrink-0" />
+            <Search className="w-3.5 h-3.5 shrink-0" style={{ color: 'rgba(255,255,255,0.35)' }} />
             <input
               type="text"
               placeholder="Search Zapps…"
@@ -293,34 +293,10 @@ export default function DashboardPage() {
 
       {/* ── Stat cards row ────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Zapps"
-          value={presentations.length}
-          bg="#00A6A6"
-          textColor="#FFFFFF"
-          subColor="rgba(255,255,255,0.75)"
-        />
-        <StatCard
-          label="Questions Built"
-          value={totalQuestions.toLocaleString()}
-          bg="#EFCA08"
-          textColor="#111111"
-          subColor="rgba(0,0,0,0.55)"
-        />
-        <StatCard
-          label="Audience Reached"
-          value={totalAudience > 999 ? `${(totalAudience/1000).toFixed(1)}k` : totalAudience}
-          bg="#F49F0A"
-          textColor="#111111"
-          subColor="rgba(0,0,0,0.55)"
-        />
-        <StatCard
-          label="Sessions Run"
-          value={sessionsRun}
-          bg="#F08700"
-          textColor="#FFFFFF"
-          subColor="rgba(255,255,255,0.75)"
-        />
+        <StatCard label="Total Zapps"       value={presentations.length}                                                     bg="#ffc300"               textColor="#000814"              subColor="rgba(0,8,20,0.65)" />
+        <StatCard label="Questions Built"   value={totalQuestions.toLocaleString()}                                           bg="#003566"               textColor="#FFFFFF"              subColor="rgba(255,255,255,0.55)" />
+        <StatCard label="Audience Reached"  value={totalAudience > 999 ? `${(totalAudience/1000).toFixed(1)}k` : totalAudience} bg="#001d3d"            textColor="#ffc300"             subColor="rgba(255,195,0,0.60)" />
+        <StatCard label="Sessions Run"      value={sessionsRun}                                                               bg="rgba(255,255,255,0.07)" textColor="#FFFFFF"             subColor="rgba(255,255,255,0.45)" />
       </div>
 
       {/* ── Middle row: chart + donut + recent list ────────────────────── */}
@@ -329,19 +305,19 @@ export default function DashboardPage() {
         {/* Activity trend — live data coming in Phase 11 */}
         <div className="lg:col-span-5 glass-card p-5 flex flex-col">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-black text-[#111111]">Activity Trend</h2>
+            <h2 className="text-base font-black" style={{ color: '#FFFFFF' }}>Activity Trend</h2>
           </div>
           {activityTotal === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8 text-center">
-              <BarChart3 className="w-8 h-8 text-[#D1D5DB]" />
-              <p className="text-sm font-semibold text-[#6B7280]">No activity yet</p>
-              <p className="text-xs text-[#9CA3AF]">Create your first Zapp to see trends here</p>
+              <BarChart3 className="w-8 h-8" style={{ color: 'rgba(255,255,255,0.20)' }} />
+              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.50)' }}>No activity yet</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>Create your first Zapp to see trends here</p>
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 py-6 text-center">
               <ActivityTrendChart points={activitySeries} maxPoints={activityMax} />
-              <p className="text-sm font-semibold text-[#6B7280]">{activityTotal} updates</p>
-              <p className="text-xs text-[#9CA3AF]">Last 7 days (by last update)</p>
+              <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>{activityTotal} updates</p>
+              <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Last 7 days (by last update)</p>
             </div>
           )}
         </div>
@@ -349,10 +325,10 @@ export default function DashboardPage() {
         {/* Donut: question types */}
         <div className="lg:col-span-3 glass-card p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-black text-[#111111]">Question Types</h2>
+            <h2 className="text-base font-black" style={{ color: '#FFFFFF' }}>Question Types</h2>
             <div
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-              style={{ background: '#1A1A1A' }}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}
             >
               All time
             </div>
@@ -361,7 +337,7 @@ export default function DashboardPage() {
           {donutTotal > 0 ? (
             <DonutChart total={donutTotal} segments={donutSegments} />
           ) : (
-            <div className="flex items-center justify-center h-40 text-[#9CA3AF] text-sm">
+            <div className="flex items-center justify-center h-40 text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>
               No questions yet
             </div>
           )}
@@ -369,7 +345,7 @@ export default function DashboardPage() {
 
         {/* Recent presentations */}
         <div className="lg:col-span-3 glass-card p-5 flex flex-col">
-          <h2 className="text-base font-black text-[#111111] mb-4">Recent</h2>
+          <h2 className="text-base font-black mb-4" style={{ color: '#FFFFFF' }}>Recent</h2>
 
           <div className="flex-1 space-y-0 overflow-y-auto scrollbar-hide">
             {recent.length === 0 ? (
@@ -381,14 +357,14 @@ export default function DashboardPage() {
                   <div
                     key={p.id}
                     className="flex items-center justify-between py-2.5"
-                    style={{ borderBottom: '1px solid #F3F4F6' }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div
                         className="w-6 h-6 rounded-full shrink-0"
-                        style={{ background: '#F08700' }}
+                        style={{ background: '#ffc300' }}
                       />
-                      <p className="text-sm font-semibold text-[#111111] truncate max-w-[110px]">
+                      <p className="text-sm font-semibold truncate max-w-[110px]" style={{ color: '#FFFFFF' }}>
                         {p.title}
                       </p>
                     </div>
@@ -399,7 +375,7 @@ export default function DashboardPage() {
                       >
                         {badge.label}
                       </span>
-                      <span className="text-xs font-bold text-[#374151]">
+                      <span className="text-xs font-bold" style={{ color: 'rgba(255,255,255,0.55)' }}>
                         {p.questionsCount ?? 0}q
                       </span>
                     </div>
@@ -424,10 +400,10 @@ export default function DashboardPage() {
         {/* Zapps table */}
         <div className="glass-card p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-black text-[#111111]">My Zapps</h2>
+            <h2 className="text-base font-black" style={{ color: '#FFFFFF' }}>My Zapps</h2>
             <div
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-              style={{ background: '#1A1A1A' }}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold"
+              style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)' }}
             >
               {presentations.length} total
             </div>
@@ -444,12 +420,12 @@ export default function DashboardPage() {
                   className="px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
                   style={{
                     background: isActive
-                      ? s === 'live' ? '#F08700' : '#00A6A6'
+                      ? s === 'live' ? '#ffc300' : '#ffc300'
                       : 'transparent',
-                    color: isActive ? '#fff' : '#374151',
+                    color: isActive ? '#000814' : 'rgba(255,255,255,0.55)',
                     border: isActive
                       ? 'none'
-                      : '1.5px solid rgba(0,0,0,0.12)',
+                      : '1.5px solid rgba(255,255,255,0.12)',
                   }}
                 >
                   {s === 'live' && isActive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-white mr-1 animate-pulse align-middle" />}
@@ -491,7 +467,7 @@ export default function DashboardPage() {
                     exit={{ opacity: 0 }}
                     transition={{ delay: i * 0.04 }}
                     className="flex items-center gap-3 py-2.5"
-                    style={{ borderBottom: '1px solid #F3F4F6' }}
+                    style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     {/* Dot */}
                     <div
@@ -505,8 +481,8 @@ export default function DashboardPage() {
 
                     {/* Title */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#111111] truncate">{p.title}</p>
-                      <p className="text-[10px] text-[#9CA3AF]">{p.questionsCount ?? 0} questions</p>
+                      <p className="text-sm font-semibold truncate" style={{ color: '#FFFFFF' }}>{p.title}</p>
+                      <p className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{p.questionsCount ?? 0} questions</p>
                     </div>
 
                     {/* Status badge */}
@@ -522,21 +498,30 @@ export default function DashboardPage() {
                     <div className="flex items-center gap-1 shrink-0">
                       <Link
                         href={`/app/present/${p.id}`}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#F08700] hover:bg-orange-50 transition-colors"
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.35)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#ffc300'; e.currentTarget.style.background = 'rgba(255,195,0,0.10)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; e.currentTarget.style.background = 'transparent' }}
                         title="Go Live"
                       >
                         <Play className="w-3.5 h-3.5" />
                       </Link>
                       <Link
                         href={`/app/create/${p.id}`}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#00A6A6] hover:bg-teal-50 transition-colors"
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.35)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#1e96fc'; e.currentTarget.style.background = 'rgba(30,150,252,0.10)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; e.currentTarget.style.background = 'transparent' }}
                         title="Edit"
                       >
                         <FileText className="w-3.5 h-3.5" />
                       </Link>
                       <button
                         onClick={() => setConfirmDelete(p)}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#EF4444] hover:bg-red-50 transition-colors"
+                        className="p-1.5 rounded-lg transition-colors"
+                        style={{ color: 'rgba(255,255,255,0.35)' }}
+                        onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.08)' }}
+                        onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.35)'; e.currentTarget.style.background = 'transparent' }}
                         title="Delete"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -558,25 +543,25 @@ export default function DashboardPage() {
               href="/admin"
               className="flex items-center gap-4 p-5 rounded-2xl transition-all group"
               style={{
-                background: 'linear-gradient(135deg, rgba(240,135,0,0.12) 0%, rgba(240,135,0,0.06) 100%)',
-                border: '1px solid rgba(240,135,0,0.28)',
+                background: 'rgba(255,195,0,0.08)',
+                border: '1px solid rgba(255,195,0,0.22)',
               }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg, rgba(240,135,0,0.20) 0%, rgba(240,135,0,0.10) 100%)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg, rgba(240,135,0,0.12) 0%, rgba(240,135,0,0.06) 100%)')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,195,0,0.16)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,195,0,0.08)')}
             >
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: '#F08700' }}
+                style={{ background: '#ffc300' }}
               >
-                <Shield className="w-5 h-5 text-white" />
+                <Shield className="w-5 h-5" style={{ color: '#000814' }} />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-black" style={{ color: '#1A1A2E' }}>Admin Panel</p>
-                <p className="text-xs mt-0.5" style={{ color: '#C07800' }}>Users · Revenue · Sessions · Settings</p>
+                <p className="text-sm font-black" style={{ color: '#FFFFFF' }}>Admin Panel</p>
+                <p className="text-xs mt-0.5" style={{ color: '#ffc300' }}>Users · Revenue · Sessions · Settings</p>
               </div>
               <div
                 className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-lg shrink-0"
-                style={{ background: '#F08700', color: '#FFFFFF' }}
+                style={{ background: '#ffc300', color: '#000814' }}
               >
                 Open →
               </div>
@@ -586,12 +571,12 @@ export default function DashboardPage() {
           {/* Plan usage card */}
           <div className="glass-card p-5">
             <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-black text-[#111111]">Plan Usage</h2>
+              <h2 className="text-base font-black" style={{ color: '#FFFFFF' }}>Plan Usage</h2>
               <span
                 className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-lg"
                 style={{
-                  background: plan.id === 'pro' ? '#F08700' : plan.id === 'free' ? '#6B7280' : '#00A6A6',
-                  color: '#fff',
+                  background: plan.id === 'pro' ? '#ffd60a' : plan.id === 'free' ? 'rgba(255,255,255,0.10)' : '#ffc300',
+                  color: plan.id === 'free' ? 'rgba(255,255,255,0.60)' : '#000814',
                 }}
               >
                 {plan.name}
@@ -600,9 +585,9 @@ export default function DashboardPage() {
 
             {/* Expiry notice */}
             {user?.planExpiresAt && plan.id !== 'free' && (
-              <p className="text-[10px] text-[#9CA3AF] mb-4">
+              <p className="text-[10px] mb-4" style={{ color: 'rgba(255,255,255,0.45)' }}>
                 {planLimits.isPlanExpired
-                  ? <span className="text-red-500 font-semibold">Plan expired — upgrade to continue</span>
+                  ? <span style={{ color: '#F87171', fontWeight: 600 }}>Plan expired — upgrade to continue</span>
                   : user?.planCancelledAt
                   ? `Cancelled · Access until ${new Date(user.planExpiresAt).toLocaleDateString()}`
                   : `Active until ${new Date(user.planExpiresAt).toLocaleDateString()}`
@@ -636,9 +621,9 @@ export default function DashboardPage() {
                 return (
                   <div key={label}>
                     <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-xs font-semibold text-[#374151]">{label}</span>
-                      <span className="text-xs font-bold" style={{ color: isWarn ? '#F08700' : '#9CA3AF' }}>
-                        {used}<span className="text-[#D1D5DB]">/{limit === 999 ? '∞' : limit}</span>
+                      <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{label}</span>
+                      <span className="text-xs font-bold" style={{ color: isWarn ? '#ffc300' : 'rgba(255,255,255,0.38)' }}>
+                        {used}<span style={{ color: 'rgba(255,255,255,0.25)' }}>/{limit === 999 ? '∞' : limit}</span>
                       </span>
                     </div>
                     <div className="usage-bar-track">
@@ -668,13 +653,13 @@ export default function DashboardPage() {
 
           {/* Impact stats */}
           <div className="glass-card p-5">
-            <h2 className="text-base font-black text-[#111111] mb-4">Impact</h2>
+            <h2 className="text-base font-black mb-4" style={{ color: '#FFFFFF' }}>Impact</h2>
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Sessions',   value: sessionsRun,    bg: '#00A6A6', textColor: '#FFFFFF' }, // teal   → white
-                { label: 'Live Now',   value: liveNow,        bg: '#F08700', textColor: '#FFFFFF' }, // tiger  → white
-                { label: 'Questions',  value: totalQuestions, bg: '#EFCA08', textColor: '#111111' }, // amber  → black
+                { label: 'Sessions',  value: sessionsRun,    bg: '#ffc300',               textColor: '#000814' },
+                { label: 'Live Now',  value: liveNow,        bg: 'rgba(255,255,255,0.07)', textColor: '#FFFFFF' },
+                { label: 'Questions', value: totalQuestions, bg: '#003566',               textColor: '#ffc300' },
               ].map(({ label, value, bg, textColor }) => (
                 <div
                   key={label}
@@ -687,17 +672,17 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Decorative geometric accent — nod to the Bauhaus palette */}
+            {/* Decorative geometric accent */}
             <div className="mt-4 rounded-2xl overflow-hidden h-20 relative flex items-center justify-center gap-3"
-              style={{ background: '#F0F6F9' }}>
-              <div className="w-14 h-14 rounded-full" style={{ background: '#00A6A6', opacity: 0.7 }} />
-              <div className="w-14 h-14 rounded-2xl rotate-12" style={{ background: '#EFCA08', opacity: 0.7 }} />
+              style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="w-14 h-14 rounded-full" style={{ background: '#ffc300', opacity: 0.6 }} />
+              <div className="w-14 h-14 rounded-2xl rotate-12" style={{ background: '#1e96fc', opacity: 0.5 }} />
               <div className="w-14 h-14" style={{
-                background: '#F08700', opacity: 0.7,
+                background: '#003566', opacity: 0.8,
                 clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
               }} />
-              <div className="w-10 h-10 rounded-lg" style={{ background: '#BBDEF0', border: '3px solid #00A6A6' }} />
-              <p className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-[#374151] tracking-widest uppercase opacity-40">
+              <div className="w-10 h-10 rounded-lg" style={{ background: '#003566', border: '3px solid #1e96fc' }} />
+              <p className="absolute inset-0 flex items-center justify-center text-[10px] font-black tracking-widest uppercase opacity-40" style={{ color: '#FFFFFF' }}>
                 LiveZapp
               </p>
             </div>
@@ -729,16 +714,16 @@ export default function DashboardPage() {
           >
             <div
               className="w-full max-w-sm rounded-2xl p-6 pointer-events-auto"
-              style={{ background: '#FFFFFF', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
+              style={{ background: '#001d3d', border: '1px solid rgba(255,255,255,0.10)', boxShadow: '0 24px 48px rgba(0,0,0,0.60)' }}
             >
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.1)' }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.15)' }}>
                   <AlertTriangle className="w-5 h-5" style={{ color: '#EF4444' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold" style={{ color: '#111111' }}>Delete Zapp?</h3>
-                  <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-                    <span className="font-semibold" style={{ color: '#111111' }}>&quot;{confirmDelete.title}&quot;</span> will be permanently deleted. This cannot be undone.
+                  <h3 className="text-base font-bold" style={{ color: '#FFFFFF' }}>Delete Zapp?</h3>
+                  <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                    <span className="font-semibold" style={{ color: '#FFFFFF' }}>&quot;{confirmDelete.title}&quot;</span> will be permanently deleted. This cannot be undone.
                   </p>
                 </div>
               </div>
@@ -748,7 +733,7 @@ export default function DashboardPage() {
                   onClick={() => setConfirmDelete(null)}
                   disabled={isDeleting}
                   className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
-                  style={{ background: '#F5F7FA', color: '#374151', border: '1px solid #E5E7EB' }}
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.75)', border: '1px solid rgba(255,255,255,0.12)' }}
                 >
                   Cancel
                 </button>
