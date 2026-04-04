@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
     <linearGradient id="bolt" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#F5A800"/>
-      <stop offset="50%" stop-color="#00A6A6"/>
-      <stop offset="100%" stop-color="#00C4C4"/>
+      <stop offset="0%" stop-color="#ff4fa0"/>
+      <stop offset="50%" stop-color="#7a3af0"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
     </linearGradient>
   </defs>
-  <!-- Lightning bolt shape matching the logo -->
   <polygon points="58,4 22,54 46,54 42,96 78,46 54,46" fill="url(#bolt)"/>
 </svg>

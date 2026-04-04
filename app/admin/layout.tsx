@@ -1,47 +1,55 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import {
-  LayoutDashboard, TrendingUp, Globe, Wrench,
-  Zap, Settings2, LogOut, Shield, ChevronRight, Users,
-  Activity, ClipboardList, Search,
+  BarChart3,
+  CircleDollarSign,
+  Megaphone,
+  Search,
+  Settings,
+  Shield,
+  UserCog,
+  Wallet,
+  Bell,
+  Moon,
+  Zap,
+  LogOut,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
+import BrandLockup from '@/components/BrandLockup'
 
-const sidebarLinks = [
-  { icon: LayoutDashboard, label: 'Overview',    href: '/admin'            },
-  { icon: Users,           label: 'Users',       href: '/admin/users'      },
-  { icon: Globe,           label: 'Traffic',     href: '/admin/traffic'    },
-  { icon: TrendingUp,      label: 'Financials',  href: '/admin/financials' },
-  { icon: Zap,             label: 'Plans',       href: '/admin/plans'      },
-  { icon: Wrench,          label: 'Promo Codes', href: '/admin/promos'     },
-  { icon: Activity,        label: 'Sessions',    href: '/admin/sessions'   },
-  { icon: ClipboardList,   label: 'Audit Log',   href: '/admin/logs'       },
-  { icon: Search,          label: 'SEO Config',  href: '/admin/seo'        },
-  { icon: Settings2,       label: 'Settings',    href: '/admin/settings'   },
+const adminLinks = [
+  { icon: BarChart3, label: 'Analytics', href: '/admin' },
+  { icon: Wallet, label: 'Finance', href: '/admin/financials' },
+  { icon: UserCog, label: 'User Administration', href: '/admin/users' },
+  { icon: CircleDollarSign, label: 'Plans', href: '/admin/plans' },
+  { icon: Search, label: 'SEO', href: '/admin/seo' },
+  { icon: Megaphone, label: 'Campaigns', href: '/admin/promos' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const router   = useRouter()
+  const router = useRouter()
   const { user, isLoading, isAdmin, logout } = useAuth()
 
   useEffect(() => {
     if (isLoading) return
-    if (!user)    { router.replace('/login');         return }
-    if (!isAdmin) { router.replace('/app/dashboard'); return }
+    if (!user) {
+      router.replace('/login')
+      return
+    }
+    if (!isAdmin) {
+      router.replace('/app/dashboard')
+    }
   }, [isLoading, user, isAdmin, router])
 
   if (isLoading || !user || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#000814' }}>
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: '#ffc300' }}>
-            <Shield className="w-6 h-6" style={{ color: '#000814' }} />
-          </div>
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.40)' }}>Checking access…</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#090910' }}>
+        <div className="flex items-center gap-3 text-white/60">
+          <Shield className="w-5 h-5" /> Checking access...
         </div>
       </div>
     )
@@ -50,106 +58,84 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const initials = user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#000814' }}>
-
-      {/* ── Sidebar ─────────────────────────────────────────────── */}
+    <div className="min-h-screen flex" style={{ background: '#0b0b12' }}>
       <aside
-        className="hidden lg:flex flex-col fixed top-16 bottom-0 py-4 px-3 z-40 overflow-y-auto"
+        className="hidden lg:flex fixed inset-y-0 left-0 w-[300px] p-5 flex-col"
         style={{
-          width: 230,
-          background: '#001d3d',
-          borderRight: '1px solid rgba(255,255,255,0.07)',
+          background: 'linear-gradient(180deg, #070c23 0%, #04091b 100%)',
+          borderRight: '1px solid rgba(122,58,240,0.24)',
         }}
       >
-        {/* Admin identity */}
-        <div className="px-3 pb-4 mb-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-          <p className="text-[9px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: 'rgba(255,255,255,0.30)' }}>
-            Admin Console
-          </p>
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-              style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814', boxShadow: '0 2px 8px rgba(255,195,0,0.30)' }}
-            >
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate leading-tight" style={{ color: '#FFFFFF' }}>
-                {user.name}
-              </p>
-              <span
-                className="text-[9px] font-black uppercase tracking-[0.10em] px-1.5 py-0.5 rounded-md mt-0.5 inline-block"
-                style={{ background: 'rgba(255,195,0,0.15)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.25)' }}
-              >
-                Super Admin
-              </span>
-            </div>
+        <div className="flex items-center gap-3 mb-8">
+          <div>
+            <BrandLockup href="/" size="sm" theme="dark" subtitle="Admin Control" />
           </div>
         </div>
 
-        {/* Nav */}
-        <nav className="flex-1 space-y-0.5" aria-label="Admin navigation">
-          <p className="text-[9px] font-bold uppercase tracking-[0.16em] px-3 mb-2.5" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            Navigation
-          </p>
-          {sidebarLinks.map(({ icon: Icon, label, href }) => {
-            const hrefBase = href.split('#')[0]
-            const isActive = hrefBase === '/admin'
-              ? pathname === '/admin'
-              : pathname.startsWith(hrefBase)
+        <nav className="space-y-2 flex-1">
+          {adminLinks.map(item => {
+            const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
             return (
               <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{
-                  background: isActive ? '#ffc300' : 'transparent',
-                  color: isActive ? '#000814' : 'rgba(255,255,255,0.55)',
-                  fontWeight: isActive ? 700 : 500,
-                }}
-                onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background = 'rgba(255,195,0,0.10)'; e.currentTarget.style.color = '#ffc300' } }}
-                onMouseLeave={e => { if (!isActive) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.55)' } }}
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl text-2xl font-semibold transition-all"
+                style={active
+                  ? { background: 'rgba(122,58,240,0.28)', color: '#f2ebff', border: '1px solid rgba(191,167,255,0.35)' }
+                  : { color: 'rgba(229,222,255,0.78)' }}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                <span className="flex-1">{label}</span>
-                {isActive && <ChevronRight className="w-3 h-3 opacity-60" />}
+                <item.icon className="w-5 h-5" />
+                {item.label}
               </Link>
             )
           })}
         </nav>
 
-        {/* Bottom */}
-        <div className="pt-4 space-y-1" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-          <button
-            onClick={logout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium w-full text-left transition-all"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#F87171'; e.currentTarget.style.background = 'rgba(248,113,113,0.08)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.background = 'transparent' }}
-          >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            Sign out
-          </button>
+        <button
+          className="w-full rounded-2xl py-3.5 mb-5 text-2xl font-bold"
+          style={{ background: 'linear-gradient(135deg, #be9bff, #6f39ea)', color: '#1e103d' }}
+          onClick={() => router.push('/admin/promos')}
+        >
+          Create New Campaign
+        </button>
 
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-            style={{ color: 'rgba(255,255,255,0.45)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.background = 'transparent' }}
-          >
-            <div className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: '#ffc300' }}>
-              <Zap className="w-2.5 h-2.5" style={{ color: '#000814' }} />
-            </div>
-            Back to site
+        <div className="space-y-2 pt-4" style={{ borderTop: '1px solid rgba(122,58,240,0.20)' }}>
+          <Link href="/admin/settings" className="flex items-center gap-3 px-4 py-3 rounded-xl text-xl" style={{ color: 'rgba(229,222,255,0.75)' }}>
+            <Settings className="w-5 h-5" /> Settings
           </Link>
+          <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xl" style={{ color: 'rgba(255,204,214,0.88)' }}>
+            <LogOut className="w-5 h-5" /> Sign out
+          </button>
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 p-6 lg:p-8" style={{ marginLeft: 230 }}>
-        {children}
-      </main>
+      <div className="flex-1 lg:ml-[300px]">
+        <header className="sticky top-0 z-20 px-8 py-4 flex items-center gap-5" style={{ background: 'rgba(5,11,29,0.92)', borderBottom: '1px solid rgba(122,58,240,0.16)', backdropFilter: 'blur(10px)' }}>
+          <div className="relative max-w-2xl flex-1">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(182,171,220,0.7)' }} />
+            <input
+              type="text"
+              placeholder="Search platform data..."
+              className="w-full rounded-full pl-10 pr-4 py-2.5 text-sm outline-none"
+              style={{ background: 'rgba(20,28,56,0.82)', color: '#ece6ff', border: '1px solid rgba(122,58,240,0.22)' }}
+            />
+          </div>
+          <Bell className="w-5 h-5" style={{ color: 'rgba(225,218,255,0.88)' }} />
+          <Moon className="w-5 h-5" style={{ color: 'rgba(225,218,255,0.88)' }} />
+          <div className="flex items-center gap-3 pl-5" style={{ borderLeft: '1px solid rgba(122,58,240,0.2)' }}>
+            <div className="text-right leading-tight">
+              <p className="text-sm font-semibold text-white">Admin Profile</p>
+              <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: '#bfa8ff' }}>Super Admin</p>
+            </div>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: 'linear-gradient(135deg,#7a3af0,#a885ff)', color: '#fff' }}>
+              {initials}
+            </div>
+          </div>
+        </header>
+
+        <main className="p-8">{children}</main>
+      </div>
     </div>
   )
 }
+

@@ -7,11 +7,12 @@ import { usePathname } from 'next/navigation'
 import {
   Menu, X, LogOut, LayoutDashboard, Shield,
   ChevronDown, User, Settings, CreditCard, TrendingUp, ArrowUpRight,
-  BarChart3, Users, Tag, Zap,
+  BarChart3, Users, Tag,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { PLANS } from '@/types/plans'
+import BrandLockup from '@/components/BrandLockup'
 
 const navLinks = [
   { label: 'Plans',        href: '/plans' },
@@ -32,6 +33,16 @@ export default function Navbar() {
   const [mobileOpen,  setMobileOpen]  = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const pathname = usePathname()
+
+  if (
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/checkout' ||
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/app') ||
+    pathname.startsWith('/admin')
+  ) return null
   const { user, isAdmin, logout, isLoading } = useAuth()
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -83,17 +94,7 @@ export default function Navbar() {
           <div className="flex items-center justify-between h-20">
 
             {/* Logo */}
-            <Link href="/" aria-label="LiveZapp Home" className="flex items-center gap-2.5 shrink-0">
-              <div
-                className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', boxShadow: '0 2px 12px rgba(255,195,0,0.40)' }}
-              >
-                <Zap className="w-4 h-4" style={{ color: '#000814' }} />
-              </div>
-              <span className="text-lg font-black tracking-tight" style={{ color: '#FFFFFF', letterSpacing: '-0.02em' }}>
-                Live<span style={{ color: '#ffc300' }}>Zapp</span>
-              </span>
-            </Link>
+            <BrandLockup href="/" size="md" theme="dark" className="shrink-0" />
 
             {/* Desktop Nav */}
             <ul className="hidden md:flex items-center gap-0.5" role="list">
@@ -391,12 +392,7 @@ export default function Navbar() {
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)' }}>
-                    <Zap className="w-3.5 h-3.5" style={{ color: '#000814' }} />
-                  </div>
-                  <span className="text-base font-black" style={{ color: '#FFFFFF' }}>
-                    Live<span style={{ color: '#ffc300' }}>Zapp</span>
-                  </span>
+                  <BrandLockup href="/" size="md" theme="dark" />
                 </div>
                 <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg transition-all" style={{ color: 'rgba(255,255,255,0.50)', background: 'rgba(255,255,255,0.07)' }} aria-label="Close menu">
                   <X className="w-5 h-5" />
@@ -555,3 +551,4 @@ function DropdownItem({
     </Link>
   )
 }
+

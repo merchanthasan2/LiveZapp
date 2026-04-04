@@ -649,6 +649,20 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleChangeRole(uid: string, role: string) {
+    setIsSaving(true)
+    try {
+      await update(ref(rtdb, `users/${uid}`), { role })
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role } : u))
+      if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, role } : null)
+      showToast(`Role changed to ${role}`)
+    } catch {
+      showToast('Failed to change role', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(a => !a)
     else { setSortKey(key); setSortAsc(false) }
@@ -687,6 +701,7 @@ export default function AdminUsersPage() {
   const totalPaid    = users.filter(u => u.planId !== 'free').length
   const totalSuspended = users.filter(u => u.suspended).length
   const totalActive  = users.filter(u => userStatus(u) === 'active').length
+  const canManageRoles = true
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl relative">
@@ -985,6 +1000,8 @@ export default function AdminUsersPage() {
           onSuspend={handleSuspend}
           onRestore={handleRestore}
           onChangePlan={handleChangePlan}
+          onChangeRole={handleChangeRole}
+          canManageRoles={canManageRoles}
           isSaving={isSaving}
         />
       )}

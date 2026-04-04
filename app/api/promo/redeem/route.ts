@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getBuiltinPromo } from '@/lib/promo/builtinPromos'
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 
@@ -36,12 +37,40 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
     }
 
     const codeUpper = code.toUpperCase().trim()
+    const builtinPromo = getBuiltinPromo(codeUpper)
 
     // Fetch promo code using Firebase REST API
     const url = `${DATABASE_URL}/promoCodes/${codeUpper}.json`
     const response = await fetch(url)
 
     if (!response.ok || response.status === 404) {
+      if (builtinPromo) {
+        const redemptionUrl = `${DATABASE_URL}/users/${userId}/promoRedemptions/${codeUpper}.json`
+        await fetch(redemptionUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: builtinPromo.code,
+            redeemedAt: new Date().toISOString(),
+            discountType: builtinPromo.discountType,
+            discountValue: builtinPromo.discountValue,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+            targetPlanId: builtinPromo.targetPlanId,
+            source: 'builtin',
+          }),
+        })
+
+        return NextResponse.json({
+          success: true,
+          promo: {
+            code: builtinPromo.code,
+            targetPlanId: builtinPromo.targetPlanId,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+          },
+        })
+      }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
         { status: 404 }
@@ -51,6 +80,33 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
     const promo = await response.json()
 
     if (!promo) {
+      if (builtinPromo) {
+        const redemptionUrl = `${DATABASE_URL}/users/${userId}/promoRedemptions/${codeUpper}.json`
+        await fetch(redemptionUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: builtinPromo.code,
+            redeemedAt: new Date().toISOString(),
+            discountType: builtinPromo.discountType,
+            discountValue: builtinPromo.discountValue,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+            targetPlanId: builtinPromo.targetPlanId,
+            source: 'builtin',
+          }),
+        })
+
+        return NextResponse.json({
+          success: true,
+          promo: {
+            code: builtinPromo.code,
+            targetPlanId: builtinPromo.targetPlanId,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+          },
+        })
+      }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
         { status: 404 }

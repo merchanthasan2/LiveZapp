@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
+import RouteFrame from '@/components/RouteFrame'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
 
 const inter = Inter({
@@ -38,9 +37,9 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   icons: {
-    icon: '/LiveZapp Logo only.png',
-    shortcut: '/LiveZapp Logo only.png',
-    apple: '/LiveZapp Logo only.png',
+    icon: '/brand/livezapp-logo-only.png',
+    shortcut: '/brand/livezapp-logo-only.png',
+    apple: '/brand/livezapp-logo-only.png',
   },
 }
 
@@ -49,11 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans antialiased">
         <ThemeProvider>
-          <Navbar />
-          <main className="pt-20">
-            {children}
-          </main>
-          <Footer />
+          <RouteFrame>{children}</RouteFrame>
         </ThemeProvider>
       </body>
     </html>

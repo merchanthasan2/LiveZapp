@@ -144,7 +144,7 @@ function CheckoutContent() {
     fetchProfile()
   }, [user])
 
-  const set = (key: keyof ProfileData, value: string) => {
+  const setProfileField = (key: keyof ProfileData, value: string) => {
     setProfile(prev => ({ ...prev, [key]: value }))
     if (profileErrors[key]) setProfileErrors(prev => ({ ...prev, [key]: undefined }))
   }
@@ -378,13 +378,13 @@ function CheckoutContent() {
                     label="Full Name" id="fullName" required
                     placeholder="John Smith"
                     value={profile.fullName}
-                    onChange={e => set('fullName', e.target.value)}
+                    onChange={e => setProfileField('fullName', e.target.value)}
                   />
                   <InputField
                     label="Email" id="email" type="email" required
                     placeholder="you@example.com"
                     value={profile.email}
-                    onChange={e => set('email', e.target.value)}
+                    onChange={e => setProfileField('email', e.target.value)}
                   />
                 </div>
                 {(profileErrors.fullName || profileErrors.email) && (
@@ -396,12 +396,12 @@ function CheckoutContent() {
                     label="Phone Number" id="phone" type="tel" required
                     placeholder="+1 555 000 0000"
                     value={profile.phone}
-                    onChange={e => set('phone', e.target.value)}
+                    onChange={e => setProfileField('phone', e.target.value)}
                   />
                   <InputField
                     label="Date of Birth" id="dob" type="date"
                     value={profile.dateOfBirth}
-                    onChange={e => set('dateOfBirth', e.target.value)}
+                    onChange={e => setProfileField('dateOfBirth', e.target.value)}
                   />
                 </div>
                 {profileErrors.phone && <p className="text-xs text-red-400">{profileErrors.phone}</p>}
@@ -426,26 +426,26 @@ function CheckoutContent() {
                         label="Address Line 1" id="addr1" required
                         placeholder="123 Main Street"
                         value={profile.addressLine1}
-                        onChange={e => set('addressLine1', e.target.value)}
+                        onChange={e => setProfileField('addressLine1', e.target.value)}
                       />
                       <InputField
                         label="Address Line 2" id="addr2"
                         placeholder="Apt, suite, floor (optional)"
                         value={profile.addressLine2}
-                        onChange={e => set('addressLine2', e.target.value)}
+                        onChange={e => setProfileField('addressLine2', e.target.value)}
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <InputField
                           label="City" id="city" required
                           placeholder="Mumbai"
                           value={profile.city}
-                          onChange={e => set('city', e.target.value)}
+                          onChange={e => setProfileField('city', e.target.value)}
                         />
                         <InputField
                           label="State / Province" id="state"
                           placeholder="Maharashtra"
                           value={profile.state}
-                          onChange={e => set('state', e.target.value)}
+                          onChange={e => setProfileField('state', e.target.value)}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -453,13 +453,13 @@ function CheckoutContent() {
                           label="Postal Code" id="postal"
                           placeholder="400001"
                           value={profile.postalCode}
-                          onChange={e => set('postalCode', e.target.value)}
+                          onChange={e => setProfileField('postalCode', e.target.value)}
                         />
                         <InputField
                           label="Country" id="country" required
                           placeholder="India"
                           value={profile.country}
-                          onChange={e => set('country', e.target.value)}
+                          onChange={e => setProfileField('country', e.target.value)}
                         />
                       </div>
                     </div>

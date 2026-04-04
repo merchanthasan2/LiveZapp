@@ -1,20 +1,31 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ref, get, set } from 'firebase/database'
+import {
+  BadgeDollarSign,
+  Check,
+  FileStack,
+  Globe2,
+  Info,
+  Pencil,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Sparkles,
+  Star,
+  TrendingUp,
+  Users,
+  Zap,
+  X,
+} from 'lucide-react'
 import { rtdb } from '@/lib/firebase'
 import { PLANS, type Plan, type PlanId, type PlanLimits } from '@/types/plans'
 import { invalidatePlanLimitsCache } from '@/lib/hooks/usePlanLimits'
-import { type SupportedCurrency, type PricingConfig, type CurrencyPlanPrice, invalidatePricingCache } from '@/lib/hooks/useCurrency'
-import {
-  Zap, Users, FileStack, Check, Star, Globe,
-  RefreshCw, Eye, TrendingUp, Edit2, Save, X, RotateCcw,
-} from 'lucide-react'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
+import { type PricingConfig, type SupportedCurrency, invalidatePricingCache } from '@/lib/hooks/useCurrency'
 
 interface PlanStats {
-  planId: string
+  planId: PlanId
   totalUsers: number
   activeUsers: number
   monthlyUsers: number
@@ -23,34 +34,137 @@ interface PlanStats {
 }
 
 type LimitOverrides = Partial<Record<PlanId, Partial<PlanLimits>>>
+type PaidPlanId = Exclude<PlanId, 'free'>
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function fmtUSD(n: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
+interface PricingMeta {
+  annualDiscountPercent: number
+  exchangeRates: Record<SupportedCurrency, number>
 }
 
-function isActive(u: any): boolean {
-  if (u.planId === 'free') return false
-  if (u.planCancelledAt && !u.planExpiresAt) return false
-  if (u.planCancelledAt && u.planExpiresAt) return new Date(u.planExpiresAt) > new Date()
-  if (u.planExpiresAt) return new Date(u.planExpiresAt) > new Date()
+type BaseUsdMonthly = Record<PaidPlanId, number>
+
+const PAID_PLAN_IDS: PaidPlanId[] = ['basic', 'regular', 'pro']
+const DEFAULT_PRICING_META: PricingMeta = {
+  annualDiscountPercent: 25,
+  exchangeRates: { USD: 1, GBP: 0.79, INR: 84 },
+}
+
+const PLAN_BADGE: Record<PlanId, { bg: string; text: string; border: string }> = {
+  free: { bg: 'rgba(191,168,255,0.16)', text: '#bda6ff', border: 'rgba(191,168,255,0.18)' },
+  basic: { bg: 'rgba(83,216,209,0.12)', text: '#53d8d1', border: 'rgba(83,216,209,0.18)' },
+  regular: { bg: 'rgba(255,177,159,0.14)', text: '#ffb19f', border: 'rgba(255,177,159,0.18)' },
+  pro: { bg: 'rgba(141,115,255,0.14)', text: '#c7b5ff', border: 'rgba(141,115,255,0.18)' },
+}
+
+const CURRENCY_META: Array<{ code: SupportedCurrency; label: string }> = [
+  { code: 'USD', label: 'US Dollar' },
+  { code: 'GBP', label: 'British Pound' },
+  { code: 'INR', label: 'Indian Rupee' },
+]
+
+function fmtCurrency(amount: number, currency: SupportedCurrency = 'USD') {
+  if (amount === 0) return 'Free'
+
+  const locale = currency === 'INR' ? 'en-IN' : currency === 'GBP' ? 'en-GB' : 'en-US'
+  const hasDecimals = Math.abs(amount % 1) > 0.0001
+
+  return new Intl.NumberFormat(locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
+
+function isActive(user: any): boolean {
+  if (user.planId === 'free') return false
+  if (user.planCancelledAt && !user.planExpiresAt) return false
+  if (user.planCancelledAt && user.planExpiresAt) return new Date(user.planExpiresAt) > new Date()
+  if (user.planExpiresAt) return new Date(user.planExpiresAt) > new Date()
   return false
 }
 
-function displayLimit(val: number | 'unlimited' | undefined, defaultVal: number | 'unlimited'): string {
-  const v = val ?? defaultVal
-  return v === 'unlimited' ? '∞' : String(v)
+function displayLimit(value: number | 'unlimited' | undefined, fallback: number | 'unlimited') {
+  const nextValue = value ?? fallback
+  return nextValue === 'unlimited' ? 'Unlimited' : String(nextValue)
 }
 
-const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
-  free:    { bg: '#BBDEF0', text: '#1A1A2E' },
-  basic:   { bg: '#00A6A6', text: '#FFFFFF' },
-  regular: { bg: '#EFCA08', text: '#1A1A2E' },
-  pro:     { bg: '#F08700', text: '#FFFFFF' },
+function getDefaultBaseMonthly(): BaseUsdMonthly {
+  return {
+    basic: PLANS.find(plan => plan.id === 'basic')?.pricePerMonth ?? 9,
+    regular: PLANS.find(plan => plan.id === 'regular')?.pricePerMonth ?? 29,
+    pro: PLANS.find(plan => plan.id === 'pro')?.pricePerMonth ?? 79,
+  }
 }
 
-// ─── Editable Limits Panel ────────────────────────────────────────────────────
+function clampDiscount(value: number) {
+  if (!Number.isFinite(value)) return DEFAULT_PRICING_META.annualDiscountPercent
+  return Math.max(0, Math.min(95, value))
+}
+
+function normalizeRate(value: number, fallback: number) {
+  if (!Number.isFinite(value) || value <= 0) return fallback
+  return value
+}
+
+function roundForCurrency(amount: number, currency: SupportedCurrency) {
+  if (currency === 'GBP') return Number(amount.toFixed(2))
+  return Math.round(amount)
+}
+
+function deriveAnnualList(monthly: number) {
+  return Number((monthly * 12).toFixed(2))
+}
+
+function deriveAnnualBilled(monthly: number, discountPercent: number) {
+  const annualList = deriveAnnualList(monthly)
+  return Number((annualList * (1 - discountPercent / 100)).toFixed(2))
+}
+
+function seedBaseMonthly(pricing?: PricingConfig): BaseUsdMonthly {
+  const defaults = getDefaultBaseMonthly()
+  return {
+    basic: pricing?.USD?.basic?.monthly ?? defaults.basic,
+    regular: pricing?.USD?.regular?.monthly ?? defaults.regular,
+    pro: pricing?.USD?.pro?.monthly ?? defaults.pro,
+  }
+}
+
+function buildPricingConfig(baseUsdMonthly: BaseUsdMonthly, pricingMeta: PricingMeta): PricingConfig {
+  const nextConfig: PricingConfig = {
+    USD: { free: { monthly: 0, annual: 0 } },
+    GBP: { free: { monthly: 0, annual: 0 } },
+    INR: { free: { monthly: 0, annual: 0 } },
+  }
+
+  for (const currency of ['USD', 'GBP', 'INR'] as SupportedCurrency[]) {
+    const rate = pricingMeta.exchangeRates[currency]
+
+    for (const planId of PAID_PLAN_IDS) {
+      const usdMonthly = baseUsdMonthly[planId]
+      const localMonthly = roundForCurrency(usdMonthly * rate, currency)
+      const localAnnual = roundForCurrency(deriveAnnualBilled(usdMonthly * rate, pricingMeta.annualDiscountPercent), currency)
+
+      nextConfig[currency] = {
+        ...(nextConfig[currency] ?? {}),
+        [planId]: { monthly: localMonthly, annual: localAnnual },
+      }
+    }
+  }
+
+  return nextConfig
+}
+
+function mergePricingMeta(raw: any): PricingMeta {
+  return {
+    annualDiscountPercent: clampDiscount(Number(raw?.annualDiscountPercent ?? DEFAULT_PRICING_META.annualDiscountPercent)),
+    exchangeRates: {
+      USD: 1,
+      GBP: normalizeRate(Number(raw?.exchangeRates?.GBP ?? DEFAULT_PRICING_META.exchangeRates.GBP), DEFAULT_PRICING_META.exchangeRates.GBP),
+      INR: normalizeRate(Number(raw?.exchangeRates?.INR ?? DEFAULT_PRICING_META.exchangeRates.INR), DEFAULT_PRICING_META.exchangeRates.INR),
+    },
+  }
+}
 
 function EditLimitsPanel({
   plan,
@@ -66,276 +180,296 @@ function EditLimitsPanel({
   onCancel: () => void
 }) {
   const defaults = plan.limits
-  const [maxPresentations, setMaxPresentations] = useState(
-    String(override.maxPresentations ?? defaults.maxPresentations)
-  )
-  const [maxParticipants, setMaxParticipants] = useState(
-    String(override.maxParticipantsPerSession ?? defaults.maxParticipantsPerSession)
-  )
-  const [maxQuestions, setMaxQuestions] = useState(
-    String(override.maxQuestionsPerPresentation ?? defaults.maxQuestionsPerPresentation)
-  )
-  const [maxSessions, setMaxSessions] = useState(
-    String(override.maxActiveSessions ?? defaults.maxActiveSessions)
-  )
-  const [saving, setSaving] = useState(false)
+  const [maxPresentations, setMaxPresentations] = useState(String(override.maxPresentations ?? defaults.maxPresentations))
+  const [maxParticipants, setMaxParticipants] = useState(String(override.maxParticipantsPerSession ?? defaults.maxParticipantsPerSession))
+  const [maxQuestions, setMaxQuestions] = useState(String(override.maxQuestionsPerPresentation ?? defaults.maxQuestionsPerPresentation))
+  const [maxSessions, setMaxSessions] = useState(String(override.maxActiveSessions ?? defaults.maxActiveSessions))
 
-  const parseLimit = (v: string): number | 'unlimited' => {
-    if (v === 'unlimited' || v === '∞' || v === '') return 'unlimited'
-    const n = parseInt(v, 10)
-    return isNaN(n) ? 0 : n
+  const parseLimit = (value: string): number | 'unlimited' => {
+    if (value.trim() === '' || value.trim().toLowerCase() === 'unlimited') return 'unlimited'
+    const nextValue = Number(value)
+    return Number.isNaN(nextValue) ? 0 : nextValue
   }
-
-  async function handleSave() {
-    setSaving(true)
-    onSave({
-      maxPresentations: parseLimit(maxPresentations),
-      maxParticipantsPerSession: parseLimit(maxParticipants) as number,
-      maxQuestionsPerPresentation: parseLimit(maxQuestions) as number,
-      maxActiveSessions: parseLimit(maxSessions) as number,
-    })
-    setSaving(false)
-  }
-
-  const fields = [
-    { label: 'Lifetime sessions', value: maxPresentations, set: setMaxPresentations, hint: 'Use "unlimited" for unlimited' },
-    { label: 'Max participants / session', value: maxParticipants, set: setMaxParticipants, hint: '' },
-    { label: 'Questions / session', value: maxQuestions, set: setMaxQuestions, hint: '' },
-    { label: 'Concurrent live sessions', value: maxSessions, set: setMaxSessions, hint: '' },
-  ]
 
   return (
-    <div className="space-y-3 pt-3" style={{ borderTop: '1px solid #F3F4F6' }}>
-      <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#F08700' }}>Edit limits</p>
-      {fields.map(f => (
-        <div key={f.label}>
-          <label className="block text-[11px] font-semibold mb-1" style={{ color: '#6B7280' }}>{f.label}</label>
+    <div className="space-y-3 rounded-[1.5rem] border p-4" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.10)' }}>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: '#bda6ff' }}>Edit limits</p>
+        <p className="mt-1 text-xs" style={{ color: '#9ca3b4' }}>These save to Firebase instantly. Use "unlimited" where needed.</p>
+      </div>
+
+      {[
+        { label: 'Lifetime Zapps', value: maxPresentations, setValue: setMaxPresentations },
+        { label: 'Max participants', value: maxParticipants, setValue: setMaxParticipants },
+        { label: 'Questions per Zapp', value: maxQuestions, setValue: setMaxQuestions },
+        { label: 'Concurrent live sessions', value: maxSessions, setValue: setMaxSessions },
+      ].map(field => (
+        <div key={field.label}>
+          <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: '#9ca3b4' }}>
+            {field.label}
+          </label>
           <input
             type="text"
-            value={f.value}
-            onChange={e => f.set(e.target.value)}
-            className="w-full px-3 py-2 rounded-xl text-sm font-bold outline-none transition-all"
-            style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
-            onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
-            onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
-            placeholder={f.hint || 'Enter number'}
+            value={field.value}
+            onChange={event => field.setValue(event.target.value)}
+            className="w-full rounded-2xl px-4 py-3 text-sm font-semibold outline-none"
+            style={{ background: '#0f1018', border: '1px solid rgba(191,168,255,0.12)', color: '#f6f1ff' }}
           />
-          {f.hint && <p className="text-[10px] mt-0.5" style={{ color: '#9CA3AF' }}>{f.hint}</p>}
         </div>
       ))}
+
       <div className="flex gap-2 pt-1">
         <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all disabled:opacity-50"
-          style={{ background: '#00A6A6', color: '#FFFFFF' }}
+          type="button"
+          onClick={() => onSave({
+            maxPresentations: parseLimit(maxPresentations),
+            maxParticipantsPerSession: Number(parseLimit(maxParticipants)),
+            maxQuestionsPerPresentation: Number(parseLimit(maxQuestions)),
+            maxActiveSessions: Number(parseLimit(maxSessions)),
+          })}
+          className="flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold text-white"
+          style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)' }}
         >
-          <Save className="w-3.5 h-3.5" />
-          {saving ? 'Saving…' : 'Save'}
+          <Save className="h-4 w-4" /> Save limits
         </button>
         <button
+          type="button"
           onClick={onReset}
-          className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
-          style={{ background: 'rgba(240,135,0,0.10)', color: '#F08700', border: '1px solid rgba(240,135,0,0.22)' }}
-          title="Reset to code defaults"
+          className="rounded-2xl border px-4 py-3 text-sm font-semibold"
+          style={{ borderColor: 'rgba(255,177,159,0.18)', color: '#ffb19f', background: 'rgba(255,177,159,0.08)' }}
         >
-          <RotateCcw className="w-3.5 h-3.5" />
+          <RotateCcw className="h-4 w-4" />
         </button>
         <button
+          type="button"
           onClick={onCancel}
-          className="px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
-          style={{ background: '#F3F4F6', color: '#6B7280' }}
+          className="rounded-2xl border px-4 py-3 text-sm font-semibold"
+          style={{ borderColor: 'rgba(191,168,255,0.12)', color: '#d1cae3', background: 'rgba(255,255,255,0.03)' }}
         >
-          <X className="w-3.5 h-3.5" />
+          <X className="h-4 w-4" />
         </button>
       </div>
     </div>
   )
 }
-
-// ─── Currency Pricing Editor ──────────────────────────────────────────────────
-
-const CURRENCIES: { code: SupportedCurrency; label: string; symbol: string }[] = [
-  { code: 'USD', label: 'US Dollar', symbol: '$' },
-  { code: 'GBP', label: 'British Pound', symbol: '£' },
-  { code: 'INR', label: 'Indian Rupee', symbol: '₹' },
-]
-
-function CurrencyPricingEditor({
-  initialPricing,
+function PricingEnginePanel({
+  baseUsdMonthly,
+  setBaseUsdMonthly,
+  pricingMeta,
+  setPricingMeta,
+  derivedPricing,
+  isDirty,
+  isSaving,
+  onReset,
   onSave,
 }: {
-  initialPricing: PricingConfig
-  onSave: (currency: SupportedCurrency, planId: PlanId, prices: CurrencyPlanPrice) => void
+  baseUsdMonthly: BaseUsdMonthly
+  setBaseUsdMonthly: React.Dispatch<React.SetStateAction<BaseUsdMonthly>>
+  pricingMeta: PricingMeta
+  setPricingMeta: React.Dispatch<React.SetStateAction<PricingMeta>>
+  derivedPricing: PricingConfig
+  isDirty: boolean
+  isSaving: boolean
+  onReset: () => void
+  onSave: () => void
 }) {
-  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>('USD')
-  const [editing, setEditing] = useState<Partial<Record<PlanId, CurrencyPlanPrice>>>({})
-  const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
-
-  const currencyConfig = initialPricing[selectedCurrency] ?? {}
-
-  function initEditing(currency: SupportedCurrency) {
-    const cfg = initialPricing[currency] ?? {}
-    const init: Partial<Record<PlanId, CurrencyPlanPrice>> = {}
-    PLANS.filter(p => p.pricePerMonth > 0).forEach(p => {
-      init[p.id as PlanId] = cfg[p.id as PlanId] ?? {
-        monthly: Math.round(p.pricePerMonth * (currency === 'INR' ? 84 : currency === 'GBP' ? 0.79 : 1)),
-        annual:  Math.round(p.pricePerYear  * (currency === 'INR' ? 84 : currency === 'GBP' ? 0.79 : 1)),
-      }
-    })
-    setEditing(init)
-    setDirty(false)
-  }
-
-  useEffect(() => { initEditing(selectedCurrency) }, [selectedCurrency, initialPricing])
-
-  const sym = CURRENCIES.find(c => c.code === selectedCurrency)?.symbol ?? ''
-
-  async function handleSave() {
-    setSaving(true)
-    for (const [planId, prices] of Object.entries(editing)) {
-      if (prices) await onSave(selectedCurrency, planId as PlanId, prices)
-    }
-    setSaving(false)
-    setDirty(false)
-  }
-
   return (
-    <div className="rounded-2xl p-6 space-y-5" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-      <div className="flex items-center justify-between">
+    <section className="rounded-[2rem] border p-6 md:p-8" style={{ background: '#14141b', borderColor: 'rgba(191,168,255,0.14)', boxShadow: '0 24px 60px rgba(0,0,0,0.24)' }}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: '#9CA3AF' }}>Per-country pricing</p>
-          <h3 className="text-lg font-bold" style={{ color: '#1A1A2E' }}>Configure prices by currency</h3>
-          <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>Set exact prices for each currency. If not configured, exchange-rate estimates are used for display.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#bda6ff' }}>Pricing engine</p>
+          <h2 className="mt-2 text-2xl font-black" style={{ color: '#fbf7ff' }}>Annual pricing is now rule-based</h2>
+          <p className="mt-2 max-w-3xl text-sm" style={{ color: '#b7afc8' }}>
+            USD monthly prices are the base input. Annual list price is monthly x 12, then the annual discount is applied once. GBP and INR are generated automatically from the same rule set.
+          </p>
         </div>
-        <Globe className="w-6 h-6 shrink-0" style={{ color: '#00A6A6' }} />
+        <div className="inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.10)', borderColor: 'rgba(101,12,217,0.18)', color: '#d9ccff' }}>
+          <Info className="h-4 w-4" />
+          Home, plans, and the app all read from the same pricing catalogue after save.
+        </div>
       </div>
 
-      {/* Currency selector */}
-      <div className="flex gap-2 flex-wrap">
-        {CURRENCIES.map(c => (
-          <button
-            key={c.code}
-            onClick={() => setSelectedCurrency(c.code)}
-            className="px-4 py-2 rounded-xl text-sm font-bold transition-all"
-            style={{
-              background: selectedCurrency === c.code ? '#00A6A6' : 'rgba(0,166,166,0.08)',
-              color: selectedCurrency === c.code ? '#FFFFFF' : '#00A6A6',
-              border: `1px solid ${selectedCurrency === c.code ? '#00A6A6' : 'rgba(0,166,166,0.20)'}`,
-            }}
-          >
-            {c.symbol} {c.code} — {c.label}
-          </button>
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="rounded-[1.5rem] border p-5" style={{ background: '#1a1a24', borderColor: 'rgba(191,168,255,0.12)' }}>
+          <label className="block text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#bda6ff' }}>Annual discount</label>
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="number"
+              min="0"
+              max="95"
+              step="1"
+              value={pricingMeta.annualDiscountPercent}
+              onChange={event => setPricingMeta(prev => ({ ...prev, annualDiscountPercent: clampDiscount(Number(event.target.value)) }))}
+              className="w-28 rounded-2xl px-4 py-3 text-lg font-black outline-none"
+              style={{ background: '#0f1018', border: '1px solid rgba(191,168,255,0.12)', color: '#fbf7ff' }}
+            />
+            <span className="text-sm font-semibold" style={{ color: '#b7afc8' }}>% off the annual total</span>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border p-5" style={{ background: '#1a1a24', borderColor: 'rgba(191,168,255,0.12)' }}>
+          <label className="block text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#53d8d1' }}>GBP exchange rate</label>
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={pricingMeta.exchangeRates.GBP}
+              onChange={event => setPricingMeta(prev => ({
+                ...prev,
+                exchangeRates: { ...prev.exchangeRates, GBP: normalizeRate(Number(event.target.value), DEFAULT_PRICING_META.exchangeRates.GBP) },
+              }))}
+              className="w-28 rounded-2xl px-4 py-3 text-lg font-black outline-none"
+              style={{ background: '#0f1018', border: '1px solid rgba(83,216,209,0.18)', color: '#fbf7ff' }}
+            />
+            <span className="text-sm font-semibold" style={{ color: '#b7afc8' }}>1 USD = {pricingMeta.exchangeRates.GBP} GBP</span>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border p-5" style={{ background: '#1a1a24', borderColor: 'rgba(191,168,255,0.12)' }}>
+          <label className="block text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#ffb19f' }}>INR exchange rate</label>
+          <div className="mt-3 flex items-center gap-3">
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={pricingMeta.exchangeRates.INR}
+              onChange={event => setPricingMeta(prev => ({
+                ...prev,
+                exchangeRates: { ...prev.exchangeRates, INR: normalizeRate(Number(event.target.value), DEFAULT_PRICING_META.exchangeRates.INR) },
+              }))}
+              className="w-28 rounded-2xl px-4 py-3 text-lg font-black outline-none"
+              style={{ background: '#0f1018', border: '1px solid rgba(255,177,159,0.18)', color: '#fbf7ff' }}
+            />
+            <span className="text-sm font-semibold" style={{ color: '#b7afc8' }}>1 USD = {pricingMeta.exchangeRates.INR} INR</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 overflow-hidden rounded-[1.75rem] border" style={{ borderColor: 'rgba(191,168,255,0.12)' }}>
+        <div className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr] gap-0 border-b px-5 py-4 text-[11px] font-black uppercase tracking-[0.18em]" style={{ background: '#1a1a24', borderColor: 'rgba(191,168,255,0.10)', color: '#9ca3b4' }}>
+          <span>Plan</span>
+          <span>Monthly USD</span>
+          <span>Annual list</span>
+          <span>Annual billed</span>
+        </div>
+        {PAID_PLAN_IDS.map(planId => {
+          const plan = PLANS.find(item => item.id === planId)!
+          const badge = PLAN_BADGE[planId]
+          const monthly = baseUsdMonthly[planId]
+          const annualList = deriveAnnualList(monthly)
+          const annualBilled = deriveAnnualBilled(monthly, pricingMeta.annualDiscountPercent)
+
+          return (
+            <div key={planId} className="grid grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr] items-center gap-4 px-5 py-4" style={{ background: '#14141b', borderTop: '1px solid rgba(191,168,255,0.08)' }}>
+              <div>
+                <span className="inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ background: badge.bg, borderColor: badge.border, color: badge.text }}>
+                  {plan.name}
+                </span>
+                <p className="mt-2 text-xs" style={{ color: '#9ca3b4' }}>{plan.tagline}</p>
+              </div>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={monthly}
+                onChange={event => {
+                  const nextValue = Number(event.target.value)
+                  setBaseUsdMonthly(prev => ({ ...prev, [planId]: Number.isFinite(nextValue) ? nextValue : 0 }))
+                }}
+                className="w-full rounded-2xl px-4 py-3 text-lg font-black outline-none"
+                style={{ background: '#0f1018', border: '1px solid rgba(191,168,255,0.12)', color: '#fbf7ff' }}
+              />
+              <div className="text-lg font-black" style={{ color: '#d9ccff' }}>{fmtCurrency(annualList, 'USD')}</div>
+              <div>
+                <div className="text-lg font-black" style={{ color: '#ffffff' }}>{fmtCurrency(annualBilled, 'USD')}</div>
+                <p className="mt-1 text-[11px] font-semibold" style={{ color: '#9ca3b4' }}>
+                  {pricingMeta.annualDiscountPercent}% annual discount applied
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-3">
+        {CURRENCY_META.map(currency => (
+          <div key={currency.code} className="rounded-[1.5rem] border p-5" style={{ background: '#1a1a24', borderColor: 'rgba(191,168,255,0.12)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9ca3b4' }}>{currency.code}</p>
+                <h3 className="mt-1 text-lg font-black" style={{ color: '#fbf7ff' }}>{currency.label}</h3>
+              </div>
+              <Globe2 className="h-5 w-5" style={{ color: '#bda6ff' }} />
+            </div>
+            <div className="mt-4 space-y-3">
+              {PLANS.map(plan => {
+                const prices = derivedPricing[currency.code]?.[plan.id]
+                return (
+                  <div key={`${currency.code}-${plan.id}`} className="rounded-2xl border px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.10)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm font-bold" style={{ color: '#f4efff' }}>{plan.name}</span>
+                      <span className="text-sm font-black" style={{ color: '#ffffff' }}>{fmtCurrency(prices?.monthly ?? 0, currency.code)}</span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs" style={{ color: '#9ca3b4' }}>
+                      <span>Monthly</span>
+                      <span>Annual: {fmtCurrency(prices?.annual ?? 0, currency.code)}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Prices table */}
-      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E5E7EB' }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Plan</th>
-              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Monthly ({sym})</th>
-              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Annual ({sym})</th>
-              <th className="text-left px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {PLANS.filter(p => p.pricePerMonth > 0).map((plan, i) => {
-              const planId = plan.id as PlanId
-              const prices = editing[planId]
-              const hasConfig = !!currencyConfig[planId]
-              const badge = PLAN_BADGE[plan.id]
-              return (
-                <tr key={plan.id} style={{ borderBottom: i < 2 ? '1px solid #F3F4F6' : 'none' }}>
-                  <td className="px-4 py-3">
-                    <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
-                      style={{ background: badge.bg, color: badge.text }}>{plan.name}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>{sym}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={prices?.monthly ?? ''}
-                        onChange={e => { setEditing(prev => ({ ...prev, [planId]: { ...prev[planId]!, monthly: Number(e.target.value) } })); setDirty(true) }}
-                        className="w-24 px-2 py-1.5 rounded-lg text-sm font-bold outline-none"
-                        style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
-                        onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
-                        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs font-semibold" style={{ color: '#9CA3AF' }}>{sym}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={prices?.annual ?? ''}
-                        onChange={e => { setEditing(prev => ({ ...prev, [planId]: { ...prev[planId]!, annual: Number(e.target.value) } })); setDirty(true) }}
-                        className="w-24 px-2 py-1.5 rounded-lg text-sm font-bold outline-none"
-                        style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', color: '#1A1A2E' }}
-                        onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }}
-                        onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }}
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded"
-                      style={{ background: hasConfig ? 'rgba(0,166,166,0.10)' : '#F3F4F6', color: hasConfig ? '#00A6A6' : '#9CA3AF' }}>
-                      {hasConfig ? 'Configured' : 'Rate estimate'}
-                    </span>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <button
-          onClick={handleSave}
-          disabled={saving || !dirty}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
-          style={{ background: '#00A6A6', color: '#FFFFFF' }}
+          type="button"
+          onClick={onSave}
+          disabled={isSaving || !isDirty}
+          className="inline-flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)' }}
         >
-          <Save className="w-4 h-4" />
-          {saving ? 'Saving…' : `Save ${selectedCurrency} prices`}
+          <Save className="h-4 w-4" />
+          {isSaving ? 'Saving pricing...' : 'Save pricing engine'}
         </button>
         <button
-          onClick={() => initEditing(selectedCurrency)}
-          disabled={!dirty}
-          className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-40"
-          style={{ background: '#F3F4F6', color: '#6B7280' }}
+          type="button"
+          onClick={onReset}
+          disabled={!isDirty}
+          className="rounded-2xl border px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.12)', color: '#d1cae3' }}
         >
           Reset
         </button>
-        {!dirty && <span className="text-xs" style={{ color: '#9CA3AF' }}>All changes saved</span>}
+        <span className="text-xs" style={{ color: '#9ca3b4' }}>
+          Save writes `admin/pricing` and `admin/pricingMeta`, then invalidates the shared pricing cache.
+        </span>
       </div>
-    </div>
+    </section>
   )
 }
-
-// ─── Plan Card ────────────────────────────────────────────────────────────────
-
 function PlanCard({
-  plan, stats, override,
-  onSaveOverride, onResetOverride,
+  plan,
+  stats,
+  override,
+  monthlyPrice,
+  annualPrice,
+  onSaveOverride,
+  onResetOverride,
 }: {
   plan: Plan
   stats: PlanStats
   override: Partial<PlanLimits>
+  monthlyPrice: number
+  annualPrice: number
   onSaveOverride: (limits: Partial<PlanLimits>) => void
   onResetOverride: () => void
 }) {
   const [editing, setEditing] = useState(false)
-  const badge = PLAN_BADGE[plan.id] ?? PLAN_BADGE.free
+  const badge = PLAN_BADGE[plan.id]
   const hasOverride = Object.keys(override).length > 0
-
   const effectiveLimits = {
     maxPresentations: override.maxPresentations ?? plan.limits.maxPresentations,
     maxParticipantsPerSession: override.maxParticipantsPerSession ?? plan.limits.maxParticipantsPerSession,
@@ -344,180 +478,209 @@ function PlanCard({
   }
 
   return (
-    <div className="rounded-2xl p-6 flex flex-col gap-4"
-      style={{
-        background: '#FFFFFF',
-        border: plan.isRecommended ? '2px solid #00A6A6' : '1px solid #E5E7EB',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
-        position: 'relative',
-      }}>
-
-      {plan.isRecommended && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-          <div className="flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold text-white"
-            style={{ background: '#00A6A6' }}>
-            <Star className="w-3 h-3 fill-white" /> Most popular
-          </div>
-        </div>
-      )}
-
-      {/* Plan header */}
-      <div className="flex items-start justify-between">
+    <article className="rounded-[1.75rem] border p-6" style={{ background: '#171720', borderColor: plan.isRecommended ? 'rgba(101,12,217,0.40)' : 'rgba(191,168,255,0.12)', boxShadow: plan.isRecommended ? '0 20px 50px rgba(101,12,217,0.20)' : 'none' }}>
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md"
-            style={{ background: badge.bg, color: badge.text }}>{plan.name}</span>
+          <span className="inline-flex rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ background: badge.bg, borderColor: badge.border, color: badge.text }}>
+            {plan.name}
+          </span>
           {hasOverride && (
-            <span className="ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: 'rgba(240,135,0,0.12)', color: '#F08700' }}>
+            <span className="ml-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.16em]" style={{ background: 'rgba(255,177,159,0.12)', borderColor: 'rgba(255,177,159,0.16)', color: '#ffb19f' }}>
               Custom
             </span>
           )}
-          <p className="text-xs mt-2" style={{ color: '#6B7280' }}>{plan.tagline}</p>
+          <p className="mt-3 text-xs leading-relaxed" style={{ color: '#9ca3b4' }}>{plan.tagline}</p>
         </div>
-        <div className="text-right">
-          <p className="text-2xl font-black" style={{ color: '#1A1A2E' }}>
-            {plan.pricePerMonth === 0 ? 'Free' : `$${plan.pricePerMonth}`}
-          </p>
-          {plan.pricePerMonth > 0 && (
-            <p className="text-xs" style={{ color: '#9CA3AF' }}>/month</p>
+        {plan.isRecommended && (
+          <div className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-white" style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)' }}>
+            <Star className="h-3 w-3 fill-white" /> Most popular
+          </div>
+        )}
+      </div>
+
+      <div className="mt-5 flex items-end justify-between gap-4 rounded-[1.5rem] border p-4" style={{ background: '#111119', borderColor: 'rgba(191,168,255,0.10)' }}>
+        <div>
+          <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#9ca3b4' }}>Live price</p>
+          <p className="mt-2 text-3xl font-black" style={{ color: '#ffffff' }}>{plan.id === 'free' ? 'Free' : fmtCurrency(monthlyPrice, 'USD')}</p>
+          {plan.id !== 'free' && (
+            <p className="mt-1 text-xs" style={{ color: '#b7afc8' }}>Annual billed at {fmtCurrency(annualPrice, 'USD')}</p>
           )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setEditing(prev => !prev)}
+          className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-bold"
+          style={{ background: 'rgba(101,12,217,0.10)', borderColor: 'rgba(101,12,217,0.20)', color: '#d9ccff' }}
+        >
+          <Pencil className="h-3.5 w-3.5" /> {editing ? 'Close' : 'Edit limits'}
+        </button>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2">
+        <div className="rounded-[1.5rem] border p-4" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.10)' }}>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9ca3b4' }}>Subscribers</p>
+          <div className="mt-4 space-y-2 text-sm">
+            {[
+              { label: 'Total users', value: stats.totalUsers.toLocaleString() },
+              { label: 'Active paid', value: stats.activeUsers.toLocaleString() },
+              { label: 'Monthly billing', value: stats.monthlyUsers.toLocaleString() },
+              { label: 'Annual billing', value: stats.annualUsers.toLocaleString() },
+              { label: 'MRR contribution', value: fmtCurrency(stats.mrr, 'USD') },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between gap-3">
+                <span style={{ color: '#9ca3b4' }}>{item.label}</span>
+                <span className="font-bold" style={{ color: '#ffffff' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border p-4" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.10)' }}>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9ca3b4' }}>Plan limits</p>
+          <div className="mt-4 space-y-2 text-sm">
+            {[
+              { icon: FileStack, label: 'Lifetime Zapps', value: displayLimit(effectiveLimits.maxPresentations, plan.limits.maxPresentations) },
+              { icon: Users, label: 'Max participants', value: displayLimit(effectiveLimits.maxParticipantsPerSession, plan.limits.maxParticipantsPerSession) },
+              { icon: Zap, label: 'Questions per Zapp', value: displayLimit(effectiveLimits.maxQuestionsPerPresentation, plan.limits.maxQuestionsPerPresentation) },
+              { icon: Sparkles, label: 'Live at once', value: displayLimit(effectiveLimits.maxActiveSessions, plan.limits.maxActiveSessions) },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2" style={{ color: '#9ca3b4' }}>
+                  <item.icon className="h-3.5 w-3.5" /> {item.label}
+                </span>
+                <span className="font-bold" style={{ color: '#ffffff' }}>{item.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Subscriber stats */}
-      <div className="rounded-xl p-4 space-y-2" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: '#9CA3AF' }}>Subscriber stats</p>
+      <div className="mt-5 flex flex-wrap gap-2">
         {[
-          { label: 'Total users',       val: stats.totalUsers.toLocaleString()  },
-          { label: 'Active paid',       val: stats.activeUsers.toLocaleString() },
-          { label: 'Monthly billing',   val: stats.monthlyUsers.toLocaleString() },
-          { label: 'Annual billing',    val: stats.annualUsers.toLocaleString() },
-          { label: 'MRR contribution',  val: fmtUSD(stats.mrr) },
-        ].map(({ label, val }) => (
-          <div key={label} className="flex justify-between items-center py-1" style={{ borderBottom: '1px solid #F3F4F6' }}>
-            <span className="text-xs" style={{ color: '#6B7280' }}>{label}</span>
-            <span className="text-xs font-bold" style={{ color: '#1A1A2E' }}>{val}</span>
-          </div>
+          { enabled: plan.features.canUseQuiz, label: 'Live quizzes' },
+          { enabled: plan.features.canUseQA, label: 'Q and A' },
+          { enabled: plan.features.canUseFeedback, label: 'Feedback' },
+          { enabled: plan.features.canExportResults, label: 'Exports' },
+          { enabled: plan.features.canUseBranding, label: 'Branding' },
+        ].map(feature => (
+          <span key={feature.label} className="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold" style={{ background: feature.enabled ? 'rgba(83,216,209,0.10)' : 'rgba(255,255,255,0.03)', borderColor: feature.enabled ? 'rgba(83,216,209,0.16)' : 'rgba(191,168,255,0.10)', color: feature.enabled ? '#c8fffb' : '#9ca3b4' }}>
+            <Check className="h-3 w-3" /> {feature.label}
+          </span>
         ))}
       </div>
 
-      {/* Limits (read view) */}
-      {!editing && (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Plan limits</p>
-            <button
-              onClick={() => setEditing(true)}
-              className="flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
-              style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6' }}
-            >
-              <Edit2 className="w-2.5 h-2.5" /> Edit
-            </button>
-          </div>
-          {[
-            { icon: FileStack, label: 'Lifetime sessions', val: displayLimit(effectiveLimits.maxPresentations, plan.limits.maxPresentations) },
-            { icon: Users,     label: 'Max participants',  val: displayLimit(effectiveLimits.maxParticipantsPerSession, plan.limits.maxParticipantsPerSession) },
-            { icon: Zap,       label: 'Questions / session', val: displayLimit(effectiveLimits.maxQuestionsPerPresentation, plan.limits.maxQuestionsPerPresentation) },
-          ].map(({ icon: Icon, label, val }) => (
-            <div key={label} className="flex justify-between items-center">
-              <span className="text-xs flex items-center gap-1.5" style={{ color: '#6B7280' }}>
-                <Icon className="w-3 h-3" />{label}
-              </span>
-              <span className="text-xs font-bold" style={{ color: hasOverride ? '#F08700' : '#1A1A2E' }}>{val}</span>
-            </div>
-          ))}
+      {editing && (
+        <div className="mt-5">
+          <EditLimitsPanel
+            plan={plan}
+            override={override}
+            onSave={limits => { onSaveOverride(limits); setEditing(false) }}
+            onReset={() => { onResetOverride(); setEditing(false) }}
+            onCancel={() => setEditing(false)}
+          />
         </div>
       )}
-
-      {/* Edit panel */}
-      {editing && (
-        <EditLimitsPanel
-          plan={plan}
-          override={override}
-          onSave={limits => { onSaveOverride(limits); setEditing(false) }}
-          onReset={() => { onResetOverride(); setEditing(false) }}
-          onCancel={() => setEditing(false)}
-        />
-      )}
-
-      {/* Features */}
-      <div className="space-y-1.5 pt-1" style={{ borderTop: '1px solid #F3F4F6' }}>
-        {[
-          { key: 'canExportResults', label: 'Export results' },
-          { key: 'canUseBranding',   label: 'Custom branding' },
-        ].map(({ key, label }) => {
-          const has = plan.features[key as keyof typeof plan.features]
-          return (
-            <div key={key} className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0"
-                style={{ background: has ? 'rgba(0,166,166,0.10)' : '#F3F4F6' }}>
-                <Check className="w-2.5 h-2.5" style={{ color: has ? '#00A6A6' : '#D1D5DB' }} />
-              </div>
-              <span className="text-xs" style={{ color: has ? '#374151' : '#9CA3AF' }}>{label}</span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    </article>
   )
 }
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
 export default function AdminPlansPage() {
-  const [planStats,    setPlanStats]    = useState<Record<string, PlanStats>>({})
-  const [overrides,    setOverrides]    = useState<LimitOverrides>({})
-  const [pricingConfig,setPricingConfig]= useState<PricingConfig>({})
-  const [isLoading,    setIsLoading]    = useState(true)
-  const [totalMRR,     setTotalMRR]     = useState(0)
-  const [totalUsers,   setTotalUsers]   = useState(0)
-  const [saveStatus,   setSaveStatus]   = useState<string>('')
+  const [planStats, setPlanStats] = useState<Record<PlanId, PlanStats>>({} as Record<PlanId, PlanStats>)
+  const [overrides, setOverrides] = useState<LimitOverrides>({})
+  const [baseUsdMonthly, setBaseUsdMonthly] = useState<BaseUsdMonthly>(getDefaultBaseMonthly())
+  const [savedBaseUsdMonthly, setSavedBaseUsdMonthly] = useState<BaseUsdMonthly>(getDefaultBaseMonthly())
+  const [pricingMeta, setPricingMeta] = useState<PricingMeta>(DEFAULT_PRICING_META)
+  const [savedPricingMeta, setSavedPricingMeta] = useState<PricingMeta>(DEFAULT_PRICING_META)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSavingPricing, setIsSavingPricing] = useState(false)
+  const [saveStatus, setSaveStatus] = useState('')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    void loadData()
+  }, [])
+
+  const derivedPricing = useMemo(
+    () => buildPricingConfig(baseUsdMonthly, pricingMeta),
+    [baseUsdMonthly, pricingMeta],
+  )
+
+  const pricingDirty = useMemo(() => (
+    JSON.stringify(baseUsdMonthly) !== JSON.stringify(savedBaseUsdMonthly)
+      || JSON.stringify(pricingMeta) !== JSON.stringify(savedPricingMeta)
+  ), [baseUsdMonthly, savedBaseUsdMonthly, pricingMeta, savedPricingMeta])
+
+  const totalUsers = useMemo(
+    () => Object.values(planStats).reduce((sum, stats) => sum + stats.totalUsers, 0),
+    [planStats],
+  )
+
+  const totalPaid = useMemo(
+    () => PAID_PLAN_IDS.reduce((sum, planId) => sum + (planStats[planId]?.activeUsers ?? 0), 0),
+    [planStats],
+  )
+
+  const totalMRR = useMemo(
+    () => Object.values(planStats).reduce((sum, stats) => sum + stats.mrr, 0),
+    [planStats],
+  )
 
   async function loadData() {
     setIsLoading(true)
+
     try {
-      const [usersSnap, configSnap] = await Promise.all([
+      const [usersSnap, configSnap, pricingSnap, pricingMetaSnap] = await Promise.all([
         get(ref(rtdb, 'users')),
         get(ref(rtdb, 'admin/planConfig')),
+        get(ref(rtdb, 'admin/pricing')),
+        get(ref(rtdb, 'admin/pricingMeta')),
       ])
 
-      // Load overrides from Firebase
+      const rawPricing = pricingSnap.exists() ? (pricingSnap.val() as PricingConfig) : {}
+      const nextBaseUsdMonthly = seedBaseMonthly(rawPricing)
+      const nextPricingMeta = pricingMetaSnap.exists() ? mergePricingMeta(pricingMetaSnap.val()) : DEFAULT_PRICING_META
+      const nextPricing = buildPricingConfig(nextBaseUsdMonthly, nextPricingMeta)
+
+      setBaseUsdMonthly(nextBaseUsdMonthly)
+      setSavedBaseUsdMonthly(nextBaseUsdMonthly)
+      setPricingMeta(nextPricingMeta)
+      setSavedPricingMeta(nextPricingMeta)
+
       if (configSnap.exists()) {
-        const raw = configSnap.val() as Record<string, { limits?: Partial<PlanLimits> }>
-        const loaded: LimitOverrides = {}
-        for (const [planId, cfg] of Object.entries(raw)) {
-          if (cfg.limits) loaded[planId as PlanId] = cfg.limits
+        const rawOverrides = configSnap.val() as Record<string, { limits?: Partial<PlanLimits> }>
+        const loadedOverrides: LimitOverrides = {}
+        for (const [planId, config] of Object.entries(rawOverrides)) {
+          if (config.limits) loadedOverrides[planId as PlanId] = config.limits
         }
-        setOverrides(loaded)
+        setOverrides(loadedOverrides)
+      } else {
+        setOverrides({})
       }
 
-      // Load pricing config
-      const pricingSnap = await get(ref(rtdb, 'admin/pricing'))
-      if (pricingSnap.exists()) setPricingConfig(pricingSnap.val() as PricingConfig)
+      const nextStats = {} as Record<PlanId, PlanStats>
+      const allUsers = usersSnap.exists() ? Object.values(usersSnap.val() as Record<string, any>) : []
 
-      if (!usersSnap.exists()) { setIsLoading(false); return }
-      const data = usersSnap.val() as Record<string, any>
-      const allUsers = Object.values(data)
-      setTotalUsers(allUsers.length)
-
-      const stats: Record<string, PlanStats> = {}
-      let totalMrrAcc = 0
-
-      PLANS.forEach(plan => {
-        const planUsers  = allUsers.filter((u: any) => u.planId === plan.id)
+      for (const plan of PLANS) {
+        const planUsers = allUsers.filter((user: any) => user.planId === plan.id)
         const activeUsers = plan.pricePerMonth > 0 ? planUsers.filter(isActive) : []
-        const monthlyUsers = activeUsers.filter((u: any) => u.billingCycle !== 'annual')
-        const annualUsers  = activeUsers.filter((u: any) => u.billingCycle === 'annual')
-        const mrr = monthlyUsers.length * plan.pricePerMonth + annualUsers.length * (plan.pricePerYear / 12)
-        totalMrrAcc += mrr
-        stats[plan.id] = { planId: plan.id, totalUsers: planUsers.length, activeUsers: activeUsers.length, monthlyUsers: monthlyUsers.length, annualUsers: annualUsers.length, mrr }
-      })
+        const monthlyUsers = activeUsers.filter((user: any) => user.billingCycle !== 'annual')
+        const annualUsers = activeUsers.filter((user: any) => user.billingCycle === 'annual')
+        const monthlyRate = nextPricing.USD?.[plan.id]?.monthly ?? plan.pricePerMonth
+        const annualRate = nextPricing.USD?.[plan.id]?.annual ?? plan.pricePerYear
+        const mrr = (monthlyUsers.length * monthlyRate) + (annualUsers.length * (annualRate / 12))
 
-      setPlanStats(stats)
-      setTotalMRR(totalMrrAcc)
-    } catch (e) {
-      console.error('[admin/plans] load failed', e)
+        nextStats[plan.id] = {
+          planId: plan.id,
+          totalUsers: planUsers.length,
+          activeUsers: activeUsers.length,
+          monthlyUsers: monthlyUsers.length,
+          annualUsers: annualUsers.length,
+          mrr,
+        }
+      }
+
+      setPlanStats(nextStats)
+    } catch (error) {
+      console.error('[admin/plans] load failed', error)
+      setSaveStatus('Failed to load pricing data')
     } finally {
       setIsLoading(false)
     }
@@ -530,134 +693,163 @@ export default function AdminPlansPage() {
       invalidatePlanLimitsCache()
       setSaveStatus(`${planId} limits saved`)
       setTimeout(() => setSaveStatus(''), 3000)
-    } catch (e) {
-      console.error('Failed to save limits', e)
-      setSaveStatus('Save failed — check permissions')
-      setTimeout(() => setSaveStatus(''), 4000)
-    }
-  }
-
-  async function saveCurrencyPrice(currency: SupportedCurrency, planId: PlanId, prices: CurrencyPlanPrice) {
-    try {
-      await set(ref(rtdb, `admin/pricing/${currency}/${planId}`), prices)
-      setPricingConfig(prev => ({
-        ...prev,
-        [currency]: { ...(prev[currency] ?? {}), [planId]: prices },
-      }))
-      invalidatePricingCache()
-      setSaveStatus(`${currency} prices saved`)
-      setTimeout(() => setSaveStatus(''), 3000)
-    } catch (e) {
-      console.error('Failed to save pricing', e)
-      setSaveStatus('Save failed — check permissions')
-      setTimeout(() => setSaveStatus(''), 4000)
+    } catch (error) {
+      console.error('Failed to save limits', error)
+      setSaveStatus('Could not save limits')
+      setTimeout(() => setSaveStatus(''), 3500)
     }
   }
 
   async function resetOverride(planId: PlanId) {
     try {
       await set(ref(rtdb, `admin/planConfig/${planId}/limits`), null)
-      setOverrides(prev => { const next = { ...prev }; delete next[planId]; return next })
+      setOverrides(prev => {
+        const next = { ...prev }
+        delete next[planId]
+        return next
+      })
       invalidatePlanLimitsCache()
-      setSaveStatus(`${planId} limits reset to defaults`)
+      setSaveStatus(`${planId} limits reset`)
       setTimeout(() => setSaveStatus(''), 3000)
-    } catch (e) {
-      console.error('Failed to reset limits', e)
+    } catch (error) {
+      console.error('Failed to reset limits', error)
+      setSaveStatus('Could not reset limits')
+      setTimeout(() => setSaveStatus(''), 3500)
+    }
+  }
+
+  async function savePricingEngine() {
+    setIsSavingPricing(true)
+
+    try {
+      await Promise.all([
+        set(ref(rtdb, 'admin/pricing'), derivedPricing),
+        set(ref(rtdb, 'admin/pricingMeta'), pricingMeta),
+      ])
+
+      setSavedBaseUsdMonthly(baseUsdMonthly)
+      setSavedPricingMeta(pricingMeta)
+      invalidatePricingCache()
+      setSaveStatus('Pricing engine saved across USD, GBP and INR')
+      setTimeout(() => setSaveStatus(''), 3500)
+      await loadData()
+    } catch (error) {
+      console.error('Failed to save pricing engine', error)
+      setSaveStatus('Could not save pricing engine')
+      setTimeout(() => setSaveStatus(''), 3500)
+    } finally {
+      setIsSavingPricing(false)
     }
   }
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-8 h-8 border-4 rounded-full animate-spin"
-          style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="h-9 w-9 animate-spin rounded-full border-4" style={{ borderColor: 'rgba(191,168,255,0.12)', borderTopColor: '#8f63ff' }} />
       </div>
     )
   }
 
-  const totalPaid = PLANS.filter(p => p.pricePerMonth > 0)
-    .reduce((s, p) => s + (planStats[p.id]?.activeUsers ?? 0), 0)
-
   return (
-    <div className="space-y-8 pb-12 max-w-7xl">
-
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="max-w-[1400px] space-y-8 pb-12">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-2" style={{ color: '#9CA3AF' }}>Admin console</p>
-          <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#1A1A2E' }}>
-            Plans <span style={{ color: '#00A6A6' }}>& Pricing</span>
-          </h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Configure plan limits and view subscriber breakdown</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#bda6ff' }}>Admin console</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight" style={{ color: '#fbf7ff' }}>Plans and pricing engine</h1>
+          <p className="mt-2 text-sm" style={{ color: '#b7afc8' }}>
+            Clean up the tier catalogue once, then let LiveZapp generate annual, GBP, and INR pricing consistently everywhere.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex flex-wrap items-center gap-3">
           {saveStatus && (
-            <span className="text-xs font-semibold px-3 py-1.5 rounded-xl" style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6' }}>
+            <span className="rounded-2xl border px-4 py-2 text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.10)', borderColor: 'rgba(101,12,217,0.18)', color: '#d9ccff' }}>
               {saveStatus}
             </span>
           )}
-          <button onClick={loadData}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold self-start"
-            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
-            <RefreshCw className="w-4 h-4" /> Refresh
+          <button
+            type="button"
+            onClick={() => void loadData()}
+            className="inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold"
+            style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(191,168,255,0.12)', color: '#f2ebff' }}
+          >
+            <RefreshCw className="h-4 w-4" /> Refresh data
           </button>
         </div>
       </div>
 
-      {/* Summary strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid gap-4 md:grid-cols-3">
         {[
-          { label: 'Total users',       val: totalUsers.toLocaleString(),  icon: Users,      color: '#FFFFFF', bg: '#1A1A2E' },
-          { label: 'Paid subscribers',  val: totalPaid.toLocaleString(),   icon: TrendingUp, color: '#FFFFFF', bg: '#00A6A6' },
-          { label: 'Total MRR',         val: fmtUSD(totalMRR),            icon: Eye,        color: '#1A1A2E', bg: '#EFCA08' },
-        ].map(({ label, val, icon: Icon, color, bg }) => (
-          <div key={label} className="rounded-2xl p-5 flex items-center gap-4"
-            style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-            <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: bg }}>
-              <Icon className="w-5 h-5" style={{ color }} />
-            </div>
-            <div>
-              <p className="text-xl font-black" style={{ color: '#1A1A2E' }}>{val}</p>
-              <p className="text-xs" style={{ color: '#6B7280' }}>{label}</p>
+          { label: 'Total users', value: totalUsers.toLocaleString(), icon: Users, tone: 'rgba(191,168,255,0.18)' },
+          { label: 'Paid subscribers', value: totalPaid.toLocaleString(), icon: TrendingUp, tone: 'rgba(83,216,209,0.18)' },
+          { label: 'Current MRR', value: fmtCurrency(totalMRR, 'USD'), icon: BadgeDollarSign, tone: 'rgba(255,177,159,0.18)' },
+        ].map(card => (
+          <div key={card.label} className="rounded-[1.75rem] border p-5" style={{ background: '#171720', borderColor: 'rgba(191,168,255,0.12)' }}>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: card.tone }}>
+                <card.icon className="h-5 w-5" style={{ color: '#ffffff' }} />
+              </div>
+              <div>
+                <p className="text-2xl font-black" style={{ color: '#ffffff' }}>{card.value}</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: '#9ca3b4' }}>{card.label}</p>
+              </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Notice */}
-      <div className="rounded-xl p-4 flex items-start gap-3"
-        style={{ background: 'rgba(0,166,166,0.06)', border: '1px solid rgba(0,166,166,0.18)' }}>
-        <Edit2 className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#00A6A6' }} />
-        <div>
-          <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Live overrides — no redeploy needed</p>
-          <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>
-            Edited limits are saved to Firebase and take effect within 5 minutes for all users.
-            Base defaults are in <code className="font-mono text-[11px] px-1 py-0.5 rounded" style={{ background: '#E5E7EB' }}>types/plans.ts</code>.
-            Use the reset button (<RotateCcw className="inline w-3 h-3" />) to revert any plan to its coded defaults.
-          </p>
-        </div>
-      </div>
-
-      {/* Plan cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-        {PLANS.map(plan => (
-          <PlanCard
-            key={plan.id}
-            plan={plan}
-            stats={planStats[plan.id] ?? { planId: plan.id, totalUsers: 0, activeUsers: 0, monthlyUsers: 0, annualUsers: 0, mrr: 0 }}
-            override={overrides[plan.id as PlanId] ?? {}}
-            onSaveOverride={limits => saveOverride(plan.id as PlanId, limits)}
-            onResetOverride={() => resetOverride(plan.id as PlanId)}
-          />
-        ))}
-      </div>
-
-      {/* Per-currency pricing */}
-      <CurrencyPricingEditor
-        initialPricing={pricingConfig}
-        onSave={saveCurrencyPrice}
+      <PricingEnginePanel
+        baseUsdMonthly={baseUsdMonthly}
+        setBaseUsdMonthly={setBaseUsdMonthly}
+        pricingMeta={pricingMeta}
+        setPricingMeta={setPricingMeta}
+        derivedPricing={derivedPricing}
+        isDirty={pricingDirty}
+        isSaving={isSavingPricing}
+        onReset={() => {
+          setBaseUsdMonthly(savedBaseUsdMonthly)
+          setPricingMeta(savedPricingMeta)
+        }}
+        onSave={() => void savePricingEngine()}
       />
 
+      <section className="rounded-[2rem] border p-6 md:p-8" style={{ background: '#14141b', borderColor: 'rgba(191,168,255,0.14)' }}>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#bda6ff' }}>Plan controls</p>
+            <h2 className="mt-2 text-2xl font-black" style={{ color: '#fbf7ff' }}>Usage limits and tier detail</h2>
+            <p className="mt-2 text-sm" style={{ color: '#b7afc8' }}>
+              Pricing now uses the shared engine above. These cards remain the place for plan limits, subscriber visibility, and feature checks.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold" style={{ background: 'rgba(255,177,159,0.10)', borderColor: 'rgba(255,177,159,0.18)', color: '#ffd8cc' }}>
+            <Info className="h-4 w-4" />
+            If limits are changed here, Firebase applies them without a redeploy.
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-4">
+          {PLANS.map(plan => (
+            <PlanCard
+              key={plan.id}
+              plan={plan}
+              stats={planStats[plan.id] ?? {
+                planId: plan.id,
+                totalUsers: 0,
+                activeUsers: 0,
+                monthlyUsers: 0,
+                annualUsers: 0,
+                mrr: 0,
+              }}
+              override={overrides[plan.id] ?? {}}
+              monthlyPrice={derivedPricing.USD?.[plan.id]?.monthly ?? plan.pricePerMonth}
+              annualPrice={derivedPricing.USD?.[plan.id]?.annual ?? plan.pricePerYear}
+              onSaveOverride={limits => void saveOverride(plan.id, limits)}
+              onResetOverride={() => void resetOverride(plan.id)}
+            />
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

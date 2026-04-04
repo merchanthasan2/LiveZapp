@@ -1,6 +1,6 @@
 import { ref, get, set, remove } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
-import { generateJoinCode } from '@/types/join'
+import { generateJoinCodeSync } from '@/types/join'
 
 /**
  * Manages join codes in RTDB under /joinCodes/{code}.
@@ -14,7 +14,7 @@ export const JoinCodeService = {
    */
   async generateUniqueCode(length: number, maxRetries = 10): Promise<string> {
     for (let i = 0; i < maxRetries; i++) {
-      const code = generateJoinCode(length)
+      const code = generateJoinCodeSync(length)
       const snapshot = await get(ref(rtdb, `joinCodes/${code}`))
       if (!snapshot.exists()) {
         // Reserve immediately — full claim happens when session starts

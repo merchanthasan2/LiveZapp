@@ -24,6 +24,7 @@ export default function ShareJoinLink({
 
   const joinUrl = `${siteUrl}/join/${joinCode}`
   const shareMessage = `${presenterName} is using LiveZapp to share a real-time interactive experience. Join now: ${joinUrl}`
+  const canWebShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
 
   const copyToClipboard = async () => {
     try {
@@ -36,7 +37,7 @@ export default function ShareJoinLink({
   }
 
   const shareViaWeb = async () => {
-    if (navigator.share) {
+    if (canWebShare) {
       try {
         await navigator.share({
           title: `Join ${sessionTitle}`,
@@ -117,7 +118,7 @@ export default function ShareJoinLink({
               </button>
 
               {/* Web Share API (mobile) */}
-              {navigator.share && (
+              {canWebShare && (
                 <button
                   onClick={() => { shareViaWeb(); setShowOptions(false) }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors hover:bg-gray-50 text-left"

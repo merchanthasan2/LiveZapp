@@ -8,7 +8,7 @@ import {
 import {
   DEFAULT_JOIN_CONFIG,
   DEFAULT_QR_SETTINGS,
-  generateJoinCode,
+  generateJoinCodeSync,
   type JoinConfig,
   type QRSettings,
 } from '@/types/join'
@@ -79,7 +79,7 @@ export default function AdminSettingsPage() {
   const [config, setConfig] = useState<JoinConfig>(DEFAULT_JOIN_CONFIG)
   const [qrSettings, setQrSettings] = useState<QRSettings>(DEFAULT_QR_SETTINGS)
   const [previewCode, setPreviewCode] = useState<string>(() =>
-    generateJoinCode(DEFAULT_JOIN_CONFIG.defaultCodeLength)
+    generateJoinCodeSync(DEFAULT_JOIN_CONFIG.defaultCodeLength)
   )
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -92,7 +92,7 @@ export default function AdminSettingsPage() {
       .then(({ joinConfig, qrSettings: qr }) => {
         setConfig(joinConfig)
         setQrSettings(qr)
-        setPreviewCode(generateJoinCode(joinConfig.defaultCodeLength))
+        setPreviewCode(generateJoinCodeSync(joinConfig.defaultCodeLength))
       })
       .catch(err => console.error('[AdminSettings] Failed to load config:', err))
       .finally(() => setIsLoading(false))
@@ -102,11 +102,11 @@ export default function AdminSettingsPage() {
   const handleCodeLengthChange = (len: number) => {
     setConfig(c => ({ ...c, defaultCodeLength: len }))
     setQrSettings(q => ({ ...q, codeLength: len }))
-    setPreviewCode(generateJoinCode(len))
+    setPreviewCode(generateJoinCodeSync(len))
   }
 
   const handleRegenerate = () => {
-    setPreviewCode(generateJoinCode(config.defaultCodeLength))
+    setPreviewCode(generateJoinCodeSync(config.defaultCodeLength))
   }
 
   const handleSave = async () => {
@@ -226,7 +226,7 @@ export default function AdminSettingsPage() {
                     onClick={() => {
                       setQrSettings(q => ({ ...q, codeLength: len }))
                       setConfig(c => ({ ...c, defaultCodeLength: len }))
-                      setPreviewCode(generateJoinCode(len))
+                      setPreviewCode(generateJoinCodeSync(len))
                     }}
                     className={`flex-1 py-2.5 rounded-2xl text-xs font-bold border transition-all duration-200 ${
                       qrSettings.codeLength === len

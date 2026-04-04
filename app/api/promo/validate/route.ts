@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getBuiltinPromo } from '@/lib/promo/builtinPromos'
 
 const DATABASE_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
 
@@ -38,12 +39,26 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoVali
     }
 
     const codeUpper = code.toUpperCase().trim()
+    const builtinPromo = getBuiltinPromo(codeUpper)
 
     // Fetch promo code using Firebase REST API
     const url = `${DATABASE_URL}/promoCodes/${codeUpper}.json`
     const response = await fetch(url)
 
     if (!response.ok || response.status === 404) {
+      if (builtinPromo) {
+        return NextResponse.json({
+          success: true,
+          promo: {
+            code: builtinPromo.code,
+            discountType: builtinPromo.discountType,
+            discountValue: builtinPromo.discountValue,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+            targetPlanId: builtinPromo.targetPlanId,
+          },
+        })
+      }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
         { status: 404 }
@@ -53,6 +68,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoVali
     const promo = await response.json()
 
     if (!promo) {
+      if (builtinPromo) {
+        return NextResponse.json({
+          success: true,
+          promo: {
+            code: builtinPromo.code,
+            discountType: builtinPromo.discountType,
+            discountValue: builtinPromo.discountValue,
+            durationMonths: builtinPromo.durationMonths,
+            postExpiryPlanId: builtinPromo.postExpiryPlanId,
+            targetPlanId: builtinPromo.targetPlanId,
+          },
+        })
+      }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
         { status: 404 }

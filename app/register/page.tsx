@@ -4,12 +4,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Zap, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { ref, set } from 'firebase/database'
 import { auth, rtdb } from '@/lib/firebase'
+import BrandLockup from '@/components/BrandLockup'
 
 const schema = z
   .object({
@@ -22,7 +23,7 @@ const schema = z
       .regex(/[0-9]/, 'Must contain at least one number'),
     confirmPassword: z.string(),
   })
-  .refine(d => d.password === d.confirmPassword, {
+  .refine((d) => d.password === d.confirmPassword, {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   })
@@ -30,13 +31,13 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 const inputClass = (hasError: boolean) =>
-  `w-full px-4 py-3 rounded-2xl text-sm text-white placeholder:text-white/25 outline-none transition-all ${
+  `w-full px-4 py-3 rounded-2xl text-sm text-[#1f1830] placeholder:text-[#9d93b1] outline-none transition-all ${
     hasError
-      ? 'border-2 border-red-500/50 bg-red-500/05'
-      : 'border border-white/10 bg-white/05 focus:border-primary/50 focus:ring-2 focus:ring-primary/15'
+      ? 'border-2 border-rose-300 bg-rose-50/90 focus:border-rose-400 focus:ring-4 focus:ring-rose-100'
+      : 'border border-[#eadff7] bg-white/95 focus:border-[#650cd9] focus:ring-4 focus:ring-violet-100'
   }`
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -51,7 +52,6 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  // Load and validate promo code from URL
   useEffect(() => {
     const code = searchParams.get('promo')
     if (code) {
@@ -76,7 +76,7 @@ export default function RegisterPage() {
         setPromoError(data.error || 'Invalid promo code')
         setPromoCode(null)
       }
-    } catch (err) {
+    } catch {
       setPromoError('Failed to validate promo code')
       setPromoCode(null)
     }
@@ -96,7 +96,6 @@ export default function RegisterPage() {
       let planId = isAdmin ? 'pro' : 'free'
       let planExpiresAt: string | undefined
 
-      // If a valid promo code was provided, apply it
       if (promoCode) {
         try {
           const redeemResponse = await fetch('/api/promo/redeem', {
@@ -110,10 +109,8 @@ export default function RegisterPage() {
 
           if (redeemResponse.ok) {
             const redeemData = await redeemResponse.json()
-            // Apply the target plan if specified
             if (redeemData.promo?.targetPlanId) {
               planId = redeemData.promo.targetPlanId
-              // Set expiry based on duration
               if (redeemData.promo.durationMonths) {
                 const expiryDate = new Date()
                 expiryDate.setMonth(expiryDate.getMonth() + redeemData.promo.durationMonths)
@@ -123,11 +120,17 @@ export default function RegisterPage() {
           }
         } catch (err) {
           console.error('Failed to redeem promo code:', err)
-          // Continue with registration even if promo redemption fails
         }
       }
 
-      const userPayload: any = {
+      const userPayload: {
+        id: string
+        email: string
+        name: string
+        role: 'admin' | 'user'
+        planId: string
+        planExpiresAt?: string
+      } = {
         id: firebaseUser.uid,
         email: data.email,
         name: data.name,
@@ -156,14 +159,14 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center py-16 px-4">
-        <div className="glass-card p-12 max-w-md w-full text-center space-y-5">
-          <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mx-auto">
-            <CheckCircle2 className="w-8 h-8 text-secondary" />
+      <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+        <div className="p-12 max-w-md w-full text-center space-y-5 rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(101,12,217,0.10)' }}>
+            <CheckCircle2 className="w-8 h-8" style={{ color: '#650cd9' }} />
           </div>
-          <h2 className="text-2xl font-bold text-white">Account created!</h2>
-          <p className="text-white/50 text-sm">
-            Welcome to LiveZapp. Redirecting to your dashboard…
+          <h2 className="text-2xl font-bold" style={{ color: '#181324' }}>Account created!</h2>
+          <p className="text-sm" style={{ color: '#6d667b' }}>
+            Welcome to LiveZapp. Redirecting to your Zapp dashboard...
           </p>
         </div>
       </div>
@@ -171,28 +174,29 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-16 px-4">
+    <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
       <div className="w-full max-w-md relative">
-        <div className="glass-card p-8 sm:p-10">
-          {/* Logo */}
-          <div className="flex flex-col items-center mb-8">
+        <div className="p-8 sm:p-10 rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
+          <div className="flex flex-col items-center mb-8 text-center">
+            <BrandLockup href="/" size="md" theme="light" variant="wordmark" />
             <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+              className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 mt-5"
               style={{
-                background: 'linear-gradient(135deg, #ffc300, #ffd60a)',
-                boxShadow: '0 0 24px rgba(255,195,0,0.45)',
+                background: 'linear-gradient(135deg, #650cd9, #8f63ff)',
+                boxShadow: '0 16px 34px rgba(101,12,217,0.22)',
               }}
             >
-              <Zap className="w-6 h-6" style={{ color: '#000814' }} />
+              <Zap className="w-6 h-6" style={{ color: '#ffffff' }} />
             </div>
-            <h1 className="text-2xl font-bold text-white">Create your account</h1>
-            <p className="text-sm text-white/40 mt-1">Start free — no credit card required</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#8f78ba' }}>Create Your Account</p>
+            <h1 className="text-3xl font-black mt-3" style={{ color: '#181324' }}>Start your first Zapp</h1>
+            <p className="text-sm mt-2 max-w-xs" style={{ color: '#6d667b' }}>Build live quizzes, polls, and word clouds with the new LiveZapp design system.</p>
           </div>
 
           {serverError && (
             <div
               className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
-              style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.25)', color: '#FB7185' }}
+              style={{ background: '#fff3f5', border: '1px solid #fecdd3', color: '#e11d48' }}
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               {serverError}
@@ -202,17 +206,17 @@ export default function RegisterPage() {
           {promoCode && (
             <div
               className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
-              style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.25)', color: '#16A34A' }}
+              style={{ background: '#f3efff', border: '1px solid #dacbff', color: '#5b21b6' }}
             >
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-              Promo code <strong>{promoCode}</strong> applied! You\'ll get a special discount.
+              Promo code <strong>{promoCode}</strong> applied. Your participant offer is ready.
             </div>
           )}
 
           {promoError && (
             <div
               className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
-              style={{ background: 'rgba(244,63,94,0.10)', border: '1px solid rgba(244,63,94,0.25)', color: '#FB7185' }}
+              style={{ background: '#fff3f5', border: '1px solid #fecdd3', color: '#e11d48' }}
             >
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               {promoError}
@@ -220,9 +224,8 @@ export default function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
-            {/* Name */}
             <div>
-              <label htmlFor="reg-name" className="block text-sm font-medium text-white/60 mb-1.5">
+              <label htmlFor="reg-name" className="block text-sm font-medium mb-1.5" style={{ color: '#564d67' }}>
                 Full name
               </label>
               <input
@@ -233,12 +236,11 @@ export default function RegisterPage() {
                 {...register('name')}
                 className={inputClass(!!errors.name)}
               />
-              {errors.name && <p className="mt-1.5 text-xs text-red-400">{errors.name.message}</p>}
+              {errors.name && <p className="mt-1.5 text-xs" style={{ color: '#e11d48' }}>{errors.name.message}</p>}
             </div>
 
-            {/* Email */}
             <div>
-              <label htmlFor="reg-email" className="block text-sm font-medium text-white/60 mb-1.5">
+              <label htmlFor="reg-email" className="block text-sm font-medium mb-1.5" style={{ color: '#564d67' }}>
                 Email address
               </label>
               <input
@@ -249,12 +251,11 @@ export default function RegisterPage() {
                 {...register('email')}
                 className={inputClass(!!errors.email)}
               />
-              {errors.email && <p className="mt-1.5 text-xs text-red-400">{errors.email.message}</p>}
+              {errors.email && <p className="mt-1.5 text-xs" style={{ color: '#e11d48' }}>{errors.email.message}</p>}
             </div>
 
-            {/* Password */}
             <div>
-              <label htmlFor="reg-password" className="block text-sm font-medium text-white/60 mb-1.5">
+              <label htmlFor="reg-password" className="block text-sm font-medium mb-1.5" style={{ color: '#564d67' }}>
                 Password
               </label>
               <div className="relative">
@@ -269,19 +270,19 @@ export default function RegisterPage() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/60 transition-colors"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: '#8f87a2' }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && <p className="mt-1.5 text-xs text-red-400">{errors.password.message}</p>}
+              {errors.password && <p className="mt-1.5 text-xs" style={{ color: '#e11d48' }}>{errors.password.message}</p>}
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label htmlFor="reg-confirm" className="block text-sm font-medium text-white/60 mb-1.5">
+              <label htmlFor="reg-confirm" className="block text-sm font-medium mb-1.5" style={{ color: '#564d67' }}>
                 Confirm password
               </label>
               <input
@@ -293,7 +294,7 @@ export default function RegisterPage() {
                 className={inputClass(!!errors.confirmPassword)}
               />
               {errors.confirmPassword && (
-                <p className="mt-1.5 text-xs text-red-400">{errors.confirmPassword.message}</p>
+                <p className="mt-1.5 text-xs" style={{ color: '#e11d48' }}>{errors.confirmPassword.message}</p>
               )}
             </div>
 
@@ -305,7 +306,7 @@ export default function RegisterPage() {
               {isSubmitting ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Creating account…
+                  Creating account...
                 </>
               ) : (
                 <>Create account <ArrowRight className="w-4 h-4" /></>
@@ -313,21 +314,35 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-white/30 mt-6">
+          <p className="text-center text-xs mt-6" style={{ color: '#8f87a2' }}>
             By creating an account you agree to our{' '}
-            <Link href="/terms" className="text-primary/70 hover:text-primary transition-colors">Terms</Link>{' '}
+            <Link href="/terms" className="font-semibold transition-colors" style={{ color: '#650cd9' }}>Terms</Link>{' '}
             and{' '}
-            <Link href="/privacy" className="text-primary/70 hover:text-primary transition-colors">Privacy Policy</Link>.
+            <Link href="/privacy" className="font-semibold transition-colors" style={{ color: '#650cd9' }}>Privacy Policy</Link>.
           </p>
 
-          <p className="text-center text-sm text-white/35 mt-4">
+          <p className="text-center text-sm mt-4" style={{ color: '#6d667b' }}>
             Already have an account?{' '}
-            <Link href="/login" className="text-primary font-semibold hover:text-primary/80 transition-colors">
+            <Link href="/login" className="font-semibold transition-colors" style={{ color: '#650cd9' }}>
               Sign in
             </Link>
           </p>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+          <div className="p-8 text-sm rounded-[1.75rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', color: '#6d667b' }}>Loading...</div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   )
 }

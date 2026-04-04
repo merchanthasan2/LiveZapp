@@ -8,13 +8,14 @@ import {
   MessageSquare, Star, Send, Zap, ArrowRight, Users,
 } from 'lucide-react'
 import Image from 'next/image'
+import BrandLockup from '@/components/BrandLockup'
 import { LiveSessionService, LiveSessionData, ParticipantResponse } from '@/lib/services/LiveSessionService'
 import type {
   Question, QuizQuestion, PollQuestion,
   FeedbackQuestion, QAQuestion, WordCloudQuestion,
 } from '@/types/domain'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function getParticipantId(): string {
   if (typeof window === 'undefined') return 'ssr'
@@ -31,14 +32,22 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
 }
 
 const KIND_META: Record<string, { bg: string; text: string; accent: string }> = {
-  quiz:       { bg: '#00A6A6', text: '#FFFFFF', accent: '#00A6A6' },
-  poll:       { bg: '#F08700', text: '#FFFFFF', accent: '#F08700' },
-  word_cloud: { bg: '#EFCA08', text: '#1A1A2E', accent: '#8A7000' },
-  qa:         { bg: '#00A6A6', text: '#FFFFFF', accent: '#00A6A6' },
-  feedback:   { bg: '#F49F0A', text: '#1A1A2E', accent: '#C07800' },
+  quiz:       { bg: '#650cd9', text: '#FFFFFF', accent: '#650cd9' },
+  poll:       { bg: '#bda6ff', text: '#FFFFFF', accent: '#bda6ff' },
+  word_cloud: { bg: '#53d8d1', text: '#1A1A2E', accent: '#0f5f59' },
+  qa:         { bg: '#650cd9', text: '#FFFFFF', accent: '#650cd9' },
+  feedback:   { bg: '#ffb19f', text: '#1A1A2E', accent: '#912f03' },
 }
 
-// ─── Response components ──────────────────────────────────────────────────
+const WAITING_MESSAGES = [
+  'We are excited you joined us. Settle in while the room fills up.',
+  'Have a sip of your favorite drink while other participants join in.',
+  'You are in early. The presenter will welcome everyone shortly.',
+  'Your place is saved. We are getting this Zapp ready for takeoff.',
+  'Stay close. The first live prompt is about to begin.',
+]
+
+// â”€â”€â”€ Response components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function QuizView({ question, onSubmit, submitted }: {
   question: QuizQuestion; onSubmit: (a: string) => void; submitted: boolean
@@ -53,20 +62,20 @@ function QuizView({ question, onSubmit, submitted }: {
           onClick={() => !submitted && setSelected(opt.id)}
           className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]"
           style={{
-            background: selected === opt.id ? 'rgba(0,166,166,0.10)' : '#FFFFFF',
-            border: `2px solid ${selected === opt.id ? '#00A6A6' : '#E5E7EB'}`,
-            boxShadow: selected === opt.id ? '0 0 0 3px rgba(0,166,166,0.12)' : 'none',
+            background: selected === opt.id ? 'rgba(101,12,217,0.10)' : '#FFFFFF',
+            border: `2px solid ${selected === opt.id ? '#650cd9' : '#E5E7EB'}`,
+            boxShadow: selected === opt.id ? '0 0 0 3px rgba(101,12,217,0.12)' : 'none',
             opacity: submitted ? 0.65 : 1,
           }}
         >
-          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id ? '#00A6A6' : '#F5F7FA', color: selected === opt.id ? '#FFFFFF' : '#9CA3AF' }}>
+          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id ? '#650cd9' : '#F5F7FA', color: selected === opt.id ? '#FFFFFF' : '#9CA3AF' }}>
             {String.fromCharCode(65 + i)}
           </span>
           <span className="text-base font-medium" style={{ color: '#1A1A2E' }}>{opt.label}</span>
         </button>
       ))}
       {!submitted && (
-        <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#00A6A6', color: '#FFFFFF' }}>
+        <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#650cd9', color: '#FFFFFF' }}>
           Submit answer <Send className="w-4 h-4" />
         </button>
       )}
@@ -90,16 +99,16 @@ function PollView({ question, onSubmit, submitted }: {
       {question.options.map(opt => {
         const isSelected = selected.includes(opt.id)
         return (
-          <button key={opt.id} disabled={submitted} onClick={() => !submitted && toggle(opt.id)} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]" style={{ background: isSelected ? 'rgba(240,135,0,0.08)' : '#FFFFFF', border: `2px solid ${isSelected ? '#F08700' : '#E5E7EB'}`, boxShadow: isSelected ? '0 0 0 3px rgba(240,135,0,0.10)' : 'none', opacity: submitted ? 0.65 : 1 }}>
-            <span className="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all" style={{ borderColor: isSelected ? '#F08700' : '#D1D5DB', background: isSelected ? '#F08700' : 'transparent' }}>
+          <button key={opt.id} disabled={submitted} onClick={() => !submitted && toggle(opt.id)} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]" style={{ background: isSelected ? 'rgba(189,166,255,0.10)' : '#FFFFFF', border: `2px solid ${isSelected ? '#bda6ff' : '#E5E7EB'}`, boxShadow: isSelected ? '0 0 0 3px rgba(189,166,255,0.10)' : 'none', opacity: submitted ? 0.65 : 1 }}>
+            <span className="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all" style={{ borderColor: isSelected ? '#bda6ff' : '#D1D5DB', background: isSelected ? '#bda6ff' : 'transparent' }}>
               {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
             </span>
-            <span className="text-base font-medium" style={{ color: isSelected ? '#F08700' : '#1A1A2E' }}>{opt.label}</span>
+            <span className="text-base font-medium" style={{ color: isSelected ? '#bda6ff' : '#1A1A2E' }}>{opt.label}</span>
           </button>
         )
       })}
       {!submitted && (
-        <button disabled={selected.length === 0} onClick={() => onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#F08700', color: '#FFFFFF' }}>
+        <button disabled={selected.length === 0} onClick={() => onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#bda6ff', color: '#FFFFFF' }}>
           Submit <Send className="w-4 h-4" />
         </button>
       )}
@@ -124,26 +133,26 @@ function WordCloudView({ question, onSubmit, submitted }: {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Add up to {max} word{max > 1 ? 's' : ''}</p>
-        <span className="text-sm font-bold" style={{ color: added.length >= max ? '#F08700' : '#9CA3AF' }}>{added.length}/{max}</span>
+        <span className="text-sm font-bold" style={{ color: added.length >= max ? '#bda6ff' : '#9CA3AF' }}>{added.length}/{max}</span>
       </div>
       {added.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {added.map((w, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold" style={{ background: 'rgba(239,202,8,0.18)', border: '1.5px solid rgba(239,202,8,0.45)', color: '#8A7000' }}>
+            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold" style={{ background: 'rgba(83,216,209,0.18)', border: '1.5px solid rgba(83,216,209,0.45)', color: '#0f5f59' }}>
               {w}
-              {!submitted && <button onClick={() => setAdded(prev => prev.filter((_, idx) => idx !== i))} className="font-bold" style={{ color: '#8A7000' }}>×</button>}
+              {!submitted && <button onClick={() => setAdded(prev => prev.filter((_, idx) => idx !== i))} className="font-bold" style={{ color: '#0f5f59' }}>x</button>}
             </span>
           ))}
         </div>
       )}
       {!submitted && !atMax && (
         <div className="flex gap-2">
-          <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase…' : 'Add another…'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#EFCA08' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? '#EFCA08' : 'rgba(239,202,8,0.20)', color: '#1A1A2E', border: '2px solid transparent', boxShadow: canAdd ? '0 2px 12px rgba(239,202,8,0.35)' : 'none' }}>Add</button>
+          <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase...' : 'Add another...'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#53d8d1' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? '#53d8d1' : 'rgba(83,216,209,0.20)', color: '#1A1A2E', border: '2px solid transparent', boxShadow: canAdd ? '0 2px 12px rgba(83,216,209,0.35)' : 'none' }}>Add</button>
         </div>
       )}
       {!submitted && (
-        <button disabled={added.length === 0} onClick={() => onSubmit(added)} className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: '#EFCA08', color: '#1A1A2E' }}>
+        <button disabled={added.length === 0} onClick={() => onSubmit(added)} className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: '#53d8d1', color: '#1A1A2E' }}>
           Submit {added.length} word{added.length !== 1 ? 's' : ''} <Send className="w-4 h-4" />
         </button>
       )}
@@ -155,9 +164,9 @@ function QAView({ onSubmit, submitted }: { question: QAQuestion; onSubmit: (a: s
   const [text, setText] = useState('')
   return (
     <div className="space-y-3">
-      <textarea rows={4} placeholder="Type your response here…" disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem', lineHeight: 1.5 }} onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+      <textarea rows={4} placeholder="Type your response here..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem', lineHeight: 1.5 }} onFocus={e => { e.currentTarget.style.borderColor = '#650cd9' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
       {!submitted && (
-        <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#00A6A6', color: '#FFFFFF' }}>
+        <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#650cd9', color: '#FFFFFF' }}>
           Submit <Send className="w-4 h-4" />
         </button>
       )}
@@ -175,11 +184,11 @@ function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQue
       <div className="space-y-6">
         <div className="flex gap-2 justify-center flex-wrap">
           {Array.from({ length: max }, (_, i) => i + 1).map(n => (
-            <button key={n} disabled={submitted} onClick={() => setRating(n)} className="w-14 h-14 rounded-2xl font-black text-2xl transition-all active:scale-95" style={{ background: rating >= n ? '#F49F0A' : '#F5F7FA', border: `2px solid ${rating >= n ? '#F49F0A' : '#E5E7EB'}`, boxShadow: rating >= n ? '0 0 0 3px rgba(244,159,10,0.15)' : 'none' }}>★</button>
+            <button key={n} disabled={submitted} onClick={() => setRating(n)} className="w-14 h-14 rounded-2xl font-black text-2xl transition-all active:scale-95" style={{ background: rating >= n ? '#ffb19f' : '#F5F7FA', border: `2px solid ${rating >= n ? '#ffb19f' : '#E5E7EB'}`, boxShadow: rating >= n ? '0 0 0 3px rgba(255,177,159,0.15)' : 'none' }}>*</button>
           ))}
         </div>
-        {rating > 0 && !submitted && <p className="text-center text-sm font-bold" style={{ color: '#F49F0A' }}>{rating} / {max} stars selected</p>}
-        {!submitted && <button disabled={rating === 0} onClick={() => onSubmit(rating)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#F49F0A', color: '#1A1A2E' }}>Submit rating <Send className="w-4 h-4" /></button>}
+        {rating > 0 && !submitted && <p className="text-center text-sm font-bold" style={{ color: '#ffb19f' }}>{rating} / {max} stars selected</p>}
+        {!submitted && <button disabled={rating === 0} onClick={() => onSubmit(rating)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit rating <Send className="w-4 h-4" /></button>}
       </div>
     )
   }
@@ -187,23 +196,23 @@ function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQue
     return (
       <div className="space-y-3">
         {question.options.map(opt => (
-          <button key={opt.id} disabled={submitted} onClick={() => setSelected(opt.id)} className="w-full px-4 py-4 rounded-2xl text-base font-medium text-left transition-all active:scale-[0.98]" style={{ background: selected === opt.id ? 'rgba(244,159,10,0.10)' : '#FFFFFF', border: `2px solid ${selected === opt.id ? '#F49F0A' : '#E5E7EB'}`, color: selected === opt.id ? '#C07800' : '#1A1A2E' }}>
+          <button key={opt.id} disabled={submitted} onClick={() => setSelected(opt.id)} className="w-full px-4 py-4 rounded-2xl text-base font-medium text-left transition-all active:scale-[0.98]" style={{ background: selected === opt.id ? 'rgba(255,177,159,0.10)' : '#FFFFFF', border: `2px solid ${selected === opt.id ? '#ffb19f' : '#E5E7EB'}`, color: selected === opt.id ? '#912f03' : '#1A1A2E' }}>
             {opt.label}
           </button>
         ))}
-        {!submitted && <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-2 transition-all disabled:opacity-40" style={{ background: '#F49F0A', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
+        {!submitted && <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-2 transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
       </div>
     )
   }
   return (
     <div className="space-y-3">
-      <textarea rows={question.feedbackType === 'long_text' ? 5 : 3} placeholder="Your response…" disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#F49F0A' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-      {!submitted && <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#F49F0A', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
+      <textarea rows={question.feedbackType === 'long_text' ? 5 : 3} placeholder="Your response..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#ffb19f' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+      {!submitted && <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
     </div>
   )
 }
 
-// ─── Name entry screen ────────────────────────────────────────────────────
+// â”€â”€â”€ Name entry screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function NameEntryScreen({
   sessionTitle, participantCount, nameInput, setNameInput, onJoin, isJoining,
@@ -235,14 +244,9 @@ function NameEntryScreen({
         className="flex items-center justify-between px-5 py-4 shrink-0"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
       >
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
-            <Zap className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="text-sm font-bold text-white">LiveZapp</span>
-        </div>
+        <BrandLockup href="/" size="sm" theme="dark" />
         {participantCount > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(0,166,166,0.15)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.25)' }}>
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.15)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.25)' }}>
             <Users className="w-3 h-3" />
             {participantCount} joined
           </div>
@@ -271,8 +275,8 @@ function NameEntryScreen({
             <div
               className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
               style={{
-                background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
-                boxShadow: '0 8px 32px rgba(0,166,166,0.35)',
+                background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
+                boxShadow: '0 8px 32px rgba(101,12,217,0.35)',
               }}
             >
               <Zap className="w-10 h-10 text-white" />
@@ -308,7 +312,7 @@ function NameEntryScreen({
               value={nameInput}
               onChange={e => setNameInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && nameInput.trim()) onJoin() }}
-              placeholder="Enter your name…"
+              placeholder="Enter your name..."
               maxLength={40}
               autoComplete="given-name"
               className="w-full outline-none transition-all"
@@ -322,7 +326,7 @@ function NameEntryScreen({
                 background: 'rgba(255,255,255,0.07)',
                 backdropFilter: 'blur(8px)',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#00A6A6'; e.currentTarget.style.background = 'rgba(0,166,166,0.10)' }}
+              onFocus={e => { e.currentTarget.style.borderColor = '#650cd9'; e.currentTarget.style.background = 'rgba(101,12,217,0.10)' }}
               onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
             />
           </div>
@@ -332,24 +336,22 @@ function NameEntryScreen({
             onClick={onJoin}
             className="w-full flex items-center justify-center gap-3 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
+              background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
               color: '#FFFFFF',
               padding: '1.1rem',
-              boxShadow: nameInput.trim() ? '0 6px 24px rgba(0,166,166,0.40)' : 'none',
+              boxShadow: nameInput.trim() ? '0 6px 24px rgba(101,12,217,0.40)' : 'none',
             }}
           >
             {isJoining ? (
               <span className="flex items-center gap-2">
-                <span className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.30)', borderTopColor: '#FFFFFF' }} />
-                Joining…
-              </span>
+                <span className="w-5 h-5 border-2 rounded-full animate-spin" style={{ borderColor: 'rgba(255,255,255,0.30)', borderTopColor: '#FFFFFF' }} />Joining...</span>
             ) : (
               <>Join Session <ArrowRight className="w-5 h-5" /></>
             )}
           </button>
 
           <p className="text-center text-xs" style={{ color: 'rgba(255,255,255,0.30)' }}>
-            No account needed · Join as a guest
+            No account needed - Join as a guest
           </p>
         </motion.div>
       </div>
@@ -359,7 +361,7 @@ function NameEntryScreen({
         className="flex items-center justify-center gap-2 py-4 shrink-0"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: '#00A6A6' }}>
+        <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: '#650cd9' }}>
           <Zap className="w-2.5 h-2.5 text-white" />
         </div>
         <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.25)' }}>
@@ -370,13 +372,24 @@ function NameEntryScreen({
   )
 }
 
-// ─── Wait screen ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Wait screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function WaitScreen({ name, sessionTitle, participantCount }: {
+function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandName }: {
   name: string
   sessionTitle: string
   participantCount: number
+  brandLogoUrl?: string
+  brandName?: string
 }) {
+  const [messageIndex, setMessageIndex] = useState((name.length + sessionTitle.length) % WAITING_MESSAGES.length)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % WAITING_MESSAGES.length)
+    }, 3600)
+    return () => window.clearInterval(timer)
+  }, [])
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -395,18 +408,27 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
             style={{
               width: 60 + i * 44,
               height: 60 + i * 44,
-              border: '1.5px solid rgba(0,166,166,0.20)',
+              border: '1.5px solid rgba(101,12,217,0.20)',
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
           />
         ))}
-        <div
-          className="w-16 h-16 rounded-2xl flex items-center justify-center z-10"
-          style={{ background: 'rgba(0,166,166,0.15)', border: '1.5px solid rgba(0,166,166,0.35)' }}
-        >
-          <Zap className="w-8 h-8" style={{ color: '#00A6A6' }} />
-        </div>
+        {brandLogoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={brandLogoUrl}
+            alt={brandName || sessionTitle}
+            className="h-20 w-20 rounded-[1.6rem] object-contain z-10 bg-white/95 p-2.5 shadow-2xl"
+          />
+        ) : (
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center z-10"
+            style={{ background: 'rgba(101,12,217,0.15)', border: '1.5px solid rgba(101,12,217,0.35)' }}
+          >
+            <Zap className="w-8 h-8" style={{ color: '#650cd9' }} />
+          </div>
+        )}
       </div>
 
       {/* Greeting */}
@@ -417,13 +439,16 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
         className="space-y-3 mb-8"
       >
         <p style={{ fontSize: '2rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
-          Hey {name}! 👋
+          Hey {name}!
         </p>
         <p className="text-base font-medium" style={{ color: 'rgba(255,255,255,0.50)' }}>
-          You&rsquo;re all set for
+          You are all set for
         </p>
-        <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#00A6A6' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#650cd9' }}>
           {sessionTitle}
+        </p>
+        <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.42)' }}>
+          Presented by {brandName || 'LiveZapp'}
         </p>
       </motion.div>
 
@@ -432,7 +457,7 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="space-y-5"
+        className="space-y-5 max-w-xl"
       >
         <div
           className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
@@ -440,14 +465,30 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
         >
           <motion.div
             className="w-2.5 h-2.5 rounded-full"
-            style={{ background: '#F08700' }}
+            style={{ background: '#bda6ff' }}
             animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
             transition={{ duration: 1.4, repeat: Infinity }}
           />
           <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.75)' }}>
-            Waiting for the presenter to start Zapp-ing…
-          </span>
+            Waiting for the presenter to start the Zapp...</span>
         </div>
+
+        <motion.div
+          key={messageIndex}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-[1.6rem] px-6 py-5"
+          style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04))',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.84)',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.20)',
+          }}
+        >
+          <p className="text-lg font-semibold leading-relaxed">
+            {WAITING_MESSAGES[messageIndex]}
+          </p>
+        </motion.div>
 
         {participantCount > 0 && (
           <motion.div
@@ -470,7 +511,7 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
             <motion.div
               key={i}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ background: '#00A6A6' }}
+              style={{ background: '#650cd9' }}
               animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.3, 1] }}
               transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.2 }}
             />
@@ -481,7 +522,7 @@ function WaitScreen({ name, sessionTitle, participantCount }: {
   )
 }
 
-// ─── Main participant page ─────────────────────────────────────────────────
+// â”€â”€â”€ Main participant page â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export default function ParticipantPage() {
   const { code } = useParams<{ code: string }>()
@@ -508,7 +549,7 @@ export default function ParticipantPage() {
     if (saved) { setParticipantName(saved); setNameInput(saved) }
   }, [])
 
-  // Subscribe to session (always — to get title before name entry)
+  // Subscribe to session (always â€” to get title before name entry)
   useEffect(() => {
     const unsub = LiveSessionService.subscribeToSession(code, data => {
       if (!data) { setError('Session not found.'); setIsLoading(false); return }
@@ -551,19 +592,19 @@ export default function ParticipantPage() {
     setAnswered(prev => ({ ...prev, [questionId]: true }))
   }
 
-  // ── Loading ────────────────────────────────────────────────────────────
+  // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0D1117' }}>
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 rounded-full border-2 animate-spin mx-auto" style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
-          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>Connecting…</p>
+          <div className="w-12 h-12 rounded-full border-2 animate-spin mx-auto" style={{ borderColor: 'rgba(101,12,217,0.20)', borderTopColor: '#650cd9' }} />
+          <p className="text-sm" style={{ color: 'rgba(255,255,255,0.35)' }}>Connecting...</p>
         </div>
       </div>
     )
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────
+  // â”€â”€ Error â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (error || !session) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6" style={{ background: '#F5F7FA' }}>
@@ -575,21 +616,21 @@ export default function ParticipantPage() {
     )
   }
 
-  // ── Paused ────────────────────────────────────────────────────────────
+  // â”€â”€ Paused â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (session.isPaused) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#FFFFFF' }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-5 px-8">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(0,166,166,0.10)', border: '1.5px solid rgba(0,166,166,0.20)' }}>
-              <span style={{ fontSize: '2.5rem' }}>⏸</span>
+            <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.10)', border: '1.5px solid rgba(101,12,217,0.20)' }}>
+              <span style={{ fontSize: '2.5rem' }}>| |</span>
             </div>
           </div>
           <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1A1A2E' }}>Session paused</h2>
           <p className="text-base" style={{ color: '#6B7280' }}>The presenter will resume shortly. Please stand by.</p>
           <div className="flex gap-1.5 justify-center mt-4">
             {[0, 1, 2].map(i => (
-              <motion.div key={i} className="w-2 h-2 rounded-full" style={{ background: '#00A6A6' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.2 }} />
+              <motion.div key={i} className="w-2 h-2 rounded-full" style={{ background: '#650cd9' }} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.2 }} />
             ))}
           </div>
         </motion.div>
@@ -597,16 +638,13 @@ export default function ParticipantPage() {
     )
   }
 
-  // ── Session ended ──────────────────────────────────────────────────────
+  // â”€â”€ Session ended â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!session.isActive) {
     return (
       <div className="min-h-screen flex flex-col" style={{ background: '#F5F7FA' }}>
         {/* Header */}
         <div className="flex items-center gap-2 px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: '#FFFFFF' }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
-            <Zap className="w-3.5 h-3.5 text-white" />
-          </div>
-          <span className="text-sm font-bold" style={{ color: '#1A1A2E' }}>LiveZapp</span>
+          <BrandLockup href="/" size="sm" theme="light" />
         </div>
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6 max-w-sm mx-auto w-full">
@@ -627,7 +665,7 @@ export default function ParticipantPage() {
             <button
               onClick={() => router.push('/join')}
               className="text-sm font-semibold px-5 py-2.5 rounded-xl transition-all"
-              style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
+              style={{ background: 'rgba(101,12,217,0.10)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.20)' }}
             >
               Join another session
             </button>
@@ -641,32 +679,32 @@ export default function ParticipantPage() {
             className="w-full rounded-3xl overflow-hidden"
             style={{
               background: 'linear-gradient(135deg, #0A0E1A 0%, #0F1F2E 100%)',
-              border: '1px solid rgba(0,166,166,0.20)',
+              border: '1px solid rgba(101,12,217,0.20)',
               boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
             }}
           >
             <div className="px-6 pt-6 pb-5">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#00A6A6' }}>
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: '#650cd9' }}>
                   <Zap className="w-3 h-3 text-white" />
                 </div>
-                <span className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: '#00A6A6' }}>Enjoyed the experience?</span>
+                <span className="text-xs font-black uppercase tracking-[0.14em]" style={{ color: '#650cd9' }}>Enjoyed the experience?</span>
               </div>
 
               <h3 className="font-black text-white leading-tight mb-2" style={{ fontSize: '1.2rem' }}>
-                Create your own live sessions — free
+                Create your own live sessions - free
               </h3>
               <p className="text-sm leading-relaxed mb-5" style={{ color: 'rgba(255,255,255,0.55)' }}>
-                Register now and get <span className="font-bold" style={{ color: '#EFCA08' }}>Basic plan free for 3 months</span>. No credit card needed.
+                Register now and get <span className="font-bold" style={{ color: '#53d8d1' }}>Basic plan free for 3 months</span>. No credit card needed.
               </p>
 
               <a
                 href="/register?promo=PARTICIPANT3M"
                 className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-black text-base transition-all active:scale-[0.98]"
                 style={{
-                  background: 'linear-gradient(135deg, #00A6A6, #007F7F)',
+                  background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
                   color: '#FFFFFF',
-                  boxShadow: '0 4px 20px rgba(0,166,166,0.35)',
+                  boxShadow: '0 4px 20px rgba(101,12,217,0.35)',
                   textDecoration: 'none',
                 }}
               >
@@ -674,7 +712,7 @@ export default function ParticipantPage() {
               </a>
 
               <p className="text-center text-[11px] mt-3" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                Offer auto-applied · No card required · Cancel anytime
+                Offer auto-applied - No card required - Cancel anytime
               </p>
             </div>
           </motion.div>
@@ -689,7 +727,7 @@ export default function ParticipantPage() {
   const KindIcon   = currentQ ? (KIND_ICON[currentQ.kind] ?? Sparkles) : Sparkles
   const kindMeta   = currentQ ? (KIND_META[currentQ.kind] ?? KIND_META.quiz) : KIND_META.quiz
 
-  // ── Name entry ────────────────────────────────────────────────────────
+  // â”€â”€ Name entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!participantName || !hasJoined) {
     return (
       <AnimatePresence mode="wait">
@@ -708,7 +746,7 @@ export default function ParticipantPage() {
     )
   }
 
-  // ── Waiting for presenter to start ────────────────────────────────────
+  // â”€â”€ Waiting for presenter to start â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!session.hasStarted) {
     return (
       <AnimatePresence mode="wait">
@@ -717,12 +755,14 @@ export default function ParticipantPage() {
           name={participantName}
           sessionTitle={session.title}
           participantCount={participantCount}
+          brandLogoUrl={session.brandLogoUrl}
+          brandName={session.brandName}
         />
       </AnimatePresence>
     )
   }
 
-  // ── Active session ─────────────────────────────────────────────────────
+  // â”€â”€ Active session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="min-h-screen flex flex-col" style={{ background: '#F5F7FA' }}>
 
@@ -732,18 +772,16 @@ export default function ParticipantPage() {
         style={{ background: 'rgba(255,255,255,0.95)', borderBottom: '1px solid rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)' }}
       >
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md flex items-center justify-center shrink-0" style={{ background: '#00A6A6' }}>
-            <Zap className="w-3 h-3 text-white" />
-          </div>
+          <BrandLockup href="/" size="sm" theme="light" />
           <p className="text-sm font-semibold truncate max-w-[180px]" style={{ color: '#1A1A2E' }}>{session.title}</p>
         </div>
         <div className="flex items-center gap-2">
           {participantName && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6' }}>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(101,12,217,0.10)', color: '#650cd9' }}>
               {participantName}
             </span>
           )}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#F08700' }}>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#bda6ff' }}>
             <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
             <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
           </div>
@@ -754,7 +792,7 @@ export default function ParticipantPage() {
       {questions.length > 0 && (
         <div className="flex gap-0.5 shrink-0">
           {questions.map((_, i) => (
-            <div key={i} className="flex-1 h-1 transition-all duration-500" style={{ background: i < session.currentQuestionIndex ? '#00A6A6' : i === session.currentQuestionIndex ? 'rgba(0,166,166,0.45)' : '#E5E7EB' }} />
+            <div key={i} className="flex-1 h-1 transition-all duration-500" style={{ background: i < session.currentQuestionIndex ? '#650cd9' : i === session.currentQuestionIndex ? 'rgba(101,12,217,0.45)' : '#E5E7EB' }} />
           ))}
         </div>
       )}
@@ -776,7 +814,7 @@ export default function ParticipantPage() {
               }
             }}
           >
-            {/* Question header — full-width brand color band */}
+            {/* Question header â€” full-width brand color band */}
             <div className="px-5 pt-7 pb-8 shrink-0" data-question-header style={{ background: kindMeta.bg }}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.18)' }}>
@@ -788,7 +826,7 @@ export default function ParticipantPage() {
                 </span>
               </div>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: kindMeta.text, lineHeight: 1.3, letterSpacing: '-0.02em' }}>
-                {currentQ.prompt || <span style={{ opacity: 0.55, fontStyle: 'italic' }}>Waiting for question…</span>}
+                {currentQ.prompt || <span style={{ opacity: 0.55, fontStyle: 'italic' }}>Waiting for question...</span>}
               </h2>
             </div>
 
@@ -800,7 +838,7 @@ export default function ParticipantPage() {
                     <CheckCircle2 className="w-10 h-10" style={{ color: '#16A34A' }} />
                   </div>
                   <p className="text-lg font-bold" style={{ color: '#374151' }}>Answer submitted!</p>
-                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Waiting for next question…</p>
+                  <p className="text-sm" style={{ color: '#9CA3AF' }}>Waiting for next question...</p>
                 </motion.div>
               ) : (
                 <>
@@ -818,3 +856,5 @@ export default function ParticipantPage() {
     </div>
   )
 }
+
+
