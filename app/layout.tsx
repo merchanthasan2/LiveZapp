@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import RouteFrame from '@/components/RouteFrame'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
+import { SITE_URL } from '@/lib/site'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -21,11 +22,11 @@ export const metadata: Metadata = {
   keywords: ['interactive presentations', 'live polls', 'audience engagement', 'quizzes', 'LiveZapp', 'QuantumStep'],
   authors: [{ name: 'QuantumStep', url: 'https://quantumstep.in' }],
   creator: 'QuantumStep',
-  metadataBase: new URL('https://live-zapp.com'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'LiveZapp – Live Interactive Presentations',
     description: 'Create real-time quizzes, polls, and audience Q&A. Built by QuantumStep.',
-    url: 'https://live-zapp.com',
+    url: SITE_URL,
     siteName: 'LiveZapp',
     locale: 'en_US',
     type: 'website',

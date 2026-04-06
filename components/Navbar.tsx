@@ -29,12 +29,8 @@ const planBadgeStyle: Record<string, { bg: string; color: string }> = {
 }
 
 export default function Navbar() {
-  const [scrolled,    setScrolled]    = useState(false)
-  const [mobileOpen,  setMobileOpen]  = useState(false)
-  const [profileOpen, setProfileOpen] = useState(false)
   const pathname = usePathname()
-
-  if (
+  const shouldHideNavbar =
     pathname === '/' ||
     pathname === '/login' ||
     pathname === '/register' ||
@@ -42,7 +38,18 @@ export default function Navbar() {
     pathname.startsWith('/join') ||
     pathname.startsWith('/app') ||
     pathname.startsWith('/admin')
-  ) return null
+
+  if (shouldHideNavbar) {
+    return null
+  }
+
+  return <NavbarContent pathname={pathname} />
+}
+
+function NavbarContent({ pathname }: { pathname: string }) {
+  const [scrolled,    setScrolled]    = useState(false)
+  const [mobileOpen,  setMobileOpen]  = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const { user, isAdmin, logout, isLoading } = useAuth()
   const dropdownRef = useRef<HTMLDivElement>(null)
 

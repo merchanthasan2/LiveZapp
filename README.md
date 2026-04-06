@@ -4,7 +4,7 @@
 
 > LiveZapp lets you create real-time quizzes, polls, and audience Q&A that participants join from any device. No downloads required.
 
-🔗 Live at: [livezapp.quantumstep.in](https://livezapp.quantumstep.in)
+Live URL is configured through `NEXT_PUBLIC_APP_URL` (default: [https://www.live-zapp.com](https://www.live-zapp.com)).
 
 ---
 
@@ -130,3 +130,4 @@ See the [`docs/`](./docs/) folder:
 ## License
 
 © 2026 QuantumStep. All rights reserved.
+

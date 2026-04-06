@@ -60,6 +60,8 @@
 - [x] `docs/task.md` (this checklist, stored in docs/)
 - [x] `__tests__/Navbar.test.tsx`
 - [x] `__tests__/PricingCards.test.tsx`
+- [x] `jest.setup.ts`
+- [x] `.eslintrc.json`
 
 ---
 

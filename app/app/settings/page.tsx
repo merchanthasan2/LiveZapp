@@ -11,11 +11,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { ref, update, get } from 'firebase/database'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
-import { rtdb, storage } from '@/lib/firebase'
+import { rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
 import { useTheme } from '@/lib/contexts/ThemeContext'
+import { deleteLogoFile, uploadLogoFile } from '@/lib/logoUpload'
 import { BrandingService } from '@/lib/services/BrandingService'
 import { PLANS } from '@/types/plans'
 import type { BrandingConfig } from '@/types/domain'
@@ -381,20 +381,15 @@ function SettingsContent() {
     if (!file || !user) return
     setUploadError(''); setUploadSuccess(false); setUploading(true)
     try {
-      // Compress raster images client-side before uploading
-      let uploadBlob: Blob
-      let storageName: string
-      if (file.type === 'image/svg+xml') {
-        uploadBlob = file
-        storageName = 'logo.svg'
-      } else {
-        uploadBlob = await compressToWebP(file)
-        storageName = 'logo.webp'
-      }
-      // Upload to Firebase Storage at logos/{userId}/logo.webp
-      const logoRef = storageRef(storage, `logos/${user.id}/${storageName}`)
-      await uploadBytes(logoRef, uploadBlob, { contentType: uploadBlob.type || 'image/webp', cacheControl: 'public,max-age=31536000' })
-      const downloadUrl = await getDownloadURL(logoRef)
+      const uploadBlob = file.type === 'image/svg+xml'
+        ? file
+        : await compressToWebP(file)
+      const downloadUrl = await uploadLogoFile({
+        file: uploadBlob,
+        userId: user.id,
+        slot: 'branding',
+        fileName: file.type === 'image/svg+xml' ? 'logo.svg' : 'logo.webp',
+      })
       updateBrand({ logoUrl: downloadUrl })
       setUploadSuccess(true)
       setTimeout(() => setUploadSuccess(false), 3000)
@@ -403,6 +398,26 @@ function SettingsContent() {
     } finally {
       setUploading(false); e.target.value = ''
     }
+  }
+
+  const handleLogoRemove = async () => {
+    if (!canBrand) return
+
+    setUploadError('')
+    setUploadSuccess(false)
+
+    if (user) {
+      try {
+        await deleteLogoFile({
+          userId: user.id,
+          slot: 'branding',
+        })
+      } catch (err: any) {
+        setUploadError(err.message ?? 'Could not remove logo')
+      }
+    }
+
+    updateBrand({ logoUrl: '' })
   }
 
   const handleBrandSave = async () => {
@@ -852,7 +867,7 @@ function SettingsContent() {
                         <RefreshCw className="w-3 h-3" /> Replace
                         <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                       </label>
-                      <button onClick={() => updateBrand({ logoUrl: '' })} disabled={!canBrand} className="p-1.5 rounded-lg hover:text-red-500 transition-colors" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                      <button onClick={handleLogoRemove} disabled={!canBrand || uploading} className="p-1.5 rounded-lg hover:text-red-500 transition-colors disabled:opacity-40" style={{ color: 'rgba(255,255,255,0.38)' }}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

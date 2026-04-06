@@ -1,17 +1,6 @@
-import '@testing-library/jest-dom'
 import { render, screen } from '@testing-library/react'
 import PricingPreview from '@/components/home/PricingPreview'
 import { PLANS } from '@/types/plans'
-
-// Mock framer-motion to avoid animation issues in tests
-jest.mock('framer-motion', () => ({
-  motion: {
-    div: ({ children, ...rest }: React.HTMLAttributes<HTMLDivElement>) => <div {...rest}>{children}</div>,
-    article: ({ children, ...rest }: React.HTMLAttributes<HTMLElement>) => <article {...rest}>{children}</article>,
-    blockquote: ({ children, ...rest }: React.HTMLAttributes<HTMLElement>) => <blockquote {...rest}>{children}</blockquote>,
-  },
-  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
 
 describe('PricingPreview', () => {
   it('renders all four plan names', () => {

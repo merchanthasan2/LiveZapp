@@ -13,6 +13,7 @@ import {
   type QRSettings,
 } from '@/types/join'
 import { AdminConfigService } from '@/lib/services/AdminConfigService'
+import { SITE_HOST, toAbsoluteUrl } from '@/lib/site'
 import { QRCodeSVG } from 'qrcode.react'
 
 // ─── QR Code preview (SVG placeholder — replace with `qrcode.react` in Phase 9) ────
@@ -23,7 +24,7 @@ function QRPreview({
   joinCode: string
   codeLength: number
 }) {
-  const joinUrl = `https://livezapp.quantumstep.in/join/${joinCode}`
+  const joinUrl = toAbsoluteUrl(`/join/${joinCode}`)
 
   return (
     <div className="flex flex-col items-center gap-4 p-8 glass-card rounded-3xl">
@@ -55,7 +56,7 @@ function QRPreview({
         </p>
         <p className="text-xs text-text-secondary">
           or visit{' '}
-          <span className="text-primary font-semibold">livezapp.quantumstep.in/join</span>
+          <span className="text-primary font-semibold">{SITE_HOST}/join</span>
         </p>
       </div>
 
@@ -123,7 +124,7 @@ export default function AdminSettingsPage() {
   }
 
   const handleCopyUrl = () => {
-    const url = `https://livezapp.quantumstep.in/join/${previewCode}`
+    const url = toAbsoluteUrl(`/join/${previewCode}`)
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)

@@ -20,6 +20,7 @@ import { LiveSessionService, LiveSessionData, ParticipantResponse } from '@/lib/
 import { BrandingService } from '@/lib/services/BrandingService'
 import ShareJoinLink from '@/components/ShareJoinLink'
 import BrandLockup from '@/components/BrandLockup'
+import { SITE_HOST, SITE_URL } from '@/lib/site'
 import { generateJoinCode } from '@/types/join'
 import type {
   Presentation, Question, QuizQuestion, PollQuestion,
@@ -228,7 +229,7 @@ function ResponsePanel({ question, responses, dark = false }: { question: Questi
 
 function QRPanel({ joinCode }: { joinCode: string }) {
   const [lanIp, setLanIp] = useState<string | null>(null)
-  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'
+  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? SITE_URL
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   const isProduction = !isLocalhost && typeof window !== 'undefined'
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : prodOrigin
@@ -251,7 +252,7 @@ function QRPanel({ joinCode }: { joinCode: string }) {
       <div className="space-y-1">
         {isLocalhost && lanIp && <div><p className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: '#9CA3AF' }}>Network</p><p className="text-xs font-mono font-bold break-all" style={{ color: '#650cd9' }}>http://{lanIp}{port ? `:${port}` : ''}/join/{joinCode}</p></div>}
         {localhostUrl && <div><p className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: '#9CA3AF' }}>Localhost</p><p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>{localhostUrl}</p></div>}
-        {!isLocalhost && <p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>live-zapp.com/join/{joinCode}</p>}
+        {!isLocalhost && <p className="text-[10px] font-mono break-all" style={{ color: '#6B7280' }}>{SITE_HOST}/join/{joinCode}</p>}
       </div>
     </div>
   )
@@ -260,7 +261,7 @@ function QRPanel({ joinCode }: { joinCode: string }) {
 // â”€â”€â”€ Fullscreen: Join/QR slide â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: string; onStart: () => void; brandLogoUrl?: string; brandName?: string }) {
-  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'
+  const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? SITE_URL
   const [lanIp, setLanIp] = useState<string | null>(null)
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   const port = typeof window !== 'undefined' ? window.location.port : ''
@@ -277,10 +278,10 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
     ? `http://${lanIp}${port ? `:${port}` : ''}/join/${joinCode}`
     : `${currentOrigin}/join/${joinCode}`
   const displayUrl = isProduction
-    ? `live-zapp.com/join/${joinCode}`
+    ? `${SITE_HOST}/join/${joinCode}`
     : lanIp
     ? `${lanIp}${port ? `:${port}` : ''}/join/${joinCode}`
-    : `live-zapp.com/join/${joinCode}`
+    : `${SITE_HOST}/join/${joinCode}`
 
   return (
     <motion.div
@@ -612,11 +613,11 @@ export default function PresentPage() {
   const presenterRef = useRef<HTMLDivElement>(null)
   const themeIconLabel = isDark ? 'Use light mode' : 'Use dark mode'
   const shareSiteUrl = joinOrigin ?? undefined
-  const joinUrl = session ? `${joinOrigin ?? (typeof window !== 'undefined' ? window.location.origin : 'https://www.live-zapp.com')}/join/${session.joinCode}` : ''
+  const joinUrl = session ? `${joinOrigin ?? (typeof window !== 'undefined' ? window.location.origin : SITE_URL)}/join/${session.joinCode}` : ''
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://www.live-zapp.com'
+    const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? SITE_URL
     const hostname = window.location.hostname
     const port = window.location.port
 

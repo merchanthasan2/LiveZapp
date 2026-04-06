@@ -1,68 +1,40 @@
-# LiveZapp — Architecture Overview
+# LiveZapp - Architecture Overview
 
 ## Project type
 
-Next.js 14 App Router, TypeScript, Tailwind CSS. Static generation for marketing pages; client components for interactive elements (forms, charts, nav).
+Next.js 14 App Router application built with TypeScript and Tailwind CSS.
+Firebase Auth and Realtime Database power the core app flows. Firestore is
+used selectively for admin analytics when available, with RTDB fallback.
+PayPal-backed checkout flows are handled through Next.js API routes.
+
+---
+
+## Route groups
+
+- Public marketing: `/`, `/plans`, `/about`, `/contact`, `/login`, `/register`, `/checkout`
+- Join flows: `/join`, `/join/[code]`
+- Authenticated app: `/app/dashboard`, `/app/create`, `/app/create/[id]`, `/app/present/[id]`, `/app/settings`
+- Admin: `/admin`, `/admin/users`, `/admin/traffic`, `/admin/plans`, `/admin/promos`, `/admin/sessions`, `/admin/settings`, `/admin/seo`, `/admin/financials`, `/admin/logs`, `/admin/members`
+- API routes: contact form, local IP helper, PayPal order endpoints, promo endpoints, traffic tracking, and logo upload
 
 ---
 
 ## Directory structure
 
-```
-LiveZapp v01/
-│
-├── app/                         # Next.js App Router
-│   ├── globals.css              # Base CSS reset + utility classes + CSS variables
-│   ├── layout.tsx               # Root layout: font, Navbar, Footer, body gradient
-│   ├── page.tsx                 # / — Home page (Server Component)
-│   │
-│   ├── plans/page.tsx           # /plans — Pricing table (Server Component)
-│   ├── about/page.tsx           # /about — About page (Server Component)
-│   ├── contact/page.tsx         # /contact — Contact form (Client Component)
-│   ├── login/page.tsx           # /login — Login form (Client Component)
-│   ├── register/page.tsx        # /register — Register form (Client Component)
-│   │
-│   ├── app/                     # Authenticated app area
-│   │   ├── layout.tsx           # Sidebar layout for /app/* routes
-│   │   └── dashboard/page.tsx   # /app/dashboard (Client Component)
-│   │
-│   └── admin/                   # Admin area
-│       ├── layout.tsx           # Admin sidebar layout
-│       └── page.tsx             # /admin — guarded panel (Client Component)
-│
-├── components/
-│   ├── Navbar.tsx               # Global nav (Client — needs scroll listener, mobile state)
-│   ├── Footer.tsx               # Global footer (Server Component)
-│   │
-│   └── home/                    # Home page sections (all Client for animations)
-│       ├── HeroSection.tsx      # Hero with mock dashboard card
-│       ├── FeaturesSection.tsx  # 4-card features grid
-│       ├── HowItWorks.tsx       # 3-step explainer
-│       ├── PricingPreview.tsx   # 4 plan cards (summary)
-│       ├── QuantumStepSection.tsx  # Brand + tools links
-│       └── Testimonials.tsx     # 2 mock quote cards
-│
-├── lib/
-│   ├── firebase.ts              # Firebase stub functions (TODO: real SDK)
-│   ├── hooks/
-│   │   └── useAuth.ts           # Auth hook stub (TODO: Firebase Auth listener)
-│   └── data/
-│       └── mockData.ts          # PLANS, MOCK_PRESENTATIONS, MOCK_TRAFFIC, TESTIMONIALS
-│
-├── types/
-│   └── index.ts                 # Shared TS interfaces
-│
-├── __tests__/
-│   ├── Navbar.test.tsx
-│   └── PricingCards.test.tsx
-│
-├── docs/                        # This documentation
-│
-├── tailwind.config.js           # Design tokens
-├── next.config.js
-├── tsconfig.json
-├── jest.config.js
-└── package.json
+```text
+Live-Zapp v01/
+|-- app/                     # App Router routes, layouts, API handlers
+|-- components/              # Shared UI, route-level sections, question editors
+|-- lib/
+|   |-- data/                # Remaining mock/demo-only UI data
+|   |-- hooks/               # React hooks such as useAuth, useCurrency, usePlanLimits
+|   |-- services/            # Firebase/RTDB/Firestore service layer
+|   `-- promo/               # Promo-code helpers and built-in promo definitions
+|-- mock/                    # Sample domain data used for demos and scaffolding
+|-- public/                  # Static assets, logos, images
+|-- types/                   # Shared domain contracts
+|-- __tests__/               # Jest + React Testing Library smoke tests
+`-- docs/                    # Product, design, and implementation notes
 ```
 
 ---
@@ -71,39 +43,58 @@ LiveZapp v01/
 
 | Layer | Responsibility |
 |---|---|
-| `app/` | Route segments, page metadata, layout composition |
-| `components/` | Reusable, self-contained UI pieces |
-| `lib/data/` | Mock data — replace with Firebase/API calls per feature |
-| `lib/hooks/` | React hooks for cross-cutting concerns (auth, etc.) |
-| `lib/firebase.ts` | Firebase SDK wrapper — stubs until Phase 9 |
-| `types/` | Shared TypeScript interfaces used across all layers |
+| `app/` | Route segments, layouts, page composition, metadata, API routes |
+| `components/` | Reusable UI and route-specific client components |
+| `lib/firebase.ts` | Real Firebase SDK bootstrap for Auth, Firestore, RTDB, and Storage |
+| `lib/hooks/` | Client hooks for auth, currency/pricing, plan limits, and shared state |
+| `lib/services/` | Reads/writes for presentations, questions, live sessions, branding, analytics, and join codes |
+| `lib/data/` | Remaining mock/test-friendly data that is not part of the live backend |
+| `types/` | Canonical TypeScript types shared across app, services, and tests |
+| `__tests__/` | Smoke tests for key UI entry points and pricing/navigation behavior |
 
 ---
 
-## Component rendering strategy
+## Data flow
 
-| Component | Rendering |
+### Authentication
+
+```text
+Firebase Auth -> useAuth -> route layouts/pages/components
+```
+
+### Core app data
+
+```text
+RTDB -> lib/services/* -> client pages/components
+```
+
+### Admin overview
+
+```text
+Firestore -> AdminStatsService -> fallback to RTDB when Firestore is empty/unavailable
+```
+
+### Payments and promotions
+
+```text
+UI -> Next.js API routes -> PayPal / promo services -> RTDB user and plan state
+```
+
+---
+
+## Rendering strategy
+
+| Area | Rendering |
 |---|---|
-| Navbar | Client (scroll listener, mobile state) |
-| Footer | Server |
-| Home page sections | Client (Framer Motion animations) |
-| `/plans`, `/about` | Server |
-| `/contact` | Client (RHF form) |
-| `/login`, `/register` | Client (RHF forms) |
-| `/app/dashboard` | Client (filter state) |
-| `/admin` | Client (isAdmin check, chart) |
+| Marketing shell | Mixed; layouts are server components, interactive sections are client components |
+| Forms and dashboards | Client components |
+| Presenter and participant flows | Client-heavy for live state and interaction |
+| Admin pages | Client-heavy because they depend on live reads, charts, and filters |
 
 ---
 
-## Data flow (current — mock)
+## Tooling
 
-```
-mockData.ts → imported directly by page/component
-```
-
-## Data flow (future — Firebase)
-
-```
-Firebase Auth → useAuth hook → page/component
-Firestore → lib/firebase.ts helpers → page/component (via React Query)
-```
+- `npm run build` performs a clean production build
+- `npm test` runs Jest with shared mocks in `jest.setup.ts`
+- `npm run lint` uses the checked-in `.eslintrc.json`

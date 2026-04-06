@@ -10,11 +10,10 @@ import {
   CheckCircle2, ChevronRight, Edit2, Upload,
   RefreshCw, Palette, Lock, Image as ImageIcon,
 } from 'lucide-react'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import { useTheme } from '@/lib/contexts/ThemeContext'
-import { storage } from '@/lib/firebase'
+import { deleteLogoFile, uploadLogoFile } from '@/lib/logoUpload'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
 import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
@@ -289,21 +288,15 @@ export default function CreatePage() {
     setUploadSuccess(false)
     setUploading(true)
     try {
-      let uploadBlob: Blob
-      let storageName: string
-      if (file.type === 'image/svg+xml') {
-        uploadBlob = file
-        storageName = 'logo.svg'
-      } else {
-        uploadBlob = await compressToWebP(file)
-        storageName = 'logo.webp'
-      }
-      const logoRef = storageRef(storage, `zapp-branding/${user.id}/draft/${storageName}`)
-      await uploadBytes(logoRef, uploadBlob, {
-        contentType: uploadBlob.type || 'image/webp',
-        cacheControl: 'public,max-age=31536000',
+      const uploadBlob = file.type === 'image/svg+xml'
+        ? file
+        : await compressToWebP(file)
+      const downloadUrl = await uploadLogoFile({
+        file: uploadBlob,
+        userId: user.id,
+        slot: 'wizard-draft',
+        fileName: file.type === 'image/svg+xml' ? 'logo.svg' : 'logo.webp',
       })
-      const downloadUrl = await getDownloadURL(logoRef)
       setBrandLogoUrl(downloadUrl)
       setUploadSuccess(true)
       setTimeout(() => setUploadSuccess(false), 3000)
@@ -313,6 +306,24 @@ export default function CreatePage() {
       setUploading(false)
       e.target.value = ''
     }
+  }
+
+  async function handleLogoRemove() {
+    setUploadError('')
+    setUploadSuccess(false)
+
+    if (user) {
+      try {
+        await deleteLogoFile({
+          userId: user.id,
+          slot: 'wizard-draft',
+        })
+      } catch (err: any) {
+        setUploadError(err?.message ?? 'Could not remove logo')
+      }
+    }
+
+    setBrandLogoUrl('')
   }
 
   // ── Sections helpers ─────────────────────────────────────────────────────
@@ -544,7 +555,7 @@ export default function CreatePage() {
                           <RefreshCw className="w-3 h-3" /> Replace
                           <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                         </label>
-                        <button type="button" onClick={() => setBrandLogoUrl('')} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}>
+                        <button type="button" onClick={handleLogoRemove} disabled={uploading} className="rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-40" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}>
                           Remove
                         </button>
                       </div>
