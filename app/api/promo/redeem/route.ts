@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBuiltinPromo } from '@/lib/promo/builtinPromos'
-
-const DATABASE_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
+import { adminDb } from '@/lib/server/firebaseAdmin'
+import { verifyBearerUid } from '@/lib/server/verifyBearerUid'
 
 interface PromoRedeemRequest {
   code: string
@@ -19,82 +19,69 @@ interface PromoRedeemResponse {
   }
 }
 
+type RtdbPromo = {
+  code?: string
+  isActive?: boolean
+  validUntil?: string | null
+  maxRedemptions?: number | null
+  currentRedemptions?: number
+  discountType?: 'percent' | 'fixed'
+  discountValue?: number
+  durationMonths?: number | null
+  postExpiryPlanId?: string | null
+  targetPlanId?: string | null
+}
+
 /**
  * POST /api/promo/redeem
- * Redeems a promo code for a user (increments redemption count)
- * Client verifies auth and passes userId; server increments counter
+ * Redeems a promo for the authenticated user (Bearer token uid must match body userId).
  */
 export async function POST(request: NextRequest): Promise<NextResponse<PromoRedeemResponse>> {
   try {
-    const body = await request.json() as PromoRedeemRequest
+    let tokenUid: string | null
+    try {
+      tokenUid = await verifyBearerUid(request)
+    } catch {
+      return NextResponse.json(
+        { success: false, error: 'Server authentication is not configured.' },
+        { status: 503 },
+      )
+    }
+    if (!tokenUid) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = (await request.json()) as PromoRedeemRequest
     const { code, userId } = body
 
     if (!code || !userId) {
       return NextResponse.json(
         { success: false, error: 'Code and user ID are required' },
-        { status: 400 }
+        { status: 400 },
       )
+    }
+
+    if (userId !== tokenUid) {
+      return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
     }
 
     const codeUpper = code.toUpperCase().trim()
     const builtinPromo = getBuiltinPromo(codeUpper)
 
-    // Fetch promo code using Firebase REST API
-    const url = `${DATABASE_URL}/promoCodes/${codeUpper}.json`
-    const response = await fetch(url)
-
-    if (!response.ok || response.status === 404) {
-      if (builtinPromo) {
-        const redemptionUrl = `${DATABASE_URL}/users/${userId}/promoRedemptions/${codeUpper}.json`
-        await fetch(redemptionUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: builtinPromo.code,
-            redeemedAt: new Date().toISOString(),
-            discountType: builtinPromo.discountType,
-            discountValue: builtinPromo.discountValue,
-            durationMonths: builtinPromo.durationMonths,
-            postExpiryPlanId: builtinPromo.postExpiryPlanId,
-            targetPlanId: builtinPromo.targetPlanId,
-            source: 'builtin',
-          }),
-        })
-
-        return NextResponse.json({
-          success: true,
-          promo: {
-            code: builtinPromo.code,
-            targetPlanId: builtinPromo.targetPlanId,
-            durationMonths: builtinPromo.durationMonths,
-            postExpiryPlanId: builtinPromo.postExpiryPlanId,
-          },
-        })
-      }
-      return NextResponse.json(
-        { success: false, error: `Promo code "${code}" not found` },
-        { status: 404 }
-      )
-    }
-
-    const promo = await response.json()
+    const snap = await adminDb().ref(`promoCodes/${codeUpper}`).get()
+    const promo = snap.val() as RtdbPromo | null
 
     if (!promo) {
       if (builtinPromo) {
-        const redemptionUrl = `${DATABASE_URL}/users/${userId}/promoRedemptions/${codeUpper}.json`
-        await fetch(redemptionUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            code: builtinPromo.code,
-            redeemedAt: new Date().toISOString(),
-            discountType: builtinPromo.discountType,
-            discountValue: builtinPromo.discountValue,
-            durationMonths: builtinPromo.durationMonths,
-            postExpiryPlanId: builtinPromo.postExpiryPlanId,
-            targetPlanId: builtinPromo.targetPlanId,
-            source: 'builtin',
-          }),
+        await adminDb().ref(`users/${userId}/promoRedemptions/${codeUpper}`).set({
+          code: builtinPromo.code,
+          redeemedAt: new Date().toISOString(),
+          discountType: builtinPromo.discountType,
+          discountValue: builtinPromo.discountValue,
+          durationMonths: builtinPromo.durationMonths,
+          postExpiryPlanId: builtinPromo.postExpiryPlanId,
+          targetPlanId: builtinPromo.targetPlanId,
+          source: 'builtin',
         })
 
         return NextResponse.json({
@@ -109,74 +96,58 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
       }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
-    // Check if promo is active
     if (!promo.isActive) {
       return NextResponse.json(
         { success: false, error: 'This promo code is no longer active' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Check if promo has expired
     if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
       return NextResponse.json(
         { success: false, error: 'This promo code has expired' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Check redemption limit
-    if (promo.maxRedemptions && promo.currentRedemptions >= promo.maxRedemptions) {
+    if (promo.maxRedemptions != null && (promo.currentRedemptions ?? 0) >= promo.maxRedemptions) {
       return NextResponse.json(
         { success: false, error: 'This promo code has reached its redemption limit' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Increment redemption count (note: this is not atomic due to REST API limitations)
-    // In production, use Cloud Functions for atomic operations
-    const newCount = (promo.currentRedemptions || 0) + 1
-    const updateUrl = `${DATABASE_URL}/promoCodes/${codeUpper}/currentRedemptions.json`
-    await fetch(updateUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCount),
-    })
+    const newCount = (promo.currentRedemptions ?? 0) + 1
+    await adminDb().ref(`promoCodes/${codeUpper}/currentRedemptions`).set(newCount)
 
-    // Record the redemption for the user
-    const redemptionUrl = `${DATABASE_URL}/users/${userId}/promoRedemptions/${codeUpper}.json`
-    await fetch(redemptionUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: promo.code,
-        redeemedAt: new Date().toISOString(),
-        discountType: promo.discountType,
-        discountValue: promo.discountValue,
-        durationMonths: promo.durationMonths,
-        postExpiryPlanId: promo.postExpiryPlanId,
-        targetPlanId: promo.targetPlanId,
-      }),
+    await adminDb().ref(`users/${userId}/promoRedemptions/${codeUpper}`).set({
+      code: promo.code ?? codeUpper,
+      redeemedAt: new Date().toISOString(),
+      discountType: promo.discountType,
+      discountValue: promo.discountValue,
+      durationMonths: promo.durationMonths,
+      postExpiryPlanId: promo.postExpiryPlanId,
+      targetPlanId: promo.targetPlanId,
     })
 
     return NextResponse.json({
       success: true,
       promo: {
-        code: promo.code,
-        targetPlanId: promo.targetPlanId,
-        durationMonths: promo.durationMonths,
-        postExpiryPlanId: promo.postExpiryPlanId,
+        code: promo.code ?? codeUpper,
+        targetPlanId: promo.targetPlanId ?? null,
+        durationMonths: promo.durationMonths ?? null,
+        postExpiryPlanId: promo.postExpiryPlanId ?? null,
       },
     })
   } catch (error) {
     console.error('[api/promo/redeem] error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to redeem promo code' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

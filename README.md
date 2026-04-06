@@ -6,6 +6,8 @@
 
 Live URL is configured through `NEXT_PUBLIC_APP_URL` (default: [https://www.live-zapp.com](https://www.live-zapp.com)).
 
+Launch status and remaining deploy steps: [docs/launch-tracker.md](docs/launch-tracker.md).
+
 ---
 
 ## Quick start
@@ -27,6 +29,8 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+If the **first page load** in the browser feels slow (not necessarily how long the terminal takes to show “ready”), try Turbopack (`npm run dev:turbo`) and see [docs/dev-server-performance.md](docs/dev-server-performance.md) for a short checklist (AV scanning, path with spaces, profiling).
 
 ### Build for production
 

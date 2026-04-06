@@ -482,7 +482,7 @@ function ContactSection() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-widest" style={{ color: '#4a4455' }}>Email Us</p>
-                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>hello@livezapp.io</p>
+                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>hello@live-zap.com</p>
                 </div>
               </div>
 
@@ -492,7 +492,7 @@ function ContactSection() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-widest" style={{ color: '#4a4455' }}>Headquarters</p>
-                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Innovation Way, SF, CA</p>
+                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Mumbai, India</p>
                 </div>
               </div>
             </div>

@@ -694,7 +694,7 @@ function SettingsContent() {
             {/* Plan limits recap */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
               {[
-                { label: 'Sessions', value: plan.limits.maxPresentations === 'unlimited' ? '∞' : `${plan.limits.maxPresentations}` },
+                { label: 'Monthly Zapps', value: plan.limits.maxPresentations === 'unlimited' ? '∞' : `${plan.limits.maxPresentations}` },
                 { label: 'Participants', value: plan.limits.maxParticipantsPerSession.toLocaleString() },
                 { label: 'Questions', value: `${plan.limits.maxQuestionsPerPresentation}` },
                 { label: 'Live at once', value: `${plan.limits.maxActiveSessions}` },

@@ -4,18 +4,21 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "deploy:db-rules": "npx --yes firebase-tools deploy --only database --project livezappbackend"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
     "@paypal/react-paypal-js": "^9.1.0",
     "firebase": "^12.10.0",
+    "firebase-admin": "^13.7.0",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.511.0",
-    "next": "14.2.29",
+    "next": "14.2.35",
     "qrcode.react": "^4.2.0",
     "react": "^18",
     "react-dom": "^18",
@@ -35,7 +38,7 @@
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
-    "eslint-config-next": "14.2.29",
+    "eslint-config-next": "14.2.35",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8",

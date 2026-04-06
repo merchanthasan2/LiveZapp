@@ -18,10 +18,13 @@ import type { PlanId } from '@/types/plans'
 import { auth, rtdb } from '@/lib/firebase'
 import {
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth'
 import { ref, get, set } from 'firebase/database'
+import { ADMIN_EMAILS, SUPERADMIN_EMAILS } from '@/lib/auth/allowlist'
 
 export interface AuthState {
   user: User | null
@@ -30,14 +33,9 @@ export interface AuthState {
   isSuperAdmin: boolean   // true only for superadmin
   error: string | null
   login: (email: string, password: string) => Promise<boolean>
+  loginWithGoogle: () => Promise<boolean>
   logout: () => void
 }
-
-// Superadmin emails — full platform control, can manage other admins
-const SUPERADMIN_EMAILS = new Set(['happy143@gmail.com'])
-
-// Admin emails — full admin panel access but cannot manage other admins
-const ADMIN_EMAILS = new Set<string>([])
 
 export function useAuth(): AuthState {
   const router = useRouter()
@@ -136,16 +134,49 @@ export function useAuth(): AuthState {
     }
   }, [])
 
+  const loginWithGoogle = useCallback(async (): Promise<boolean> => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const provider = new GoogleAuthProvider()
+      provider.setCustomParameters({ prompt: 'select_account' })
+      await signInWithPopup(auth, provider)
+      return true
+    } catch (err: any) {
+      const code = err?.code ?? ''
+      if (code === 'auth/popup-closed-by-user') {
+        setError('Google sign-in was cancelled.')
+      } else if (code === 'auth/operation-not-allowed') {
+        setError('Google sign-in is not enabled in Firebase Authentication yet.')
+      } else {
+        const cleanError = err?.message?.replace('Firebase: ', '').trim()
+        setError(cleanError || 'Google sign-in failed. Please try again.')
+      }
+      setIsLoading(false)
+      return false
+    }
+  }, [])
+
   // 4. Logout function
   const logout = useCallback(async () => {
+    // Optimistically clear local auth state so protected routes react immediately.
+    setUser(null)
+    setIsLoading(false)
+    setError(null)
+
     try {
       await signOut(auth)
-      // Redirect happens in layout effect, but pushing login is safe
-      router.push('/login')
     } catch (err) {
       console.error('Error signing out', err)
+    } finally {
+      // Force route change away from /app/* even if auth listener lags.
+      router.replace('/login')
+      if (typeof window !== 'undefined' && window.location.pathname.startsWith('/app')) {
+        window.location.replace('/login')
+      }
     }
   }, [router])
 
-  return { user, isLoading, isAdmin, isSuperAdmin, error, login, logout }
+  return { user, isLoading, isAdmin, isSuperAdmin, error, login, loginWithGoogle, logout }
 }

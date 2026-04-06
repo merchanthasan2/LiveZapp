@@ -46,7 +46,7 @@ export default function Footer() {
     <footer
       className="relative mt-24"
       aria-label="Site footer"
-      style={{ background: '#001d3d', borderTop: '1px solid rgba(255,195,0,0.10)' }}
+      style={{ background: '#001d3d', borderTop: '1px solid rgba(101,12,217,0.16)' }}
     >
       <div className="section-container py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
@@ -65,7 +65,7 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="transition-colors hover:text-yellow"
-                style={{ color: 'rgba(255,195,0,0.60)' }}
+                style={{ color: 'rgba(191,168,255,0.85)' }}
               >
                 QuantumStep
               </a>{' '}
@@ -80,7 +80,7 @@ export default function Footer() {
                   aria-label={label}
                   className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
                   style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.15)'; e.currentTarget.style.color = '#ffc300'; e.currentTarget.style.borderColor = 'rgba(255,195,0,0.30)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.18)'; e.currentTarget.style.color = '#bfa8ff'; e.currentTarget.style.borderColor = 'rgba(101,12,217,0.35)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
                 >
                   <Icon className="w-4 h-4" />
@@ -91,7 +91,7 @@ export default function Footer() {
 
           {Object.entries(footerLinks).map(([category, links]) => (
             <div key={category}>
-              <h3 className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#ffc300' }}>
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#bfa8ff' }}>
                 {category}
               </h3>
               <ul className="space-y-2.5" role="list">

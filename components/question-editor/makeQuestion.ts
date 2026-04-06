@@ -17,9 +17,6 @@ export function makeQuestion(kind: QuestionKind, orderIndex: number, sectionId?:
         prompt: '',
         options: [
           { id: 'a', label: 'Option A' },
-          { id: 'b', label: 'Option B' },
-          { id: 'c', label: 'Option C' },
-          { id: 'd', label: 'Option D' },
         ],
         correctOptionId: 'a',
         timerSeconds: 30,
@@ -31,8 +28,6 @@ export function makeQuestion(kind: QuestionKind, orderIndex: number, sectionId?:
         prompt: '',
         options: [
           { id: 'a', label: 'Option A' },
-          { id: 'b', label: 'Option B' },
-          { id: 'c', label: 'Option C' },
         ],
         allowMultipleSelections: false,
       } satisfies PollQuestion
@@ -56,4 +51,16 @@ export function makeQuestion(kind: QuestionKind, orderIndex: number, sectionId?:
         scaleMax: 5,
       } satisfies FeedbackQuestion
   }
+}
+
+/** Rebuild a question as a new kind while preserving id, order, section, and prompt text. */
+export function convertQuestionKind(old: Question, newKind: QuestionKind): Question {
+  const fresh = makeQuestion(newKind, old.orderIndex, old.sectionId)
+  return {
+    ...fresh,
+    id: old.id,
+    orderIndex: old.orderIndex,
+    ...(old.sectionId ? { sectionId: old.sectionId } : {}),
+    prompt: old.prompt,
+  } as Question
 }

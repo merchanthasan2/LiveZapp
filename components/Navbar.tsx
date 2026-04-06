@@ -23,9 +23,9 @@ const navLinks = [
 
 const planBadgeStyle: Record<string, { bg: string; color: string }> = {
   free:    { bg: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.70)' },
-  basic:   { bg: '#ffc300',               color: '#000814' },
+  basic:   { bg: '#bfa8ff',               color: '#000814' },
   regular: { bg: '#1e96fc',               color: '#FFFFFF' },
-  pro:     { bg: '#ffd60a',               color: '#000814' },
+  pro:     { bg: '#e1d1ff',               color: '#000814' },
 }
 
 export default function Navbar() {
@@ -93,7 +93,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
             : 'rgba(0,8,20,0.90)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: `1px solid ${scrolled ? 'rgba(255,195,0,0.20)' : 'rgba(255,255,255,0.07)'}`,
+          borderBottom: `1px solid ${scrolled ? 'rgba(101,12,217,0.20)' : 'rgba(255,255,255,0.07)'}`,
           boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.50)' : 'none',
         }}
       >
@@ -113,8 +113,8 @@ function NavbarContent({ pathname }: { pathname: string }) {
                       href={link.href}
                       className="px-4 py-2 rounded-xl text-sm transition-all duration-200"
                       style={{
-                        color: isActive ? '#ffc300' : 'rgba(255,255,255,0.65)',
-                        background: isActive ? 'rgba(255,195,0,0.10)' : 'transparent',
+                        color: isActive ? '#bfa8ff' : 'rgba(255,255,255,0.65)',
+                        background: isActive ? 'rgba(101,12,217,0.10)' : 'transparent',
                         fontWeight: isActive ? 600 : 500,
                       }}
                       onMouseEnter={e => {
@@ -145,7 +145,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                     href="/app/dashboard"
                     className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all"
                     style={{ color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.12)'; e.currentTarget.style.color = '#ffc300'; e.currentTarget.style.borderColor = 'rgba(255,195,0,0.25)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.12)'; e.currentTarget.style.color = '#bfa8ff'; e.currentTarget.style.borderColor = 'rgba(101,12,217,0.25)' }}
                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.10)' }}
                   >
                     <LayoutDashboard className="w-3.5 h-3.5" />
@@ -159,16 +159,16 @@ function NavbarContent({ pathname }: { pathname: string }) {
                       className="flex items-center gap-2 pl-2.5 pr-2 py-1.5 rounded-xl transition-all"
                       style={{
                         border: '1px solid rgba(255,255,255,0.12)',
-                        background: profileOpen ? 'rgba(255,195,0,0.10)' : 'transparent',
+                        background: profileOpen ? 'rgba(101,12,217,0.10)' : 'transparent',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.08)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.08)' }}
                       onMouseLeave={e => { if (!profileOpen) e.currentTarget.style.background = 'transparent' }}
                       aria-expanded={profileOpen}
                       aria-label="Account menu"
                     >
                       <div
                         className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-                        style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814', boxShadow: '0 2px 8px rgba(255,195,0,0.30)' }}
+                        style={{ background: 'linear-gradient(135deg, #bfa8ff, #e1d1ff)', color: '#000814', boxShadow: '0 2px 8px rgba(101,12,217,0.30)' }}
                       >
                         {initials}
                       </div>
@@ -212,7 +212,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                           <div className="px-4 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                             <div
                               className="w-11 h-11 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
-                              style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814', boxShadow: '0 2px 8px rgba(255,195,0,0.30)' }}
+                              style={{ background: 'linear-gradient(135deg, #bfa8ff, #e1d1ff)', color: '#000814', boxShadow: '0 2px 8px rgba(101,12,217,0.30)' }}
                             >
                               {initials}
                             </div>
@@ -235,7 +235,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                                 </span>
                                 {isPlanExpired && <span className="text-xs font-semibold" style={{ color: '#EF4444' }}>Expired</span>}
                                 {user.planCancelledAt && !isPlanExpired && (
-                                  <span className="text-xs font-semibold" style={{ color: 'rgba(255,195,0,0.80)' }}>Cancelled</span>
+                                  <span className="text-xs font-semibold" style={{ color: 'rgba(101,12,217,0.80)' }}>Cancelled</span>
                                 )}
                               </div>
                               {user.planExpiresAt && plan.id !== 'free' && (
@@ -249,11 +249,11 @@ function NavbarContent({ pathname }: { pathname: string }) {
                               href="/plans"
                               onClick={() => setProfileOpen(false)}
                               className="flex items-center gap-1 text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all"
-                              style={{ background: 'rgba(255,195,0,0.15)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.25)' }}
-                              onMouseEnter={e => { e.currentTarget.style.background = '#ffc300'; e.currentTarget.style.color = '#000814' }}
-                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.15)'; e.currentTarget.style.color = '#ffc300' }}
+                              style={{ background: 'rgba(101,12,217,0.15)', color: '#bfa8ff', border: '1px solid rgba(101,12,217,0.25)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#bfa8ff'; e.currentTarget.style.color = '#000814' }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.15)'; e.currentTarget.style.color = '#bfa8ff' }}
                             >
-                              {plan.id === 'free' || isPlanExpired ? 'Upgrade' : 'Change'}
+                              {plan.id !== 'pro' || isPlanExpired ? 'Upgrade' : 'Change'}
                               <ArrowUpRight className="w-3 h-3" />
                             </Link>
                           </div>
@@ -263,15 +263,15 @@ function NavbarContent({ pathname }: { pathname: string }) {
                             <DropdownItem icon={User}       label="My Profile"     sublabel="Name, phone, address"       href="/app/settings?tab=profile"      onClick={() => setProfileOpen(false)} />
                             <DropdownItem icon={CreditCard} label="Subscription"   sublabel="Upgrade, downgrade, cancel"  href="/app/settings?tab=subscription"  onClick={() => setProfileOpen(false)} />
                             <DropdownItem icon={Settings}   label="Brand Settings" sublabel="Logo, colours, session footer" href="/app/settings?tab=branding"   onClick={() => setProfileOpen(false)} />
-                            {plan.id === 'free' && (
+                            {plan.id !== 'pro' && (
                               <div className="mx-3 my-1.5">
                                 <Link
                                   href="/plans"
                                   onClick={() => setProfileOpen(false)}
                                   className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold transition-all"
-                                  style={{ background: 'rgba(255,195,0,0.12)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.22)' }}
-                                  onMouseEnter={e => { e.currentTarget.style.background = '#ffc300'; e.currentTarget.style.color = '#000814' }}
-                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.12)'; e.currentTarget.style.color = '#ffc300' }}
+                                  style={{ background: 'rgba(101,12,217,0.12)', color: '#bfa8ff', border: '1px solid rgba(101,12,217,0.22)' }}
+                                  onMouseEnter={e => { e.currentTarget.style.background = '#bfa8ff'; e.currentTarget.style.color = '#000814' }}
+                                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.12)'; e.currentTarget.style.color = '#bfa8ff' }}
                                 >
                                   <TrendingUp className="w-3.5 h-3.5" />
                                   Upgrade your plan
@@ -291,18 +291,18 @@ function NavbarContent({ pathname }: { pathname: string }) {
                                 href="/admin"
                                 onClick={() => setProfileOpen(false)}
                                 className="flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
-                                style={{ background: 'rgba(255,195,0,0.08)', border: '1px solid rgba(255,195,0,0.18)' }}
-                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.18)' }}
-                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.08)' }}
+                                style={{ background: 'rgba(101,12,217,0.08)', border: '1px solid rgba(101,12,217,0.18)' }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.18)' }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.08)' }}
                               >
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#ffc300' }}>
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: '#bfa8ff' }}>
                                   <Shield className="w-4 h-4" style={{ color: '#000814' }} />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-bold" style={{ color: '#FFFFFF' }}>Admin Panel</p>
-                                  <p className="text-[11px] leading-none mt-0.5" style={{ color: '#ffc300' }}>Platform management</p>
+                                  <p className="text-[11px] leading-none mt-0.5" style={{ color: '#bfa8ff' }}>Platform management</p>
                                 </div>
-                                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" style={{ color: '#ffc300' }} />
+                                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" style={{ color: '#bfa8ff' }} />
                               </Link>
                               <div className="grid grid-cols-3 gap-1.5 mt-2">
                                 {[
@@ -315,11 +315,11 @@ function NavbarContent({ pathname }: { pathname: string }) {
                                     href={href}
                                     onClick={() => setProfileOpen(false)}
                                     className="flex flex-col items-center gap-1 py-2 rounded-xl text-center transition-all"
-                                    style={{ background: 'rgba(255,195,0,0.06)', border: '1px solid rgba(255,195,0,0.12)' }}
-                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.16)' }}
-                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.06)' }}
+                                    style={{ background: 'rgba(101,12,217,0.06)', border: '1px solid rgba(101,12,217,0.12)' }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.16)' }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.06)' }}
                                   >
-                                    <Icon className="w-3.5 h-3.5" style={{ color: '#ffc300' }} />
+                                    <Icon className="w-3.5 h-3.5" style={{ color: '#bfa8ff' }} />
                                     <span className="text-[10px] font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{label}</span>
                                   </Link>
                                 ))}
@@ -411,7 +411,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 {user && (
                   <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #ffc300, #ffd60a)', color: '#000814' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #bfa8ff, #e1d1ff)', color: '#000814' }}>
                         {initials}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -445,10 +445,10 @@ function NavbarContent({ pathname }: { pathname: string }) {
                     <Link href="/app/dashboard"
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
                       style={{ color: 'rgba(255,255,255,0.75)' }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.10)'; e.currentTarget.style.color = '#ffc300' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.10)'; e.currentTarget.style.color = '#bfa8ff' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(255,255,255,0.75)' }}
                     >
-                      <LayoutDashboard className="w-4 h-4 shrink-0" style={{ color: '#ffc300' }} />
+                      <LayoutDashboard className="w-4 h-4 shrink-0" style={{ color: '#bfa8ff' }} />
                       Dashboard
                     </Link>
                   </div>
@@ -459,11 +459,11 @@ function NavbarContent({ pathname }: { pathname: string }) {
                     <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>Admin</p>
                     <Link href="/admin"
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold mb-2 transition-all"
-                      style={{ background: 'rgba(255,195,0,0.10)', border: '1px solid rgba(255,195,0,0.22)', color: '#FFFFFF' }}
+                      style={{ background: 'rgba(101,12,217,0.10)', border: '1px solid rgba(101,12,217,0.22)', color: '#FFFFFF' }}
                     >
-                      <Shield className="w-4 h-4 shrink-0" style={{ color: '#ffc300' }} />
+                      <Shield className="w-4 h-4 shrink-0" style={{ color: '#bfa8ff' }} />
                       Admin Panel
-                      <ArrowUpRight className="w-3.5 h-3.5 ml-auto shrink-0" style={{ color: '#ffc300' }} />
+                      <ArrowUpRight className="w-3.5 h-3.5 ml-auto shrink-0" style={{ color: '#bfa8ff' }} />
                     </Link>
                     <div className="grid grid-cols-3 gap-1.5">
                       {[
@@ -476,7 +476,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                       ].map(({ label, href }) => (
                         <Link key={href} href={href}
                           className="text-center text-[11px] font-semibold py-2 rounded-lg transition-all"
-                          style={{ background: 'rgba(255,195,0,0.08)', color: '#ffc300', border: '1px solid rgba(255,195,0,0.15)' }}
+                          style={{ background: 'rgba(101,12,217,0.08)', color: '#bfa8ff', border: '1px solid rgba(101,12,217,0.15)' }}
                         >
                           {label}
                         </Link>
@@ -542,7 +542,7 @@ function DropdownItem({
       onClick={onClick}
       className="flex items-center gap-3 px-4 py-2.5 transition-all group"
       style={{ color: 'rgba(255,255,255,0.75)' }}
-      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,195,0,0.07)' }}
+      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.07)' }}
       onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
     >
       <div
@@ -558,4 +558,5 @@ function DropdownItem({
     </Link>
   )
 }
+
 

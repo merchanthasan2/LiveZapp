@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { writeFile, unlink } from 'fs/promises'
 import { existsSync, mkdirSync } from 'fs'
 import { join } from 'path'
+import { verifyBearerUid } from '@/lib/server/verifyBearerUid'
 
 const UPLOAD_DIR  = join(process.cwd(), 'public', 'uploads', 'logos')
 const MAX_BYTES   = 2 * 1024 * 1024  // 2 MB
@@ -36,6 +37,16 @@ async function removeOldLogos(assetStem: string, keepExt: string) {
 
 // ── POST /api/upload/logo ────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
+  let tokenUid: string | null
+  try {
+    tokenUid = await verifyBearerUid(request)
+  } catch {
+    return NextResponse.json({ error: 'Upload authentication unavailable' }, { status: 503 })
+  }
+  if (!tokenUid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   let formData: FormData
   try {
     formData = await request.formData()
@@ -55,6 +66,10 @@ export async function POST(request: NextRequest) {
   // Validate user ID format (alphanumeric + hyphens/underscores only)
   if (!/^[\w\-]{4,128}$/.test(userId)) {
     return NextResponse.json({ error: 'Invalid userId' }, { status: 400 })
+  }
+
+  if (userId !== tokenUid) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // Validate size
@@ -94,11 +109,25 @@ export async function POST(request: NextRequest) {
 
 // ── DELETE /api/upload/logo?userId=xxx ───────────────────────────────────
 export async function DELETE(request: NextRequest) {
+  let tokenUid: string | null
+  try {
+    tokenUid = await verifyBearerUid(request)
+  } catch {
+    return NextResponse.json({ error: 'Upload authentication unavailable' }, { status: 503 })
+  }
+  if (!tokenUid) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const userId = request.nextUrl.searchParams.get('userId')
   const slot = parseSlot(request.nextUrl.searchParams.get('slot'))
 
   if (!userId || !/^[\w\-]{4,128}$/.test(userId) || !slot) {
     return NextResponse.json({ error: 'Invalid userId or slot' }, { status: 400 })
+  }
+
+  if (userId !== tokenUid) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   ensureDir()

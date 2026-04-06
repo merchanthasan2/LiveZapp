@@ -10,11 +10,17 @@ import {
 export interface AdminConfig {
   joinConfig: JoinConfig
   qrSettings: QRSettings
+  checkoutPolicy: {
+    requireAddressConfirmationOnPurchase: boolean
+  }
 }
 
 const DEFAULT_CONFIG: AdminConfig = {
   joinConfig: DEFAULT_JOIN_CONFIG,
   qrSettings: DEFAULT_QR_SETTINGS,
+  checkoutPolicy: {
+    requireAddressConfirmationOnPurchase: false,
+  },
 }
 
 /**
@@ -29,6 +35,10 @@ export const AdminConfigService = {
     return {
       joinConfig: { ...DEFAULT_JOIN_CONFIG, ...(stored.joinConfig ?? {}) },
       qrSettings: { ...DEFAULT_QR_SETTINGS, ...(stored.qrSettings ?? {}) },
+      checkoutPolicy: {
+        ...DEFAULT_CONFIG.checkoutPolicy,
+        ...(stored.checkoutPolicy ?? {}),
+      },
     }
   },
 

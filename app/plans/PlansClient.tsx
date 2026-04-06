@@ -1,11 +1,14 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, X, Star, Zap, Users, FileStack, RefreshCw, Shield, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/types/plans'
+import type { Plan, PlanFeatureFlags, PlanLimits, PlanId } from '@/types/plans'
 import { useCurrency } from '@/lib/hooks/useCurrency'
 import { PlanCheckoutButton } from '@/components/PlanCheckoutButton'
+import { onValue, ref } from 'firebase/database'
+import { rtdb } from '@/lib/firebase'
 
 const FEATURE_ROWS: Array<{ label: string; key: keyof typeof PLANS[0]['features'] }> = [
   { label: 'Live quizzes', key: 'canUseQuiz' },
@@ -17,48 +20,75 @@ const FEATURE_ROWS: Array<{ label: string; key: keyof typeof PLANS[0]['features'
 
 export function PlansClient() {
   const [billing, setBilling] = useState<'monthly' | 'annual'>('monthly')
+  const [plans, setPlans] = useState<Plan[]>(PLANS)
   const { formatAmount, getPlanPrice, currency } = useCurrency()
+  const textStrong = '#1c1b1b'
+  const textMuted = '#645d71'
+  const textSoft = '#9CA3AF'
 
-  const resolvePlanPrices = (plan: typeof PLANS[number]) => ({
+  useEffect(() => {
+    const unsub = onValue(ref(rtdb, 'admin/planConfig'), snap => {
+      if (!snap.exists()) {
+        setPlans(PLANS)
+        return
+      }
+      const raw = snap.val() as Record<string, { limits?: Partial<PlanLimits>; features?: Partial<PlanFeatureFlags> }>
+      const merged = PLANS.map(plan => {
+        const planOverride = raw[plan.id as PlanId]
+        return {
+          ...plan,
+          limits: {
+            ...plan.limits,
+            ...(planOverride?.limits ?? {}),
+          },
+          features: {
+            ...plan.features,
+            ...(planOverride?.features ?? {}),
+            exportFormats: planOverride?.features?.exportFormats ?? plan.features.exportFormats,
+          },
+        }
+      })
+      setPlans(merged)
+    })
+    return () => unsub()
+  }, [])
+
+  const resolvePlanPrices = (plan: Plan) => ({
     monthly: getPlanPrice(plan.id, 'monthly', plan.pricePerMonth, plan.pricePerYear),
     annual: getPlanPrice(plan.id, 'annual', plan.pricePerMonth, plan.pricePerYear),
   })
 
-  const displayedSavingPercent = (plan: typeof PLANS[number]) => {
+  const displayedSavingPercent = (plan: Plan) => {
     const { monthly, annual } = resolvePlanPrices(plan)
     if (monthly === 0) return 0
     const twelveMonths = monthly * 12
     return Math.max(0, Math.round(((twelveMonths - annual) / twelveMonths) * 100))
   }
 
-  const maxAnnualSavings = useMemo(() => (
-    Math.max(
-      ...PLANS.filter(plan => plan.pricePerMonth > 0).map(plan => {
-        const { monthly, annual } = resolvePlanPrices(plan)
-        return Math.max(0, monthly * 12 - annual)
-      }),
-      0,
-    )
-  ), [currency])
+  const maxAnnualSavings = Math.max(
+    ...plans.filter(plan => plan.pricePerMonth > 0).map(plan => {
+      const { monthly, annual } = resolvePlanPrices(plan)
+      return Math.max(0, monthly * 12 - annual)
+    }),
+    0,
+  )
 
-  const maxSavingsPercent = useMemo(() => (
-    Math.max(...PLANS.filter(plan => plan.pricePerMonth > 0).map(displayedSavingPercent), 0)
-  ), [currency])
+  const maxSavingsPercent = Math.max(...plans.filter(plan => plan.pricePerMonth > 0).map(displayedSavingPercent), 0)
 
   return (
-    <div className="py-24">
+    <div className="plans-surface py-24">
       <div className="section-container">
         <div className="mb-14 text-center">
           <span className="text-xs font-semibold uppercase tracking-widest text-accent">Pricing</span>
-          <h1 className="mt-3 mb-5 text-4xl font-bold text-text-primary sm:text-5xl">
+          <h1 className="mt-3 mb-5 text-4xl font-bold sm:text-5xl" style={{ color: textStrong }}>
             Plans & <span className="gradient-text">Pricing</span>
           </h1>
-          <p className="mx-auto max-w-xl text-lg text-text-secondary">
+          <p className="mx-auto max-w-xl text-lg" style={{ color: textMuted }}>
             Start free and scale as your sessions grow. Every plan includes the core LiveZapp
             experience. Choose yours based on how big your audience is.
           </p>
           {currency !== 'USD' && (
-            <p className="mt-3 text-xs" style={{ color: '#9CA3AF' }}>
+            <p className="mt-3 text-xs" style={{ color: textSoft }}>
               Prices shown in {currency} from the shared pricing catalogue. Checkout is processed via PayPal.
             </p>
           )}
@@ -123,7 +153,7 @@ export function PlansClient() {
         )}
 
         <div className="mb-24 grid grid-cols-1 gap-6 pt-2 sm:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map(plan => {
+          {plans.map(plan => {
             const { monthly, annual } = resolvePlanPrices(plan)
             const displayPrice = billing === 'annual' ? annual : monthly
             const monthlyEquivalent = billing === 'annual' && monthly > 0 ? Math.round(annual / 12) : null
@@ -132,7 +162,13 @@ export function PlansClient() {
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col glass-card p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass-hover ${plan.isRecommended ? 'ring-2 ring-primary/60 shadow-glass-lg' : ''}`}
+                className="relative flex flex-col p-8 transition-all duration-300 hover:-translate-y-1"
+                style={{
+                  background: '#FFFFFF',
+                  border: plan.isRecommended ? '2px solid rgba(101,12,217,0.36)' : '1px solid #E5E7EB',
+                  borderRadius: '1.5rem',
+                  boxShadow: plan.isRecommended ? '0 16px 40px rgba(101,12,217,0.12)' : '0 6px 20px rgba(0,0,0,0.06)',
+                }}
               >
                 {plan.isRecommended && (
                   <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
@@ -155,26 +191,26 @@ export function PlansClient() {
                 )}
 
                 <div className="mb-4">
-                  <h2 className={`text-xl font-bold ${plan.isRecommended ? 'gradient-text' : 'text-text-primary'}`}>{plan.name}</h2>
-                  <p className="mt-1 text-xs text-text-secondary">{plan.tagline}</p>
+                  <h2 className={`text-xl font-bold ${plan.isRecommended ? 'gradient-text' : ''}`} style={{ color: plan.isRecommended ? undefined : textStrong }}>{plan.name}</h2>
+                  <p className="mt-1 text-xs" style={{ color: textMuted }}>{plan.tagline}</p>
                 </div>
 
                 <div className="mb-1">
                   {displayPrice === 0 ? (
-                    <span className="text-4xl font-bold text-text-primary">Free</span>
+                    <span className="text-4xl font-bold" style={{ color: textStrong }}>Free</span>
                   ) : (
                     <div>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold text-text-primary">{formatAmount(displayPrice)}</span>
-                        <span className="text-sm text-text-secondary">{billing === 'annual' ? '/yr' : '/mo'}</span>
+                        <span className="text-4xl font-bold" style={{ color: textStrong }}>{formatAmount(displayPrice)}</span>
+                        <span className="text-sm" style={{ color: textMuted }}>{billing === 'annual' ? '/yr' : '/mo'}</span>
                       </div>
                       {billing === 'annual' && monthlyEquivalent !== null && (
-                        <p className="mt-1 text-xs" style={{ color: '#9CA3AF' }}>
+                        <p className="mt-1 text-xs" style={{ color: textSoft }}>
                           {formatAmount(monthlyEquivalent)}/mo equivalent. <span className="line-through">{formatAmount(monthly * 12)}</span>
                         </p>
                       )}
                       {billing === 'monthly' && monthly > 0 && (
-                        <p className="mt-1 text-xs" style={{ color: '#9CA3AF' }}>
+                        <p className="mt-1 text-xs" style={{ color: textSoft }}>
                           or {formatAmount(annual)}/yr. Save {savingsPercent}%
                         </p>
                       )}
@@ -184,7 +220,7 @@ export function PlansClient() {
 
                 <dl className="mt-5 mb-6 flex-1 space-y-3">
                   {[
-                    { icon: FileStack, label: <span>Sessions <span style={{ color: '#9CA3AF' }}>(lifetime)</span></span>, value: plan.limits.maxPresentations === 'unlimited' ? '8' : plan.limits.maxPresentations },
+                    { icon: FileStack, label: <span>Sessions <span style={{ color: '#9CA3AF' }}>(monthly)</span></span>, value: plan.limits.maxPresentations === 'unlimited' ? '8' : plan.limits.maxPresentations },
                     { icon: Users, label: 'Max participants', value: plan.limits.maxParticipantsPerSession.toLocaleString() },
                     { icon: Zap, label: 'Questions / session', value: plan.limits.maxQuestionsPerPresentation },
                     { icon: RefreshCw, label: 'Live at once', value: plan.limits.maxActiveSessions },
@@ -229,7 +265,7 @@ export function PlansClient() {
           })}
         </div>
 
-        <div className="glass-card mb-12 overflow-hidden">
+        <div className="glass-card mb-12 overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 6px 20px rgba(0,0,0,0.06)' }}>
           <div className="border-b px-8 py-6" style={{ borderColor: '#E5E7EB' }}>
             <h2 className="text-xl font-bold text-text-primary">Feature comparison</h2>
             <p className="mt-1 text-sm text-text-secondary">Everything included in each plan</p>
@@ -240,7 +276,7 @@ export function PlansClient() {
               <thead>
                 <tr className="border-b" style={{ borderColor: '#E5E7EB' }}>
                   <th className="w-2/5 px-8 py-4 text-left text-sm font-semibold text-text-secondary">Feature</th>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <th key={plan.id} scope="col" className="px-4 py-4 text-center">
                       <span className={`text-sm font-bold ${plan.isRecommended ? 'gradient-text' : 'text-text-primary'}`}>{plan.name}</span>
                     </th>
@@ -250,9 +286,9 @@ export function PlansClient() {
               <tbody>
                 <tr className="border-b bg-gray-50" style={{ borderColor: '#E5E7EB' }}>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">
-                    Total sessions <span className="text-xs font-normal" style={{ color: '#9CA3AF' }}>(lifetime)</span>
+                    Total sessions <span className="text-xs font-normal" style={{ color: '#9CA3AF' }}>(monthly)</span>
                   </td>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <td key={plan.id} className="px-4 py-4 text-center text-sm font-bold text-text-primary">
                       {plan.limits.maxPresentations === 'unlimited' ? '8' : plan.limits.maxPresentations}
                     </td>
@@ -260,7 +296,7 @@ export function PlansClient() {
                 </tr>
                 <tr className="border-b" style={{ borderColor: '#E5E7EB' }}>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">Max participants / session</td>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <td key={plan.id} className="px-4 py-4 text-center text-sm font-bold text-text-primary">
                       {plan.limits.maxParticipantsPerSession.toLocaleString()}
                     </td>
@@ -268,7 +304,7 @@ export function PlansClient() {
                 </tr>
                 <tr className="border-b bg-gray-50" style={{ borderColor: '#E5E7EB' }}>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">Questions per session</td>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <td key={plan.id} className="px-4 py-4 text-center text-sm font-bold text-text-primary">
                       {plan.limits.maxQuestionsPerPresentation}
                     </td>
@@ -276,7 +312,7 @@ export function PlansClient() {
                 </tr>
                 <tr className="border-b" style={{ borderColor: '#E5E7EB' }}>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">Live sessions at once</td>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <td key={plan.id} className="px-4 py-4 text-center text-sm font-bold text-text-primary">
                       {plan.limits.maxActiveSessions}
                     </td>
@@ -284,7 +320,7 @@ export function PlansClient() {
                 </tr>
                 <tr className="border-b bg-gray-50" style={{ borderColor: '#E5E7EB' }}>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">{billing === 'annual' ? 'Annual price' : 'Monthly price'}</td>
-                  {PLANS.map(plan => {
+                  {plans.map(plan => {
                     const { monthly, annual } = resolvePlanPrices(plan)
                     return (
                       <td key={plan.id} className="px-4 py-4 text-center">
@@ -303,7 +339,7 @@ export function PlansClient() {
                 {FEATURE_ROWS.map(({ label, key }, i) => (
                   <tr key={key} className={`border-b ${i % 2 !== 0 ? 'bg-gray-50' : ''}`} style={{ borderColor: '#E5E7EB' }}>
                     <td className="px-8 py-4 text-sm font-medium text-text-primary">{label}</td>
-                    {PLANS.map(plan => (
+                    {plans.map(plan => (
                       <td key={plan.id} className="px-4 py-4 text-center">
                         {plan.features[key] ? (
                           <span className="inline-flex h-6 w-6 items-center justify-center rounded-full" style={{ background: 'rgba(101,12,217,0.10)' }} aria-label="Included">
@@ -320,7 +356,7 @@ export function PlansClient() {
                 ))}
                 <tr>
                   <td className="px-8 py-4 text-sm font-medium text-text-primary">Export formats</td>
-                  {PLANS.map(plan => (
+                  {plans.map(plan => (
                     <td key={plan.id} className="px-4 py-4 text-center">
                       {plan.features.exportFormats && plan.features.exportFormats.length > 0 ? (
                         <span className="text-xs font-semibold" style={{ color: '#650cd9' }}>
@@ -358,12 +394,37 @@ export function PlansClient() {
         <div className="text-center">
           <p className="text-sm text-text-secondary">
             Need a custom enterprise plan?{' '}
-            <Link href="/contact" className="font-semibold text-primary hover:underline">
+            <Link href="/contact" className="font-semibold hover:underline" style={{ color: '#650cd9' }}>
               Contact us
             </Link>
           </p>
         </div>
       </div>
+      <style jsx>{`
+        .plans-surface {
+          background:
+            radial-gradient(circle at 10% 8%, rgba(101, 12, 217, 0.08), transparent 26%),
+            radial-gradient(circle at 90% 10%, rgba(167, 139, 250, 0.10), transparent 28%),
+            #fcf9f8;
+        }
+        .plans-surface :global(.text-text-primary) {
+          color: #1c1b1b !important;
+        }
+        .plans-surface :global(.text-text-secondary) {
+          color: #645d71 !important;
+        }
+        .plans-surface :global(.text-primary) {
+          color: #650cd9 !important;
+        }
+        .plans-surface :global(.gradient-text) {
+          background: linear-gradient(135deg, #650cd9 0%, #8f63ff 100%);
+          -webkit-background-clip: text;
+          background-clip: text;
+          -webkit-text-fill-color: transparent;
+          color: transparent;
+        }
+      `}</style>
     </div>
   )
 }
+

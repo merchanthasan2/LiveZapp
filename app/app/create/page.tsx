@@ -240,6 +240,7 @@ export default function CreatePage() {
     ? 'radial-gradient(circle at top left, rgba(101,12,217,0.18), transparent 24%), radial-gradient(circle at right center, rgba(0,107,95,0.12), transparent 22%), #0f111a'
     : 'radial-gradient(circle at top left, rgba(101,12,217,0.08), transparent 24%), radial-gradient(circle at right center, rgba(167,139,250,0.10), transparent 24%), #fcf9f8'
   const panelBg = isDark ? '#191b27' : '#ffffff'
+  const panelAlt = isDark ? '#11131d' : '#f5f7fa'
   const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(123,116,135,0.16)'
   const textStrong = isDark ? '#ffffff' : '#1c1b1b'
   const textMuted = isDark ? 'rgba(255,255,255,0.55)' : '#645d71'
@@ -379,7 +380,7 @@ export default function CreatePage() {
 
   // ── Save & create ────────────────────────────────────────────────────────
 
-  async function handleCreate() {
+  async function handleCreate(destination: 'dashboard' | 'present') {
     if (!user || !type) return
     setIsSaving(true)
     setError(null)
@@ -405,7 +406,11 @@ export default function CreatePage() {
         await QuestionService.saveQuestionSet(presentationId, questions, type, name || 'Untitled Zapp')
       }
 
-      router.push(`/app/present/${presentationId}`)
+      if (destination === 'dashboard') {
+        router.push('/app/dashboard')
+      } else {
+        router.push(`/app/present/${presentationId}`)
+      }
     } catch (e: any) {
       if (e.message?.includes('PLAN_LIMIT')) {
         setError(`You've reached the limit for your plan. Upgrade to create more.`)
@@ -442,7 +447,7 @@ export default function CreatePage() {
                   <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#EF4444' }} />
                   <div>
                     <p className="font-bold text-sm" style={{ color: '#FB7185' }}>Plan limit reached</p>
-                    <p className="text-sm mt-0.5" style={{ color: '#FB7185' }}>You&apos;ve used all Zapps allowed on your plan. Upgrade to create more.</p>
+                    <p className="text-sm mt-0.5" style={{ color: '#FB7185' }}>You&apos;ve used all your Zapps for this month on your plan. Upgrade to create more.</p>
                   </div>
                 </div>
               )}
@@ -863,7 +868,7 @@ export default function CreatePage() {
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left sidebar */}
-          <div className="w-64 flex flex-col overflow-hidden flex-shrink-0" style={{ background: panelBg, borderRight: `1px solid ${border}` }}>
+          <div className="w-[min(100%,20rem)] sm:w-[22rem] lg:w-[26rem] xl:w-[28rem] flex flex-col overflow-hidden flex-shrink-0" style={{ background: panelBg, borderRight: `1px solid ${border}` }}>
 
             {/* Section tabs (quiz with sections only) */}
             {isQuiz && useSections && (
@@ -1001,18 +1006,10 @@ export default function CreatePage() {
                   question={selectedQuestion}
                   questions={questions}
                   setQuestions={setQuestions}
+                  onAddNextQuestion={() => addQuestion()}
+                  disableAddNextQuestion={hasReachedQuestionLimit}
+                  addNextQuestionLabel="Next question"
                 />
-                {/* Add another question — shows type picker */}
-                <div className="px-5 md:px-7 pb-5 pt-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: isDark ? 'rgba(15,17,26,0.74)' : 'rgba(252,249,248,0.82)', backdropFilter: 'blur(10px)' }}>
-                  <button
-                    onClick={() => addQuestion()}
-                    disabled={hasReachedQuestionLimit}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
-                    style={{ background: accentSoft, color: accent, border: `1px dashed ${accentBorder}`, opacity: hasReachedQuestionLimit ? 0.45 : 1 }}
-                  >
-                    <Plus className="w-4 h-4" /> {hasReachedQuestionLimit ? 'Question limit reached' : 'Add another question'}
-                  </button>
-                </div>
               </div>
             )}
           </div>
@@ -1227,26 +1224,38 @@ export default function CreatePage() {
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-between">
-            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: textMuted }}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <button type="button" onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: textMuted }}>
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
-            <button
-              onClick={handleCreate}
-              disabled={isSaving || !canCreate}
-              className="btn-primary text-base disabled:opacity-50"
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  Creating…
-                </>
-              ) : (
-                <>
-                  Create Zapp <ChevronRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => void handleCreate('dashboard')}
+                disabled={isSaving || !canCreate}
+                className="px-6 py-3 rounded-xl font-bold text-sm border disabled:opacity-50"
+                style={{ borderColor: border, color: textStrong, background: panelAlt }}
+              >
+                {isSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleCreate('present')}
+                disabled={isSaving || !canCreate}
+                className="btn-primary text-base disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    Creating…
+                  </>
+                ) : (
+                  <>
+                    Save &amp; present <ChevronRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
         </motion.div>

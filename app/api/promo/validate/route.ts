@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBuiltinPromo } from '@/lib/promo/builtinPromos'
-
-const DATABASE_URL = process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL
+import { adminDb } from '@/lib/server/firebaseAdmin'
 
 interface PromoValidationRequest {
   code: string
@@ -21,51 +20,37 @@ interface PromoValidationResponse {
   }
 }
 
+type RtdbPromo = {
+  code?: string
+  isActive?: boolean
+  validUntil?: string | null
+  maxRedemptions?: number | null
+  currentRedemptions?: number
+  discountType?: 'percent' | 'fixed'
+  discountValue?: number
+  durationMonths?: number | null
+  postExpiryPlanId?: string | null
+  targetPlanId?: string | null
+}
+
 /**
  * POST /api/promo/validate
- * Validates a promo code and returns its details
- * Uses Firebase REST API
+ * Validates a promo code (reads RTDB via Firebase Admin).
  */
 export async function POST(request: NextRequest): Promise<NextResponse<PromoValidationResponse>> {
   try {
-    const body = await request.json() as PromoValidationRequest
+    const body = (await request.json()) as PromoValidationRequest
     const { code } = body
 
     if (!code || typeof code !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Promo code is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'Promo code is required' }, { status: 400 })
     }
 
     const codeUpper = code.toUpperCase().trim()
     const builtinPromo = getBuiltinPromo(codeUpper)
 
-    // Fetch promo code using Firebase REST API
-    const url = `${DATABASE_URL}/promoCodes/${codeUpper}.json`
-    const response = await fetch(url)
-
-    if (!response.ok || response.status === 404) {
-      if (builtinPromo) {
-        return NextResponse.json({
-          success: true,
-          promo: {
-            code: builtinPromo.code,
-            discountType: builtinPromo.discountType,
-            discountValue: builtinPromo.discountValue,
-            durationMonths: builtinPromo.durationMonths,
-            postExpiryPlanId: builtinPromo.postExpiryPlanId,
-            targetPlanId: builtinPromo.targetPlanId,
-          },
-        })
-      }
-      return NextResponse.json(
-        { success: false, error: `Promo code "${code}" not found` },
-        { status: 404 }
-      )
-    }
-
-    const promo = await response.json()
+    const snap = await adminDb().ref(`promoCodes/${codeUpper}`).get()
+    const promo = snap.val() as RtdbPromo | null
 
     if (!promo) {
       if (builtinPromo) {
@@ -83,50 +68,47 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoVali
       }
       return NextResponse.json(
         { success: false, error: `Promo code "${code}" not found` },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
-    // Check if promo is active
     if (!promo.isActive) {
       return NextResponse.json(
         { success: false, error: 'This promo code is no longer active' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Check if promo has expired
     if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
       return NextResponse.json(
         { success: false, error: 'This promo code has expired' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
-    // Check redemption limit
-    if (promo.maxRedemptions && promo.currentRedemptions >= promo.maxRedemptions) {
+    if (promo.maxRedemptions != null && (promo.currentRedemptions ?? 0) >= promo.maxRedemptions) {
       return NextResponse.json(
         { success: false, error: 'This promo code has reached its redemption limit' },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
     return NextResponse.json({
       success: true,
       promo: {
-        code: promo.code,
-        discountType: promo.discountType,
-        discountValue: promo.discountValue,
-        durationMonths: promo.durationMonths,
-        postExpiryPlanId: promo.postExpiryPlanId,
-        targetPlanId: promo.targetPlanId,
+        code: promo.code ?? codeUpper,
+        discountType: promo.discountType ?? 'percent',
+        discountValue: promo.discountValue ?? 0,
+        durationMonths: promo.durationMonths ?? null,
+        postExpiryPlanId: promo.postExpiryPlanId ?? null,
+        targetPlanId: promo.targetPlanId ?? null,
       },
     })
   } catch (error) {
     console.error('[api/promo/validate] error:', error)
     return NextResponse.json(
       { success: false, error: 'Failed to validate promo code' },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

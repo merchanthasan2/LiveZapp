@@ -1,136 +1,106 @@
-﻿# LiveZapp â€” Task Checklist
+﻿# LiveZapp — Task checklist
 
-## Phases 1â€“9 (Complete) âœ…
+## Phases 1–9 (complete)
 
-### Phase 1 â€” Scaffold & Design System
-- [x] `package.json` â€” all deps
-- [x] `tailwind.config.js` â€” design tokens, `glass-card`, `btn-primary`, gradients
-- [x] `postcss.config.mjs` â€” ESM `export default` (fixed CommonJS bug)
+### Phase 1 — Scaffold and design system
+- [x] `package.json` — dependencies
+- [x] `tailwind.config.js` — design tokens, `glass-card`, `btn-primary`, gradients
+- [x] `postcss.config.mjs` — ESM `export default`
 - [x] `tsconfig.json`, `next.config.js`, `jest.config.js`
-- [x] `app/globals.css` â€” CSS variables, utility classes
+- [x] `app/globals.css` — CSS variables, utility classes
 
-### Phase 2 â€” Domain Type System
-- [x] `types/domain.ts` â€” PresentationType, PresentationStatus, BaseQuestion, QuizQuestion, QAQuestion, FeedbackQuestion, Question, QuestionSet, Presentation
-- [x] `types/auth.ts` â€” Role, BaseUser, AdminUser, RegularUser, User (discriminated union)
-- [x] `types/plans.ts` â€” PlanId, PlanLimits, PlanFeatureFlags, Plan, PLANS (4 tiers)
-- [x] `types/join.ts` â€” JoinConfig, DEFAULT_JOIN_CONFIG, LiveSession, QRSettings, generateJoinCode
-- [x] `types/index.ts` â€” barrel re-export + UI types (TrafficMetric, Testimonial, StatCard, NavLink, UsageStats, DashboardPresentation)
+### Phase 2 — Domain type system
+- [x] `types/domain.ts` — presentation and question models
+- [x] `types/auth.ts` — roles and user types
+- [x] `types/plans.ts` — `PLANS`, limits
+- [x] `types/join.ts` — join config and live session types
+- [x] `types/index.ts` — barrel exports
 
-### Phase 3 â€” Shared Layout
-- [x] `components/Navbar.tsx` â€” scroll-blur, mobile slide-over
+### Phase 3 — Shared layout
+- [x] `components/Navbar.tsx`
 - [x] `components/Footer.tsx`
-- [x] `app/layout.tsx` â€” Inter font, gradient body, SEO metadata
+- [x] `app/layout.tsx` — metadata, fonts
 
-### Phase 4 â€” Home Page
-- [x] `components/home/HeroSection.tsx`
-- [x] `components/home/FeaturesSection.tsx`
-- [x] `components/home/HowItWorks.tsx`
-- [x] `components/home/PricingPreview.tsx`
-- [x] `components/home/QuantumStepSection.tsx`
-- [x] `components/home/Testimonials.tsx`
-- [x] `app/page.tsx`
+### Phase 4 — Home page
+- [x] Home sections and `app/page.tsx`
 
-### Phase 5 â€” Marketing Pages
-- [x] `app/plans/page.tsx` â€” updated to new Plan type (pricePerMonth, limits.*, features.canUse*, exportFormats)
+### Phase 5 — Marketing pages
+- [x] `app/plans/page.tsx`
 - [x] `app/about/page.tsx`
-- [x] `app/contact/page.tsx` â€” RHF + Zod, success state
+- [x] `app/contact/page.tsx`
 
-### Phase 6 â€” Auth Pages
-- [x] `app/login/page.tsx` â€” glass card, RHF + Zod, show/hide password
-- [x] `app/register/page.tsx` â€” glass card, RHF + Zod, strong password, success state
+### Phase 6 — Auth pages
+- [x] `app/login/page.tsx`
+- [x] `app/register/page.tsx`
 
-### Phase 7 â€” Mock & Sample Data
-- [x] `mock/sampleData.ts` â€” SAMPLE_PRESENTATIONS (quiz/qa/feedback), all QUIZ/QA/FEEDBACK question sets
-- [x] `lib/data/mockData.ts` â€” slimmed to DashboardPresentation rows, traffic, testimonials
-- [x] `lib/hooks/useAuth.ts` â€” updated to User/Role/PlanId domain types
+### Phase 7 — Mock and sample data
+- [x] Sample data and hooks aligned to types
 
-### Phase 8 â€” App Shells
-- [x] `app/app/layout.tsx` â€” sidebar layout
-- [x] `app/app/dashboard/page.tsx` â€” filterable table (draft/scheduled/live/completed), usage bars
-- [x] `app/admin/layout.tsx` â€” admin sidebar with Settings link
-- [x] `app/admin/page.tsx` â€” isAdmin guard, stat cards, Recharts chart
-- [x] `app/admin/settings/page.tsx` â€” JoinConfig editor (6/8/10 digits), QR best-practice tips, live QR preview with branding CTA
+### Phase 8 — App shells
+- [x] `app/app/layout.tsx`
+- [x] `app/app/dashboard/page.tsx`
+- [x] `app/admin/layout.tsx` and key admin pages
+- [x] `app/admin/settings/page.tsx`
 
-### Phase 9 â€” Docs & Tests
-- [x] `README.md`
-- [x] `docs/architecture.md`
-- [x] `docs/design-system.md`
-- [x] `docs/phases.md`
-- [x] `docs/implementation_plan.md` (this plan, stored in docs/)
-- [x] `docs/task.md` (this checklist, stored in docs/)
-- [x] `__tests__/Navbar.test.tsx`
-- [x] `__tests__/PricingCards.test.tsx`
-- [x] `jest.setup.ts`
-- [x] `.eslintrc.json`
+### Phase 9 — Docs and tests
+- [x] README, architecture, design-system, phases, implementation plan
+- [x] Jest tests and ESLint
 
 ---
 
-## Phase 10 â€” Firebase Authentication âœ…
-- [x] `.env.local` â€” Firebase config vars
-- [x] `lib/firebase.ts` â€” initialize SDK, replace stubs
-- [x] `lib/hooks/useAuth.ts` â€” replace with `onAuthStateChanged`, handling real Auth state and auto-provisioning
-- [x] Repair corrupted dependencies post-npm-update
-- [x] Verify login redirects and admin dashboard rendering
-- [x] Route Guards â€” protect `/app`, `/admin` (layout level)
-- [x] Email confirmation on register (Deferred - testing mode)
-
-## Phase 11 â€” Realtime Data Layer âœ…
-- [x] Initial RTDB Schema alignment (using `/users` path)
-- [x] Implement `PresentationService` for RTDB CRUD
-- [x] Implement `QuestionService` for RTDB CRUD
-- [x] Connect Dashboard to RTDB (Real Data Sync)
-- [x] Deploy RTDB Security Rules
-- [x] Premium Dashboard UI Polishing (Animations & Refinements)
-- [x] `lib/services/JoinCodeService.ts` â€” `generateUniqueCode()` with RTDB uniqueness check + claim/release
-- [x] `lib/services/AdminConfigService.ts` â€” load/save `/admin/config` in RTDB
-- [x] `app/admin/settings/page.tsx` â€” wired to AdminConfigService (load on mount, save to RTDB)
-
-## Phase 12 â€” Presentation Builder âœ…
-- [x] Build Builder Shell (Header, Tabs, Settings)
-- [x] Implement Question List view (inline delete, count vs limit)
-- [x] Build Question Type Editors (Quiz, Q&A, Feedback â€” all 4 feedback subtypes)
-- [x] Tier Limit Checks â€” derived from `PLANS` canonical data (not hardcoded)
-- [x] Preview Mode â€” participant-view slide-in panel with interactive mock UI
-- [x] Save success toast + unsaved-changes indicator
-
-## Phase 12.5 â€” UI/UX Redesign âœ…  (Design overhaul â€” "Broadcast Studio" dark theme)
-- [x] `tailwind.config.js` â€” new dark palette (indigo/violet/coral-live), glow shadows, Syne+DM Sans fonts, orb/live keyframes
-- [x] `app/globals.css` â€” full dark design system: animated orb background, dot-grid, dark glass cards, `.btn-primary/.btn-live/.btn-ghost/.btn-secondary`, `.live-badge/.live-dot`, `.nav-item/.nav-item-active`, usage bars with glow, gradient text/bg utilities
-- [x] `app/layout.tsx` â€” Syne (display) + DM Sans (body) from next/font/google; ambient orb divs injected
-- [x] `app/app/layout.tsx` â€” dark sidebar: brand wordmark, gradient-ring avatar, plan badge, glowing active nav, system status widget
-- [x] `app/app/dashboard/page.tsx` â€” dark broadcast-studio dashboard: Syne headings, live badge in header, type-accented presentation cards (quiz=indigo/qa=blue/feedback=green), redesigned status badges, gradient stat cards with top accent borders, usage bars with warning glow
-
-## Phase 13 â€” Live Session Engine âœ…
-- [x] Firebase RTDB for real-time responses
-- [x] Presenter view with live charts/results (current-question response visuals)
-- [x] Participant join by code
-- [x] Quiz leaderboard (shown on session end)
-
-## Phase 14 â€” Admin Analytics âœ…
-- [x] Real traffic data â†’ Recharts (traffic analytics dashboard)
-- [x] Date-range filtering for traffic charts
-- [x] Firestore aggregation for stat cards
-
-## Phase 15 â€” Payments & Launch âœ…
-- [x] PayPal billing (subscription billing)
-- [x] Server-side plan limit enforcement (plan caps enforced in backend services)
-- [ ] `/privacy`, `/terms`
-- [ ] SEO: sitemap.xml, robots.txt
-- [ ] Vercel deploy â†’ livezapp.quantumstep.in
+## Phase 10 — Firebase authentication (complete)
+- [x] Firebase client SDK and `useAuth`
+- [x] Route guards for `/app` and `/admin`
+- [ ] Email verification enforced in production (optional)
 
 ---
 
-## Phase X Backlog (Current)
+## Phase 11 — Realtime data layer (complete)
+- [x] RTDB services for presentations, questions, join codes, admin config
 
-### Product pages
-- [ ] Phase X-4: App pages - Dashboard, Create wizard, Settings, Checkout
-- [ ] Phase X-5: Admin pages - all pages under `/admin`
-- [ ] Phase X-6: Presenter & Participant screens
-- [ ] Phase X-7: Polish - mobile, animations, dark mode consistency
+---
 
-### Hero refinement
-- [x] HR-1: Replace `JoinWidget` with `JoinCodeCard`
-- [x] HR-2: Promote `MockDashboardCard` as sole right-column visual
-- [x] HR-3: Add trust strip between CTAs and feature pills
-- [x] HR-4: Upgrade feature pills with icons
+## Phase 12 — Presentation builder (complete)
+- [x] Builder UI, question editors, tier limits, preview
 
+---
+
+## Phase 12.5 — UI redesign (complete)
+- [x] Broadcast-style app shell and dashboard styling
+
+---
+
+## Phase 13 — Live session engine (complete)
+- [x] RTDB live sessions, presenter view, join by code, quiz leaderboard on end
+
+---
+
+## Phase 14 — Admin analytics (complete)
+- [x] Traffic charts and analytics
+
+---
+
+## Phase 15 — Payments and launch
+- [x] PayPal billing and plan enforcement in services
+- [x] `/privacy` and `/terms` — static legal pages
+- [x] SEO — `app/sitemap.ts` and `app/robots.txt/route.ts` (fallback in `lib/site.ts`)
+- [ ] Production deploy and environment configuration on target host
+
+---
+
+## Backlog
+
+### Product polish (optional)
+- [ ] Further mobile pass and animation tuning
+- [ ] Stronger dark/light consistency between marketing, app shell, and admin
+
+### Dev experience
+- [ ] **DEV-1:** Slow `next dev` / first load — baseline first paint after server is ready (not time-to-“ready”); see [dev-server-performance.md](./dev-server-performance.md)
+
+### Security and dependencies
+- [ ] Periodically run `npm audit` and upgrade Next.js patch versions
+
+---
+
+## Hero refinement (complete)
+- [x] Join code card, dashboard mock, trust strip, feature pills

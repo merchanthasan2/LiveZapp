@@ -27,7 +27,7 @@ export interface BaseUser {
    */
   planCancelledAt?: string
   /**
-   * Lifetime count of presentations ever created — never decrements on delete.
+   * Count of presentations created (counts toward monthly Zapp allowance; not decremented on delete).
    * Checked against plan.limits.maxPresentations.
    */
   lifetimePresentationsCreated?: number

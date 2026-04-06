@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, BarChart3, MessageSquare, Cloud, Smile,
@@ -13,7 +13,7 @@ import { useTheme } from '@/lib/contexts/ThemeContext'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
 import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
-import { makeQuestion } from '@/components/question-editor/makeQuestion'
+import { makeQuestion, convertQuestionKind } from '@/components/question-editor/makeQuestion'
 import { Q_TYPES } from '@/components/question-editor/qtypes'
 import type { PresentationType, Question, Section, ScoringConfig } from '@/types/domain'
 import type { QuestionKind } from '@/components/question-editor/qtypes'
@@ -140,15 +140,19 @@ function QuestionTypePicker({
 
 // ─── Main edit wizard ──────────────────────────────────────────────────────
 
-export default function EditZappPage() {
+function EditZappPage() {
   const { id } = useParams<{ id: string }>()
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const stepFromUrlApplied = useRef(false)
   const { isDark } = useTheme()
-  const pageBg = isDark ? '#0f111a' : '#f5f7fa'
+  const pageBg = isDark ? '#0f111a' : '#f8f7ff'
   const panelBg = isDark ? '#191b27' : '#ffffff'
-  const panelAlt = isDark ? '#11131d' : '#f5f7fa'
-  const border = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
+  const panelAlt = isDark ? '#11131d' : '#f3f0ff'
+  const border = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(122, 58, 240, 0.10)'
+  const cardShadow = isDark ? '0 12px 40px rgba(0,0,0,0.35)' : '0 4px 24px rgba(80, 50, 120, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04)'
+  const headerShadow = isDark ? 'none' : '0 2px 16px rgba(80, 50, 120, 0.05)'
   const textStrong = isDark ? '#ffffff' : '#1A1A2E'
   const textMuted = isDark ? 'rgba(255,255,255,0.60)' : '#6B7280'
   const textSoft = isDark ? 'rgba(255,255,255,0.40)' : '#9CA3AF'
@@ -177,6 +181,7 @@ export default function EditZappPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showTypePicker, setShowTypePicker] = useState(false)
+  const [typePickerPurpose, setTypePickerPurpose] = useState<'add' | 'change'>('add')
 
   const isQuiz = type === 'quiz'
 
@@ -214,6 +219,25 @@ export default function EditZappPage() {
       }
     })()
   }, [id, user])
+
+  // Deep-link to a step (e.g. ?step=questions from dashboard or presenter)
+  useEffect(() => {
+    if (stepFromUrlApplied.current) return
+    const raw = searchParams.get('step')
+    if (!raw) return
+    const map: Record<string, EditStep> = {
+      name: 'name',
+      sections: 'sections',
+      questions: 'questions',
+      scoring: 'scoring',
+      review: 'review',
+    }
+    const next = map[raw]
+    if (next) {
+      setStep(next)
+      stepFromUrlApplied.current = true
+    }
+  }, [searchParams])
 
   // ── Step navigation ───────────────────────────────────────────────────────
 
@@ -256,12 +280,27 @@ export default function EditZappPage() {
   // ── Questions helpers ─────────────────────────────────────────────────────
 
   function addQuestion(kind?: QuestionKind) {
-    if (!kind) { setShowTypePicker(true); return }
+    if (!kind) {
+      setTypePickerPurpose('add')
+      setShowTypePicker(true)
+      return
+    }
     const sectionId = useSections ? activeSectionId : undefined
     const q = makeQuestion(kind, questions.length, sectionId)
     setQuestions(prev => [...prev, q])
     setSelectedQId(q.id)
     setShowTypePicker(false)
+  }
+
+  function applyQuestionKind(kind: QuestionKind) {
+    if (typePickerPurpose === 'change' && selectedQId) {
+      setQuestions(prev =>
+        prev.map(q => (q.id === selectedQId ? convertQuestionKind(q, kind) : q)),
+      )
+      setShowTypePicker(false)
+      return
+    }
+    addQuestion(kind)
   }
 
   function deleteQuestion(qid: string) {
@@ -272,20 +311,35 @@ export default function EditZappPage() {
 
   // ── Save ──────────────────────────────────────────────────────────────────
 
-  async function handleSave() {
+  async function persistChanges() {
+    if (!user || !type) return
+    const updates: Record<string, unknown> = { title: name || 'Untitled Zapp' }
+    if (useSections && sections.length > 0) updates.sections = sections
+    if (isQuiz) updates.scoringConfig = scoring
+    await PresentationService.updatePresentation(id, updates)
+    await QuestionService.saveQuestionSet(id, questions, type, name || 'Untitled Zapp')
+  }
+
+  async function saveToDashboard() {
     if (!user || !type) return
     setIsSaving(true)
     setError(null)
     try {
-      // Update presentation metadata
-      const updates: Record<string, any> = { title: name || 'Untitled Zapp' }
-      if (useSections && sections.length > 0) updates.sections = sections
-      if (isQuiz) updates.scoringConfig = scoring
-      await PresentationService.updatePresentation(id, updates)
+      await persistChanges()
+      router.push('/app/dashboard')
+    } catch (e: any) {
+      setError(e.message || 'Failed to save changes')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
-      // Save all questions
-      await QuestionService.saveQuestionSet(id, questions, type, name || 'Untitled Zapp')
-
+  async function saveAndPresent() {
+    if (!user || !type) return
+    setIsSaving(true)
+    setError(null)
+    try {
+      await persistChanges()
       router.push(`/app/present/${id}`)
     } catch (e: any) {
       setError(e.message || 'Failed to save changes')
@@ -492,50 +546,94 @@ export default function EditZappPage() {
   // ════════════════════════════════════════════════════════════════════════
 
   if (step === 'questions') {
+    const selectedIdx = visibleQuestions.findIndex(q => q.id === selectedQId)
+    const canPrevQ = selectedIdx > 0
+    const canNextQ = selectedIdx >= 0 && selectedIdx < visibleQuestions.length - 1
+
+    const primaryBtn = {
+      background: 'linear-gradient(135deg, #650cd9, #7a3af0)',
+      boxShadow: isDark ? '0 6px 20px rgba(101,12,217,0.35)' : '0 6px 20px rgba(101, 12, 217, 0.28)',
+    } as const
+
     return (
-      <div className="min-h-screen bg-[#F5F7FA] flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: pageBg }}>
         {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-[#E5E7EB]">
-          <div className="flex items-center gap-3">
-            <button onClick={prevStep} className="p-2 rounded-lg transition-colors" style={{ color: '#6B7280' }}>
+        <div
+          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b z-10"
+          style={{ background: panelBg, borderColor: border, boxShadow: headerShadow }}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              type="button"
+              onClick={prevStep}
+              className="p-2.5 rounded-full transition-colors shrink-0"
+              style={{ color: textMuted, background: panelAlt, border: `1px solid ${border}` }}
+              aria-label="Back"
+            >
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#9CA3AF' }}>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: textSoft }}>
                 {isQuiz ? 'Step 3' : 'Step 2'} — Questions
               </p>
-              <h1 className="text-lg font-black" style={{ color: '#1A1A2E' }}>{name}</h1>
+              <h1 className="text-lg sm:text-xl font-black truncate tracking-tight" style={{ color: textStrong }}>{name}</h1>
             </div>
           </div>
-          <button
-            onClick={nextStep}
-            disabled={questions.length === 0}
-            className="flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm text-white disabled:opacity-50 transition-all"
-            style={{ background: '#00A6A6' }}
-          >
-            Next <ArrowRight className="w-4 h-4" />
-          </button>
+          <div className="flex flex-wrap items-center gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => void saveToDashboard()}
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-full text-sm font-bold border transition-all disabled:opacity-50"
+              style={{ borderColor: border, color: textStrong, background: panelBg }}
+            >
+              {isSaving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveAndPresent()}
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-50"
+              style={primaryBtn}
+            >
+              Save &amp; present
+            </button>
+            <button
+              type="button"
+              onClick={nextStep}
+              disabled={questions.length === 0}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm text-white disabled:opacity-50 transition-all"
+              style={primaryBtn}
+            >
+              Next <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Left sidebar */}
-          <div className="w-60 bg-white border-r border-[#E5E7EB] flex flex-col overflow-hidden flex-shrink-0">
+          <div
+            className="w-[min(100%,20rem)] sm:w-[22rem] lg:w-[26rem] xl:w-[28rem] flex flex-col overflow-hidden flex-shrink-0 border-r"
+            style={{ background: panelBg, borderColor: border, boxShadow: isDark ? 'none' : '4px 0 24px rgba(80, 50, 120, 0.04)' }}
+          >
 
             {/* Section tabs (quiz with sections) */}
             {isQuiz && useSections && (
-              <div className="border-b border-[#E5E7EB] p-3 space-y-1">
+              <div className="border-b p-3 space-y-1" style={{ borderColor: border }}>
                 {sections.map(sec => (
                   <button
                     key={sec.id}
+                    type="button"
                     onClick={() => {
                       setActiveSectionId(sec.id)
                       const first = questions.find(q => q.sectionId === sec.id)
                       if (first) setSelectedQId(first.id)
                     }}
-                    className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-all"
+                    className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold transition-all"
                     style={{
-                      background: activeSectionId === sec.id ? 'rgba(0,166,166,0.10)' : 'transparent',
-                      color: activeSectionId === sec.id ? '#00A6A6' : '#6B7280',
+                      background: activeSectionId === sec.id ? accentSoft : 'transparent',
+                      color: activeSectionId === sec.id ? accent : textMuted,
+                      border: activeSectionId === sec.id ? `1px solid rgba(101,12,217,0.2)` : '1px solid transparent',
                     }}
                   >
                     {sec.name}
@@ -546,38 +644,53 @@ export default function EditZappPage() {
             )}
 
             {/* Question list */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
               {visibleQuestions.length === 0 && (
-                <p className="text-xs text-center py-6" style={{ color: '#9CA3AF' }}>No questions yet</p>
+                <p className="text-xs text-center py-8 px-2 leading-relaxed" style={{ color: textSoft }}>No questions yet</p>
               )}
               {visibleQuestions.map((q, i) => {
                 const qMeta = Q_TYPES.find(t => t.kind === q.kind)
                 const QIcon = qMeta?.icon ?? Sparkles
+                const active = selectedQId === q.id
                 return (
-                  <div key={q.id} className="flex items-center gap-2 group">
+                  <div key={q.id} className="flex items-stretch gap-1.5 group">
                     <button
+                      type="button"
                       onClick={() => setSelectedQId(q.id)}
-                      className="flex-1 text-left px-3 py-2.5 rounded-lg text-xs transition-all"
+                      className="flex-1 min-w-0 text-left px-3 py-2.5 rounded-xl text-xs transition-all"
                       style={{
-                        background: selectedQId === q.id ? 'rgba(0,166,166,0.10)' : 'transparent',
-                        color: selectedQId === q.id ? '#00A6A6' : '#374151',
-                        border: selectedQId === q.id ? '1px solid rgba(0,166,166,0.25)' : '1px solid transparent',
+                        background: active ? accentSoft : 'transparent',
+                        color: active ? accent : textStrong,
+                        border: active ? `1px solid rgba(101,12,217,0.22)` : '1px solid transparent',
+                        boxShadow: active && !isDark ? '0 2px 12px rgba(101, 12, 217, 0.08)' : undefined,
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold shrink-0" style={{ color: '#9CA3AF' }}>{i + 1}.</span>
-                        <QIcon className="w-3 h-3 shrink-0" style={{ color: qMeta?.color ?? '#00A6A6' }} />
-                        <span className="truncate">{q.prompt || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>Untitled</span>}</span>
+                      <div className="flex items-start gap-2.5">
+                        <span
+                          className="font-black tabular-nums text-[11px] w-5 shrink-0 text-right leading-5 pt-0.5"
+                          style={{ color: active ? accent : textSoft }}
+                        >
+                          {i + 1}
+                        </span>
+                        <span
+                          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md mt-0.5"
+                          style={{ background: `${qMeta?.color ?? accent}20` }}
+                        >
+                          <QIcon className="w-3 h-3" style={{ color: qMeta?.color ?? accent }} aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1 leading-snug font-semibold break-words line-clamp-3">
+                          {q.prompt || <span style={{ color: textSoft, fontStyle: 'italic', fontWeight: 600 }}>Untitled</span>}
+                        </span>
                       </div>
                     </button>
                     <button
+                      type="button"
                       onClick={() => deleteQuestion(q.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded transition-all flex-shrink-0"
-                      style={{ color: '#D1D5DB' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-                      onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
+                      className="opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all flex-shrink-0 self-start"
+                      style={{ color: textSoft, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(122,58,240,0.06)' }}
+                      title="Delete question"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 )
@@ -585,52 +698,115 @@ export default function EditZappPage() {
             </div>
 
             {/* Add question */}
-            <div className="p-3 border-t border-[#E5E7EB]">
+            <div className="p-3 border-t" style={{ borderColor: border }}>
               <button
+                type="button"
                 onClick={() => addQuestion()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-bold transition-all"
-                style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.20)' }}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all"
+                style={{ background: accentSoft, color: accent, border: `1px solid rgba(101,12,217,0.22)` }}
               >
-                <Plus className="w-3.5 h-3.5" /> Add Question
+                <Plus className="w-4 h-4" /> Add question
               </button>
-              <p className="text-[9px] text-center mt-2" style={{ color: '#9CA3AF' }}>
+              <p className="text-[9px] text-center mt-2" style={{ color: textSoft }}>
                 {questions.length} question{questions.length !== 1 ? 's' : ''} total
               </p>
             </div>
           </div>
 
           {/* Main editor area */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: pageBg }}>
             {!selectedQuestion ? (
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-center p-8">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(0,166,166,0.10)' }}>
-                  <Plus className="w-7 h-7" style={{ color: '#00A6A6' }} />
-                </div>
-                <p className="font-bold text-lg" style={{ color: '#1A1A2E' }}>Add your first question</p>
-                <p className="text-sm" style={{ color: '#6B7280' }}>Pick a question type — you can mix types freely</p>
-                <button
-                  onClick={() => addQuestion()}
-                  className="mt-2 px-8 py-3 rounded-xl font-black text-white text-base"
-                  style={{ background: '#00A6A6', boxShadow: '0 4px 16px rgba(0,166,166,0.30)' }}
+              <div className="flex flex-col items-center justify-center flex-1 gap-5 text-center p-8">
+                <div
+                  className="w-20 h-20 rounded-[1.25rem] flex items-center justify-center"
+                  style={{ background: accentSoft, boxShadow: isDark ? undefined : cardShadow }}
                 >
-                  + Add Question
+                  <Plus className="w-9 h-9" style={{ color: accent }} />
+                </div>
+                <div>
+                  <p className="font-black text-xl tracking-tight" style={{ color: textStrong }}>Add your first question</p>
+                  <p className="text-sm mt-2 max-w-sm mx-auto leading-relaxed" style={{ color: textMuted }}>
+                    Pick a question type — you can mix poll, quiz, Q&amp;A, and more in one Zapp.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => addQuestion()}
+                  className="mt-1 px-8 py-3.5 rounded-full font-bold text-white text-sm"
+                  style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 8px 24px rgba(101, 12, 217, 0.28)' }}
+                >
+                  + Add question
                 </button>
               </div>
             ) : (
-              <div className="flex flex-col h-full">
-                <QuestionEditor
-                  question={selectedQuestion}
-                  questions={questions}
-                  setQuestions={setQuestions}
-                />
-                <div className="px-7 pb-6 pt-2 border-t border-[#F0F0F0] flex-shrink-0">
-                  <button
-                    onClick={() => addQuestion()}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all"
-                    style={{ background: 'rgba(0,166,166,0.08)', color: '#00A6A6', border: '1px dashed rgba(0,166,166,0.35)' }}
+              <div className="flex flex-col flex-1 min-h-0 p-4 sm:p-6">
+                <div
+                  className="flex-1 min-h-0 flex flex-col rounded-[1.75rem] border overflow-hidden"
+                  style={{
+                    background: panelBg,
+                    borderColor: border,
+                    boxShadow: cardShadow,
+                  }}
+                >
+                  <div
+                    className="flex flex-wrap items-center justify-between gap-3 shrink-0 px-5 sm:px-7 py-3.5 border-b"
+                    style={{
+                      borderColor: border,
+                      background: isDark ? 'rgba(255,255,255,0.03)' : '#faf9ff',
+                    }}
                   >
-                    <Plus className="w-4 h-4" /> Add another question
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <p className="mr-1 hidden sm:block text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: textSoft }}>
+                        In this Zapp
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => canPrevQ && setSelectedQId(visibleQuestions[selectedIdx - 1]!.id)}
+                        disabled={!canPrevQ}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold disabled:opacity-40 transition-opacity"
+                        style={{
+                          background: isDark ? panelBg : '#ffffff',
+                          color: textStrong,
+                          border: `1px solid ${border}`,
+                          boxShadow: isDark ? undefined : '0 1px 3px rgba(101, 12, 217, 0.06)',
+                        }}
+                      >
+                        <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => canNextQ && setSelectedQId(visibleQuestions[selectedIdx + 1]!.id)}
+                        disabled={!canNextQ}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold disabled:opacity-40 transition-opacity"
+                        style={{
+                          background: isDark ? panelBg : '#ffffff',
+                          color: textStrong,
+                          border: `1px solid ${border}`,
+                          boxShadow: isDark ? undefined : '0 1px 3px rgba(101, 12, 217, 0.06)',
+                        }}
+                      >
+                        Next <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTypePickerPurpose('change')
+                        setShowTypePicker(true)
+                      }}
+                      className="text-xs font-bold px-4 py-2 rounded-full"
+                      style={{ background: accentSoft, color: accent, border: `1px solid rgba(101,12,217,0.22)` }}
+                    >
+                      Change type
+                    </button>
+                  </div>
+                  <QuestionEditor
+                    question={selectedQuestion}
+                    questions={questions}
+                    setQuestions={setQuestions}
+                    onAddNextQuestion={() => addQuestion()}
+                    addNextQuestionLabel="Next question"
+                  />
                 </div>
               </div>
             )}
@@ -641,9 +817,13 @@ export default function EditZappPage() {
         <AnimatePresence>
           {showTypePicker && (
             <QuestionTypePicker
-              onSelect={kind => addQuestion(kind as QuestionKind)}
+              onSelect={kind => applyQuestionKind(kind as QuestionKind)}
               onClose={() => setShowTypePicker(false)}
-              defaultKind={type as QuestionKind | undefined}
+              defaultKind={
+                typePickerPurpose === 'change' && selectedQuestion
+                  ? (selectedQuestion.kind as QuestionKind)
+                  : (type as QuestionKind | undefined)
+              }
             />
           )}
         </AnimatePresence>
@@ -826,27 +1006,39 @@ export default function EditZappPage() {
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-between">
-            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <button type="button" onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex items-center gap-2 px-8 py-3 rounded-xl font-black text-white text-base transition-all disabled:opacity-50"
-              style={{ background: '#00A6A6', boxShadow: '0 4px 20px rgba(0,166,166,0.35)' }}
-            >
-              {isSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  Save Changes <ChevronRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
+            <div className="flex flex-wrap items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => void saveToDashboard()}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border transition-all disabled:opacity-50"
+                style={{ borderColor: '#E5E7EB', color: '#374151', background: '#fff' }}
+              >
+                {isSaving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void saveAndPresent()}
+                disabled={isSaving}
+                className="flex items-center justify-center gap-2 px-8 py-3 rounded-xl font-black text-white text-base transition-all disabled:opacity-50"
+                style={{ background: '#00A6A6', boxShadow: '0 4px 20px rgba(0,166,166,0.35)' }}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  <>
+                    Save &amp; present <ChevronRight className="w-5 h-5" />
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </motion.div>
       </div>
@@ -854,4 +1046,19 @@ export default function EditZappPage() {
   }
 
   return null
+}
+
+export default function EditZappPageWithSuspense() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center gap-3" style={{ background: '#0f111a' }}>
+          <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(101,12,217,0.20)', borderTopColor: '#650cd9' }} />
+          <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Loading editor…</span>
+        </div>
+      }
+    >
+      <EditZappPage />
+    </Suspense>
+  )
 }

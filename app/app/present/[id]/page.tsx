@@ -8,6 +8,7 @@ import {
   CheckCircle2, AlertCircle, Sparkles, BarChart3, Cloud,
   MessageSquare, Star, ChevronLeft, ChevronRight, Radio,
   Maximize2, Minimize2, Pause, Moon, Sun,
+  LayoutDashboard, List, X,
 } from 'lucide-react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
@@ -317,8 +318,10 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
 
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-stretch">
             <div className="rounded-[2.4rem] p-7 text-center flex flex-col justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
-              <div className="inline-block p-5 rounded-[2rem]" style={{ background: '#ffffff' }}>
-                <QRCodeSVG value={qrUrl} size={360} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: 'auto', maxWidth: '36rem' }} />
+              <div className="mx-auto w-full max-w-[36rem] aspect-square p-5 rounded-[2rem] flex items-center justify-center" style={{ background: '#ffffff' }}>
+                <div className="w-full h-full flex items-center justify-center">
+                  <QRCodeSVG value={qrUrl} size={360} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: '100%', display: 'block' }} />
+                </div>
               </div>
               <p className="text-lg font-bold mt-6" style={{ color: '#f4efff' }}>Scan to join the Zapp</p>
               <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.50)' }}>The QR stays on stage until you press Start Zapp.</p>
@@ -655,6 +658,40 @@ export default function PresentPage() {
     router.push(`/app/create/${id}`)
   }, [id, router])
 
+  const navigateTo = useCallback(async (index: number) => {
+    if (!session || index < 0 || index >= questions.length) return
+    setCurrentIndex(index)
+    setResponses({})
+    if (!session.hasStarted) {
+      await LiveSessionService.startPresentation(session.joinCode)
+    }
+    await LiveSessionService.setCurrentQuestion(session.joinCode, index)
+  }, [session, questions.length])
+
+  const handleGoLive = useCallback(async () => {
+    if (!presentation || !user || questions.length === 0) return
+    setIsStarting(true)
+    try {
+      const joinCode = await generateJoinCode(6, rtdb)
+      const branding = await BrandingService.getBranding(user.id).catch(() => null)
+      await LiveSessionService.startSession({
+        presentationId: id,
+        hostId: user.id,
+        joinCode,
+        title: presentation.title,
+        questions,
+        brandLogoUrl: branding?.logoUrl || undefined,
+        brandName:    branding?.brandName || undefined,
+      })
+      const newSession = await LiveSessionService.getSession(joinCode)
+      if (newSession) { setSession(newSession); setCurrentIndex(0) }
+    } catch (e: any) {
+      setError(e.message || 'Failed to start session')
+    } finally {
+      setIsStarting(false)
+    }
+  }, [presentation, user, questions, id])
+
   useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement)
     document.addEventListener('fullscreenchange', onFsChange)
@@ -681,7 +718,7 @@ export default function PresentPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isFullscreen, session, showJoinSlide, currentIndex, questions.length])
+  }, [isFullscreen, session, showJoinSlide, currentIndex, questions.length, navigateTo])
 
   // Load presentation + questions
   useEffect(() => {
@@ -721,42 +758,17 @@ export default function PresentPage() {
     })
     const unsubP = LiveSessionService.subscribeToParticipants(session.joinCode, setParticipantCount)
     return () => { unsub(); unsubP() }
-  }, [session?.joinCode])
+  }, [session])
+
+  const currentQuestionId = questions[currentIndex]?.id
 
   // Subscribe to current question responses
   useEffect(() => {
-    if (!session || !questions[currentIndex]) return
+    if (!session || !currentQuestionId) return
     setResponses({})
-    const qId = questions[currentIndex].id
-    const unsub = LiveSessionService.subscribeToResponses(session.joinCode, qId, setResponses)
+    const unsub = LiveSessionService.subscribeToResponses(session.joinCode, currentQuestionId, setResponses)
     return unsub
-  }, [session?.joinCode, currentIndex, questions])
-
-  const handleGoLive = async () => {
-    if (!presentation || !user || questions.length === 0) return
-    setIsStarting(true)
-    try {
-      // Generate a unique join code (async to check uniqueness)
-      const joinCode = await generateJoinCode(6, rtdb)
-      // Fetch branding so logo appears on the join screen
-      const branding = await BrandingService.getBranding(user.id).catch(() => null)
-      await LiveSessionService.startSession({
-        presentationId: id,
-        hostId: user.id,
-        joinCode,
-        title: presentation.title,
-        questions,
-        brandLogoUrl: branding?.logoUrl || undefined,
-        brandName:    branding?.brandName || undefined,
-      })
-      const newSession = await LiveSessionService.getSession(joinCode)
-      if (newSession) { setSession(newSession); setCurrentIndex(0) }
-    } catch (e: any) {
-      setError(e.message || 'Failed to start session')
-    } finally {
-      setIsStarting(false)
-    }
-  }
+  }, [session, currentQuestionId])
 
   const handleStartZapp = async () => {
     if (!session) return
@@ -777,7 +789,7 @@ export default function PresentPage() {
 
     setHasAutoLaunchAttempted(true)
     void handleGoLive()
-  }, [searchParams, hasAutoLaunchAttempted, session, presentation, user, questions.length])
+  }, [searchParams, hasAutoLaunchAttempted, session, presentation, user, questions.length, handleGoLive])
 
   const handleEndSession = async () => {
     if (!session || !presentation) return
@@ -828,17 +840,6 @@ export default function PresentPage() {
       setIsComputingLeaderboard(false)
     }
   }
-
-  const navigateTo = useCallback(async (index: number) => {
-    if (!session || index < 0 || index >= questions.length) return
-    setCurrentIndex(index)
-    setResponses({})
-    // If presenter hasn't started yet (non-fullscreen path), mark as started now
-    if (!session.hasStarted) {
-      await LiveSessionService.startPresentation(session.joinCode)
-    }
-    await LiveSessionService.setCurrentQuestion(session.joinCode, index)
-  }, [session, questions.length])
 
   const handlePause = async () => {
     if (!session) return
@@ -929,7 +930,7 @@ export default function PresentPage() {
             style={{ background: 'rgba(0,0,0,0.05)', color: '#6B7280' }}
             title="Back to dashboard"
           >
-            âœ•
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -993,9 +994,29 @@ export default function PresentPage() {
     const launchAccent = presentation.brandAccentColor || '#650cd9'
     return (
       <div className="max-w-6xl mx-auto pb-16 space-y-6">
-        <Link href={`/app/create/${id}`} className="inline-flex items-center gap-2 text-sm transition-colors" style={{ color: '#9CA3AF' }} onMouseEnter={e => (e.currentTarget.style.color = '#d2bbff')} onMouseLeave={e => (e.currentTarget.style.color = '#9CA3AF')}>
-          <ArrowLeft className="w-4 h-4" /> Back to builder
-        </Link>
+        <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Presenter navigation">
+          <Link
+            href="/app/dashboard"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(191,168,255,0.14)', color: '#e8e0ff' }}
+          >
+            <LayoutDashboard className="w-4 h-4 shrink-0" /> Dashboard
+          </Link>
+          <Link
+            href={`/app/create/${id}?step=questions`}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(191,168,255,0.14)', color: '#e8e0ff' }}
+          >
+            <List className="w-4 h-4 shrink-0" /> Questions
+          </Link>
+          <Link
+            href={`/app/create/${id}`}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(191,168,255,0.14)', color: '#e8e0ff' }}
+          >
+            <ArrowLeft className="w-4 h-4 shrink-0" /> Builder
+          </Link>
+        </nav>
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[2rem] border p-7 md:p-9 overflow-hidden relative" style={{ background: '#15151d', borderColor: 'rgba(191,168,255,0.16)' }}>
             <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.12), transparent 24%)' }} />
@@ -1103,11 +1124,12 @@ export default function PresentPage() {
         {leaderboardModal}
         {/* â”€â”€ Top control bar â”€â”€ */}
         <div
-          className="flex items-center justify-between px-6 py-3 shrink-0 z-10"
+          className="px-3 sm:px-4 md:px-6 py-3 shrink-0 z-10"
           style={{ background: 'rgba(0,0,0,0.55)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' }}
         >
+          <div className="max-w-[1800px] mx-auto w-full flex flex-wrap items-center justify-between gap-3">
           {/* Left: back + brand */}
-          <div className="flex items-center gap-4 min-w-0">
+          <div className="flex items-center gap-3 md:gap-4 min-w-0">
             <button
               onClick={handleBackToBuilder}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-sm transition-all"
@@ -1129,7 +1151,7 @@ export default function PresentPage() {
           </div>
 
           {/* Right: controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               onClick={toggleTheme}
               className="flex items-center justify-center w-10 h-10 rounded-xl transition-all"
@@ -1163,7 +1185,7 @@ export default function PresentPage() {
             )}
             <button
               onClick={toggleFullscreen}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all"
               style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)' }}
             >
               <Minimize2 className="w-4 h-4" />
@@ -1172,12 +1194,13 @@ export default function PresentPage() {
             <button
               onClick={handleEndSession}
               disabled={isEnding}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-40"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all disabled:opacity-40"
               style={{ background: 'rgba(220,38,38,0.15)', border: '1px solid rgba(220,38,38,0.30)', color: '#F87171' }}
             >
               <Square className="w-4 h-4" />
               End session
             </button>
+          </div>
           </div>
         </div>
 
@@ -1355,11 +1378,11 @@ export default function PresentPage() {
         {leaderboardModal}
 
         <nav
-          className="sticky top-0 z-20 px-4 md:px-8 py-5 backdrop-blur-md border-b"
+          className="sticky top-0 z-20 px-4 sm:px-6 md:px-8 py-4 md:py-5 backdrop-blur-md border-b"
           style={{ background: isDark ? 'rgba(19,19,19,0.82)' : 'rgba(252,249,248,0.82)', borderColor: borderSoft }}
         >
-          <div className="max-w-screen-2xl mx-auto grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="flex items-center gap-4 min-w-0">
+          <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
+            <div className="flex items-center justify-center lg:justify-start gap-3 md:gap-4 min-w-0">
               <Link href={`/app/create/${id}`} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold" style={{ background: surfaceCardAlt, borderColor: borderSoft, color: textStrong }}>
                 <ArrowLeft className="w-4 h-4" />
                 Back to builder
@@ -1369,12 +1392,12 @@ export default function PresentPage() {
               </span>
             </div>
 
-            <div className="justify-self-center flex items-center gap-2 px-4 py-2 rounded-full border" style={{ background: surfaceSoft, borderColor: borderSoft }}>
+            <div className="hidden lg:flex justify-self-center items-center gap-2 px-4 py-2 rounded-full border" style={{ background: surfaceSoft, borderColor: borderSoft }}>
               <Users className="w-4 h-4" style={{ color: '#650cd9' }} />
               <span className="text-sm font-bold" style={{ color: textMuted }}>{participantCount} Participants</span>
             </div>
 
-            <div className="justify-self-end flex items-center gap-2 md:gap-3">
+            <div className="justify-self-center lg:justify-self-end flex flex-wrap items-center justify-center lg:justify-end gap-2 md:gap-3">
               <button
                 onClick={toggleTheme}
                 className="w-10 h-10 rounded-full border flex items-center justify-center transition-colors"
@@ -1409,12 +1432,12 @@ export default function PresentPage() {
           </div>
         </nav>
 
-        <main className="max-w-screen-2xl mx-auto px-4 md:px-8 pt-5 md:pt-6 min-h-[calc(100vh-92px)] flex">
+        <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 md:px-8 pt-5 md:pt-6 min-h-[calc(100vh-92px)] flex">
           <section className="flex-1 rounded-[2.5rem] border overflow-hidden relative" style={{ background: surfaceCard, borderColor: borderSoft }}>
             <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.10), transparent 24%)' }} />
             <div className="relative z-10 p-6 md:p-10 xl:p-12 grid gap-8 lg:grid-cols-[1fr_1.08fr] items-stretch min-h-[76vh]">
-              <div className="space-y-6 flex flex-col justify-center">
-                <div className="flex items-center gap-4">
+              <div className="space-y-6 flex flex-col justify-center items-center lg:items-start text-center lg:text-left">
+                <div className="flex items-center justify-center lg:justify-start gap-4">
                   {session.brandLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-20 max-w-[170px] rounded-2xl object-contain bg-white/95 p-2.5" />
@@ -1446,7 +1469,7 @@ export default function PresentPage() {
                   ))}
                 </div>
 
-                <div className="flex flex-wrap gap-3 pt-2">
+                <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
                   <button onClick={handleStartZapp} disabled={isStarting || questions.length === 0} className="inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-black text-white disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 20px 40px rgba(101,12,217,0.35)' }}>
                     <Play className="w-5 h-5" fill="currentColor" />
                     {isStarting ? 'Starting...' : 'Start Zapp'}
@@ -1464,8 +1487,10 @@ export default function PresentPage() {
 
               <div className="grid gap-6 md:grid-cols-[1.05fr_0.95fr] items-stretch">
                 <div className="rounded-[2rem] p-6 text-center border flex flex-col justify-center" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
-                  <div className="mx-auto w-full max-w-[28rem] rounded-[1.8rem] p-5" style={{ background: '#ffffff' }}>
-                    <QRCodeSVG value={joinUrl} size={520} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: 'auto' }} />
+                  <div className="mx-auto w-full max-w-[28rem] aspect-square rounded-[1.8rem] p-5 flex items-center justify-center" style={{ background: '#ffffff' }}>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <QRCodeSVG value={joinUrl} size={520} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: '100%', display: 'block' }} />
+                    </div>
                   </div>
                   <p className="text-lg mt-5 font-semibold" style={{ color: textMuted }}>Scan to join the Zapp</p>
                 </div>
@@ -1503,10 +1528,10 @@ export default function PresentPage() {
       {leaderboardModal}
 
       <nav
-        className="sticky top-0 z-20 px-4 md:px-8 py-4 backdrop-blur-md border-b"
+        className="sticky top-0 z-20 px-4 sm:px-6 md:px-8 py-4 backdrop-blur-md border-b"
         style={{ background: isDark ? 'rgba(19,19,19,0.82)' : 'rgba(252,249,248,0.82)', borderColor: borderSoft }}
       >
-        <div className="max-w-screen-2xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <span className="text-xl md:text-2xl font-black tracking-tight" style={{ color: isDark ? '#d2bbff' : '#650cd9' }}>
               LiveZapp
@@ -1555,7 +1580,7 @@ export default function PresentPage() {
         </div>
       </nav>
 
-      <main className="max-w-screen-2xl mx-auto px-4 md:px-8 pt-6 md:pt-8 pb-10 space-y-5">
+      <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 md:px-8 pt-6 md:pt-8 pb-10 space-y-5">
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <div
             className="lg:col-span-9 relative rounded-[2rem] p-8 md:p-12 min-h-[360px] md:min-h-[440px] border overflow-hidden"
@@ -1654,10 +1679,10 @@ export default function PresentPage() {
       </main>
 
       <footer
-        className="fixed bottom-0 left-0 right-0 z-20 px-4 md:px-8 py-4 border-t backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-20 px-4 sm:px-6 md:px-8 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t backdrop-blur-xl"
         style={{ background: isDark ? 'rgba(14,14,14,0.9)' : 'rgba(255,255,255,0.9)', borderColor: borderSoft }}
       >
-        <div className="max-w-screen-2xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
+        <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
           <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: surfaceSoft }}>
             <span className="text-xs font-bold" style={{ color: textMuted }}>Lobby Groove - Vol. 4</span>
           </div>

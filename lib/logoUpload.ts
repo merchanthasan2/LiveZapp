@@ -1,6 +1,15 @@
+import { auth } from '@/lib/firebase'
+
 const DEFAULT_UPLOAD_TIMEOUT_MS = 20000
 
 export type LogoUploadSlot = 'branding' | 'wizard-draft'
+
+async function bearerHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser
+  if (!user) throw new Error('You must be signed in to upload a logo.')
+  const token = await user.getIdToken()
+  return { Authorization: `Bearer ${token}` }
+}
 
 async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, timeoutMs = DEFAULT_UPLOAD_TIMEOUT_MS) {
   const controller = new AbortController()
@@ -76,6 +85,7 @@ export async function uploadLogoFile({
   try {
     response = await fetchWithTimeout('/api/upload/logo', {
       method: 'POST',
+      headers: await bearerHeaders(),
       body,
     })
   } catch (error) {
@@ -104,7 +114,7 @@ export async function deleteLogoFile({
   try {
     response = await fetchWithTimeout(
       `/api/upload/logo?userId=${encodeURIComponent(userId)}&slot=${encodeURIComponent(slot)}`,
-      { method: 'DELETE' },
+      { method: 'DELETE', headers: await bearerHeaders() },
     )
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {

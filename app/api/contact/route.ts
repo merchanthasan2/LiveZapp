@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { push, ref } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { adminDb } from '@/lib/server/firebaseAdmin'
+
+/** Simple in-memory rate limit (best-effort; resets on cold start in serverless). */
+const contactHits = new Map<string, number[]>()
+const CONTACT_WINDOW_MS = 60 * 60 * 1000
+const CONTACT_MAX_PER_WINDOW = 10
+
+function isContactRateLimited(ip: string): boolean {
+  const now = Date.now()
+  let hits = contactHits.get(ip) ?? []
+  hits = hits.filter(t => now - t < CONTACT_WINDOW_MS)
+  if (hits.length >= CONTACT_MAX_PER_WINDOW) {
+    contactHits.set(ip, hits)
+    return true
+  }
+  hits.push(now)
+  contactHits.set(ip, hits)
+  return false
+}
 
 function getClientIp(req: NextRequest): string {
   const forwarded = req.headers.get('x-forwarded-for')
@@ -12,6 +29,11 @@ function getClientIp(req: NextRequest): string {
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = getClientIp(req)
+    if (isContactRateLimited(ip)) {
+      return NextResponse.json({ ok: false, error: 'Too many submissions. Try again later.' }, { status: 429 })
+    }
+
     const body = (await req.json()) as {
       name?: unknown
       email?: unknown
@@ -37,12 +59,12 @@ export async function POST(req: NextRequest) {
       name,
       email,
       message,
-      ip: getClientIp(req),
+      ip,
       userAgent: req.headers.get('user-agent') ?? null,
       referrer: req.headers.get('referer') ?? null,
     }
 
-    await push(ref(rtdb, 'contact/messages'), record)
+    await adminDb().ref('contact/messages').push(record)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[api/contact] error:', err)

@@ -17,6 +17,23 @@ export interface AdminOverviewStats {
   source: 'firestore' | 'rtdb'
 }
 
+const DEFAULT_TIMEOUT_MS = 4500
+
+function withTimeout<T>(promise: Promise<T>, label: string, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs)
+    promise
+      .then(value => {
+        clearTimeout(timeout)
+        resolve(value)
+      })
+      .catch(error => {
+        clearTimeout(timeout)
+        reject(error)
+      })
+  })
+}
+
 function toDateValue(value: any): Date | null {
   if (!value) return null
   if (value instanceof Date) return value
@@ -113,10 +130,14 @@ function buildOverviewFromData(
 }
 
 async function loadFromFirestore(): Promise<AdminOverviewStats> {
-  const [usersSnap, presentationsSnap] = await Promise.all([
-    getDocs(collection(db, 'users')),
-    getDocs(collection(db, 'presentations')),
-  ])
+  const [usersSnap, presentationsSnap] = await withTimeout(
+    Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'presentations')),
+    ]),
+    'Firestore admin overview fetch',
+    7000,
+  )
 
   if (usersSnap.empty && presentationsSnap.empty) {
     throw new Error('Firestore has no admin overview data yet')
@@ -128,7 +149,10 @@ async function loadFromFirestore(): Promise<AdminOverviewStats> {
 }
 
 async function loadFromRtdb(): Promise<AdminOverviewStats> {
-  const [usersSnap, presSnap] = await Promise.all([get(ref(rtdb, 'users')), get(ref(rtdb, 'presentations'))])
+  const [usersSnap, presSnap] = await withTimeout(
+    Promise.all([get(ref(rtdb, 'users')), get(ref(rtdb, 'presentations'))]),
+    'RTDB admin overview fetch',
+  )
 
   const usersData = usersSnap.exists() ? (usersSnap.val() as Record<string, any>) : {}
   const presData = presSnap.exists() ? (presSnap.val() as Record<string, any>) : {}
@@ -136,9 +160,28 @@ async function loadFromRtdb(): Promise<AdminOverviewStats> {
 }
 
 export async function loadAdminOverviewStats(): Promise<AdminOverviewStats> {
+  let rtdbStats: AdminOverviewStats | null = null
+  let rtdbError: unknown = null
+
   try {
-    return await loadFromFirestore()
-  } catch {
-    return loadFromRtdb()
+    rtdbStats = await loadFromRtdb()
+    const hasRtdbData = rtdbStats.totalUsers > 0 || rtdbStats.totalSessions > 0
+    if (hasRtdbData) return rtdbStats
+  } catch (error) {
+    rtdbError = error
   }
+
+  try {
+    const firestoreStats = await loadFromFirestore()
+    const hasFirestoreData = firestoreStats.totalUsers > 0 || firestoreStats.totalSessions > 0
+    if (hasFirestoreData || !rtdbStats) return firestoreStats
+  } catch (firestoreError) {
+    if (rtdbError) {
+      throw new Error('Failed to load admin overview from both RTDB and Firestore')
+    }
+    throw firestoreError
+  }
+
+  if (rtdbStats) return rtdbStats
+  throw new Error('Admin overview data is unavailable')
 }

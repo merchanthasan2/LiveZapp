@@ -10,13 +10,13 @@ import type { PlanId } from '@/types/plans';
 export const PresentationService = {
   /**
    * Create a new presentation.
-   * Enforces the plan's lifetime presentation limit (includes deleted sessions).
+   * Enforces the plan's monthly Zapp limit (creations are cumulative; deleted Zapps still count).
    */
   async createPresentation(
     userId: string,
     presentation: Pick<Presentation, 'title' | 'description' | 'type'>
   ): Promise<string> {
-    // ── 1. Read current user profile to get planId + lifetime count ──────────
+    // ── 1. Read current user profile to get planId + Zapps-created count ───────
     const userRef = ref(rtdb, `users/${userId}`);
     const userSnap = await get(userRef);
 
@@ -33,10 +33,10 @@ export const PresentationService = {
     const plan = PLANS.find(p => p.id === planId)!;
     const limit = plan.limits.maxPresentations;
 
-    // ── 2. Check lifetime limit ───────────────────────────────────────────────
+    // ── 2. Check monthly Zapp limit ───────────────────────────────────────────
     if (limit !== 'unlimited' && lifetimeCount >= limit) {
       throw new Error(
-        `PLAN_LIMIT: Your ${plan.name} plan allows up to ${limit} total session${limit === 1 ? '' : 's'} (including deleted ones). ` +
+        `PLAN_LIMIT: Your ${plan.name} plan allows up to ${limit} Zapp${limit === 1 ? '' : 's'} per month (including deleted ones). ` +
         `Upgrade your plan to create more.`
       );
     }
@@ -61,7 +61,7 @@ export const PresentationService = {
 
     await set(ref(rtdb, `presentations/${id}`), newPresentation);
 
-    // ── 4. Track in user index + atomically increment lifetime counter ────────
+    // ── 4. Track in user index + atomically increment Zapps-created counter ───
     await set(ref(rtdb, `users/${userId}/presentations/${id}`), true);
 
     await runTransaction(ref(rtdb, `users/${userId}/lifetimePresentationsCreated`), current => {
@@ -108,7 +108,7 @@ export const PresentationService = {
   /**
    * Delete a presentation.
    * The user's index entry is removed but lifetimePresentationsCreated is NOT decremented —
-   * deleted sessions still count toward the plan lifetime limit.
+   * deleted Zapps still count toward the monthly allowance.
    */
   async deletePresentation(userId: string, id: string): Promise<void> {
     await remove(ref(rtdb, `presentations/${id}`));

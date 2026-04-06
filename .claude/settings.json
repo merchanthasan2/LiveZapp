@@ -1,14 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find 'd:/Vibe Code/Engage IQ v01' -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.json -o -name *.md -o -name *.js -o -name *.mjs \\\\\\) ! -path */node_modules/* ! -path */.next/*)",
+      "Bash(find 'd:/Vibe Code/Live-Zapp v01' -type f \\\\\\(-name *.tsx -o -name *.ts -o -name *.json -o -name *.md -o -name *.js -o -name *.mjs \\\\\\) ! -path */node_modules/* ! -path */.next/*)",
       "Read(//d/Vibe Code/**)",
       "Bash(python -c \":*)",
       "Bash(xcopy /E /I /Y \".next\\\\static\" \".next\\\\standalone\\\\.next\\\\static\")",
       "Bash(xcopy /E /I /Y \"public\" \".next\\\\standalone\\\\public\")",
       "Bash(xcopy /E /I /Y \".next\\\\static\" \".next\\\\standalone\\\\.next\\\\static\"\" 2>&1 && xcopy /E /I /Y \"public\" \".nextstandalonepublic\"\")",
-      "Bash(powershell -Command \"Copy-Item -Path ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\.next\\\\static'' -Destination ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\.next\\\\standalone\\\\.next\\\\static'' -Recurse -Force; Copy-Item -Path ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\public'' -Destination ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\.next\\\\standalone\\\\public'' -Recurse -Force; Write-Host ''Done''\")",
-      "Bash(powershell -Command \"Compress-Archive -Path ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\.next\\\\standalone\\\\*'' -DestinationPath ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\livezapp-deploy.zip'' -Force; Write-Host ''Zip created''; \\(Get-Item ''d:\\\\Vibe Code\\\\Engage IQ v01\\\\livezapp-deploy.zip''\\).length / 1MB\")",
+      "Bash(powershell -Command \"Copy-Item -Path ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\.next\\\\static'' -Destination ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\.next\\\\standalone\\\\.next\\\\static'' -Recurse -Force; Copy-Item -Path ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\public'' -Destination ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\.next\\\\standalone\\\\public'' -Recurse -Force; Write-Host ''Done''\")",
+      "Bash(powershell -Command \"Compress-Archive -Path ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\.next\\\\standalone\\\\*'' -DestinationPath ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\livezapp-deploy.zip'' -Force; Write-Host ''Zip created''; \\(Get-Item ''d:\\\\Vibe Code\\\\Live-Zapp v01\\\\livezapp-deploy.zip''\\).length / 1MB\")",
       "Bash(firebase use:*)",
       "Bash(firebase deploy:*)",
       "Read(//c/Users/merch/.claude/projects/d--Vibe-Code-Live-Zapp-v01/memory/**)"

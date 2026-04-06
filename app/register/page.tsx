@@ -11,6 +11,10 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { ref, set } from 'firebase/database'
 import { auth, rtdb } from '@/lib/firebase'
 import BrandLockup from '@/components/BrandLockup'
+import { ADMIN_EMAILS, SUPERADMIN_EMAILS } from '@/lib/auth/allowlist'
+import type { Role } from '@/types/auth'
+import { isAdminRole } from '@/types/auth'
+import type { PlanId } from '@/types/plans'
 
 const schema = z
   .object({
@@ -91,16 +95,25 @@ function RegisterContent() {
         data.password,
       )
       await updateProfile(firebaseUser, { displayName: data.name })
-      const isAdmin = ['happy143@gmail.com'].includes(data.email.toLowerCase())
+      const emailLower = data.email.toLowerCase()
+      const role: Role = SUPERADMIN_EMAILS.has(emailLower)
+        ? 'superadmin'
+        : ADMIN_EMAILS.has(emailLower)
+          ? 'admin'
+          : 'user'
 
-      let planId = isAdmin ? 'pro' : 'free'
+      let planId: PlanId = isAdminRole(role) ? 'pro' : 'free'
       let planExpiresAt: string | undefined
 
       if (promoCode) {
         try {
+          const idToken = await firebaseUser.getIdToken()
           const redeemResponse = await fetch('/api/promo/redeem', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${idToken}`,
+            },
             body: JSON.stringify({
               code: promoCode,
               userId: firebaseUser.uid,
@@ -127,14 +140,14 @@ function RegisterContent() {
         id: string
         email: string
         name: string
-        role: 'admin' | 'user'
-        planId: string
+        role: Role
+        planId: PlanId
         planExpiresAt?: string
       } = {
         id: firebaseUser.uid,
         email: data.email,
         name: data.name,
-        role: isAdmin ? 'admin' : 'user',
+        role,
         planId,
       }
 

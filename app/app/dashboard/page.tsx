@@ -2,12 +2,30 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Edit, Play, Search, Trash2, Users } from 'lucide-react'
+import { AlertTriangle, Edit, List, Play, Radio, Search, Trash2, Users } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { PresentationService } from '@/lib/services/PresentationService'
+import { LiveSessionService } from '@/lib/services/LiveSessionService'
 import type { Presentation, PresentationStatus } from '@/types/domain'
+
+/** Decorative sparkline for metric cards (light-mode analytics style). */
+function MetricSparkline({ stroke }: { stroke: string }) {
+  return (
+    <svg viewBox="0 0 100 28" className="mt-3 h-7 w-full max-w-[140px]" aria-hidden>
+      <path
+        d="M0 22 C 18 8, 32 24, 50 14 S 78 20, 100 6"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.85}
+      />
+    </svg>
+  )
+}
 
 export default function DashboardPage() {
   const { user, isAdmin } = useAuth()
@@ -22,10 +40,51 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    PresentationService.getUserPresentations(user.id)
-      .then(setPresentations)
-      .catch(console.error)
-      .finally(() => setIsLoading(false))
+    let isMounted = true
+
+    const loadPresentations = async () => {
+      setIsLoading(true)
+      try {
+        const rows = await PresentationService.getUserPresentations(user.id)
+        const staleLiveRows = rows.filter(p => p.status === 'live')
+        const nextRows = [...rows]
+
+        if (staleLiveRows.length > 0) {
+          await Promise.all(staleLiveRows.map(async liveRow => {
+            try {
+              if (!liveRow.joinCode) {
+                await PresentationService.updatePresentation(liveRow.id, { status: 'completed' })
+                const missingJoinCodeIndex = nextRows.findIndex(item => item.id === liveRow.id)
+                if (missingJoinCodeIndex >= 0) {
+                  nextRows[missingJoinCodeIndex] = { ...nextRows[missingJoinCodeIndex], status: 'completed' }
+                }
+                return
+              }
+
+              const existing = await LiveSessionService.getSession(liveRow.joinCode)
+              if (existing?.isActive) return
+
+              await PresentationService.updatePresentation(liveRow.id, { status: 'completed' })
+              const index = nextRows.findIndex(item => item.id === liveRow.id)
+              if (index >= 0) {
+                nextRows[index] = { ...nextRows[index], status: 'completed' }
+              }
+            } catch (error) {
+              console.error('[dashboard] live status reconciliation failed', error)
+            }
+          }))
+        }
+
+        if (isMounted) setPresentations(nextRows)
+      } catch (error) {
+        console.error('[dashboard] failed to load presentations', error)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+
+    void loadPresentations()
+    return () => { isMounted = false }
   }, [user])
 
   const filtered = useMemo(
@@ -57,17 +116,35 @@ export default function DashboardPage() {
     }
   }
 
-  const pageBg = isDark ? '#12131c' : '#fcf9f8'
+  const pageBg = isDark ? '#12131c' : '#f8f7ff'
   const shellCard = isDark ? '#171821' : '#ffffff'
-  const innerCard = isDark ? '#101725' : '#f8f5fb'
-  const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(123,116,135,0.14)'
-  const textStrong = isDark ? '#ffffff' : '#1c1b1b'
-  const textMuted = isDark ? 'rgba(214,207,237,0.72)' : '#4f4860'
-  const chipBg = isDark ? '#1d1f2a' : '#eee7f7'
-  const actionBg = isDark ? '#1f2433' : '#ede7f7'
-  const launchBg = isDark ? 'rgba(122,58,240,0.3)' : '#ede4ff'
-  const launchText = isDark ? '#f4efff' : '#5a1cbc'
-  const progressTrack = isDark ? '#2a2d3a' : '#ebe3f4'
+  const innerCard = isDark ? '#101725' : '#faf9ff'
+  const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(122, 58, 240, 0.08)'
+  const cardShadow = isDark
+    ? '0 12px 40px rgba(0,0,0,0.35)'
+    : '0 4px 24px rgba(80, 50, 120, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04)'
+  const softShadow = isDark
+    ? '0 8px 28px rgba(0,0,0,0.28)'
+    : '0 2px 16px rgba(80, 50, 120, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)'
+  const textStrong = isDark ? '#ffffff' : '#1a1a2e'
+  const textMuted = isDark ? 'rgba(214,207,237,0.72)' : '#6b7280'
+  const labelMuted = isDark ? 'rgba(214,207,237,0.55)' : '#9ca3af'
+  const chipBg = isDark ? '#1d1f2a' : '#f3f0ff'
+  const actionBg = isDark ? '#1f2433' : '#f3f0ff'
+  const launchBg = isDark ? 'rgba(122,58,240,0.3)' : 'rgba(122, 58, 240, 0.12)'
+  const launchText = isDark ? '#f4efff' : '#5b21b6'
+  const progressTrack = isDark ? '#2a2d3a' : '#ede9fe'
+  const metricAccents = isDark
+    ? {
+        a: { iconBg: 'rgba(167,139,250,0.22)', iconFg: '#c4b5fd', spark: '#a78bfa' },
+        b: { iconBg: 'rgba(52,211,153,0.18)', iconFg: '#6ee7b7', spark: '#34d399' },
+        c: { iconBg: 'rgba(251,191,36,0.18)', iconFg: '#fcd34d', spark: '#fbbf24' },
+      }
+    : {
+        a: { iconBg: 'rgba(167, 139, 250, 0.22)', iconFg: '#7c3aed', spark: '#a78bfa' },
+        b: { iconBg: 'rgba(52, 211, 153, 0.18)', iconFg: '#059669', spark: '#34d399' },
+        c: { iconBg: 'rgba(251, 146, 60, 0.16)', iconFg: '#ea580c', spark: '#fb923c' },
+      }
   const statusStyle: Record<PresentationStatus, { bg: string; text: string }> = isDark
     ? {
         draft: { bg: 'rgba(191,168,255,0.18)', text: '#d6c5ff' },
@@ -83,42 +160,129 @@ export default function DashboardPage() {
       }
 
   return (
-    <div className="min-h-[80vh] rounded-[2rem] p-6 lg:p-8" style={{ background: pageBg, border: `1px solid ${border}` }}>
+    <div className="min-h-[80vh] p-4 sm:p-6 lg:p-8 rounded-[1.75rem] md:rounded-[2rem]" style={{ background: pageBg }}>
       <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
-        <section className="rounded-3xl p-6" style={{ background: shellCard, border: `1px solid ${border}` }}>
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <h1 className="text-4xl font-black" style={{ color: textStrong }}>Zapp Dashboard</h1>
-              <p className="text-sm" style={{ color: textMuted }}>Manage and launch your live Zapps.</p>
+        <section
+          className="rounded-[1.75rem] p-6 md:p-8"
+          style={{
+            background: shellCard,
+            border: `1px solid ${border}`,
+            boxShadow: cardShadow,
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div className="text-center sm:text-left">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: labelMuted }}>
+                Your workspace
+              </p>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: textStrong }}>
+                Zapp Dashboard
+              </h1>
+              <p className="text-sm mt-1" style={{ color: textMuted }}>
+                Manage and launch your live Zapps.
+              </p>
             </div>
-            <Link href="/app/create" className="px-5 py-3 rounded-2xl font-bold text-white" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)' }}>
+            <Link
+              href="/app/create"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full font-bold text-white text-center shadow-md transition-opacity hover:opacity-95"
+              style={{
+                background: 'linear-gradient(135deg, #650cd9, #7a3af0)',
+                boxShadow: isDark ? '0 8px 24px rgba(101,12,217,0.35)' : '0 8px 24px rgba(101, 12, 217, 0.25)',
+              }}
+            >
               Create New
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="rounded-2xl p-4" style={{ background: innerCard, border: `1px solid ${border}` }}>
-              <p className="text-xs uppercase tracking-widest" style={{ color: textMuted }}>Total Participants</p>
-              <p className="text-4xl font-black mt-1" style={{ color: textStrong }}>{totalAudience.toLocaleString()}</p>
-            </div>
-            <div className="rounded-2xl p-4" style={{ background: innerCard, border: `1px solid ${border}` }}>
-              <p className="text-xs uppercase tracking-widest" style={{ color: textMuted }}>Questions Built</p>
-              <p className="text-4xl font-black mt-1" style={{ color: textStrong }}>{totalQuestions}</p>
-            </div>
-            <div className="rounded-2xl p-4" style={{ background: innerCard, border: `1px solid ${border}` }}>
-              <p className="text-xs uppercase tracking-widest" style={{ color: textMuted }}>Live Now</p>
-              <p className="text-4xl font-black" style={{ color: '#7ef3e1' }}>{liveNow}</p>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[
+              {
+                label: 'Total participants',
+                value: totalAudience.toLocaleString(),
+                Icon: Users,
+                ...metricAccents.a,
+              },
+              {
+                label: 'Questions built',
+                value: String(totalQuestions),
+                Icon: List,
+                ...metricAccents.b,
+              },
+              {
+                label: 'Live now',
+                value: String(liveNow),
+                Icon: Radio,
+                ...metricAccents.c,
+              },
+            ].map(m => (
+              <div
+                key={m.label}
+                className="rounded-2xl p-5"
+                style={{
+                  background: isDark ? innerCard : '#ffffff',
+                  border: `1px solid ${border}`,
+                  boxShadow: softShadow,
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-full"
+                    style={{ background: m.iconBg }}
+                  >
+                    <m.Icon className="h-5 w-5" style={{ color: m.iconFg }} aria-hidden />
+                  </div>
+                </div>
+                <p
+                  className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em]"
+                  style={{ color: labelMuted }}
+                >
+                  {m.label}
+                </p>
+                <p className="text-3xl md:text-4xl font-black mt-1 tabular-nums" style={{ color: textStrong }}>
+                  {m.value}
+                </p>
+                <MetricSparkline stroke={m.spark} />
+              </div>
+            ))}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2" style={{ color: textMuted }} />
-              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search Zapps" className="w-full rounded-xl pl-9 pr-3 py-2.5 text-sm outline-none" style={{ background: innerCard, border: `1px solid ${border}`, color: textStrong }} />
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2" style={{ color: textMuted }} />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search Zapps…"
+                className="w-full rounded-full pl-11 pr-4 py-3 text-sm outline-none transition-shadow"
+                style={{
+                  background: isDark ? innerCard : '#f8f7ff',
+                  border: `1px solid ${border}`,
+                  color: textStrong,
+                  boxShadow: isDark ? undefined : 'inset 0 1px 2px rgba(255,255,255,0.8)',
+                }}
+              />
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-2 flex-wrap sm:justify-end">
               {(['all', 'draft', 'scheduled', 'live', 'completed'] as const).map(s => (
-                <button key={s} onClick={() => setFilter(s)} className="px-3 py-1.5 rounded-full text-xs font-bold capitalize" style={filter === s ? { background: '#7a3af0', color: '#fff' } : { background: chipBg, color: textMuted, border: !isDark ? '1px solid rgba(123,116,135,0.12)' : undefined }}>
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setFilter(s)}
+                  className="px-4 py-2 rounded-full text-xs font-bold capitalize transition-colors"
+                  style={
+                    filter === s
+                      ? {
+                          background: 'linear-gradient(135deg, #650cd9, #7a3af0)',
+                          color: '#fff',
+                          boxShadow: '0 4px 14px rgba(101, 12, 217, 0.28)',
+                        }
+                      : {
+                          background: chipBg,
+                          color: textMuted,
+                          border: `1px solid ${border}`,
+                        }
+                  }
+                >
                   {s}
                 </button>
               ))}
@@ -127,58 +291,138 @@ export default function DashboardPage() {
 
           <div className="space-y-3">
             {isLoading ? (
-              <div className="rounded-2xl p-6 text-sm" style={{ background: innerCard, color: textMuted }}>Loading Zapps...</div>
-            ) : filtered.length === 0 ? (
-              <div className="rounded-2xl p-6 text-sm" style={{ background: innerCard, color: textMuted }}>No Zapps match this filter.</div>
-            ) : filtered.map(p => (
-              <div key={p.id} className="rounded-2xl p-4 flex items-center gap-4" style={{ background: innerCard, border: `1px solid ${border}` }}>
-                <div className="w-14 h-14 rounded-xl flex items-center justify-center text-xs font-black uppercase" style={{ background: isDark ? 'rgba(122,58,240,0.18)' : '#ece2ff', color: isDark ? '#d5c4ff' : '#6c2bd9' }}>{p.type}</div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
-                  <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {p.audienceSize ?? 0} participants</p>
-                  <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: statusStyle[p.status].bg, color: statusStyle[p.status].text }}>{p.status}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/app/present/${p.id}?launch=1`} className="p-2 rounded-xl" style={{ background: launchBg, color: launchText }} title="Go Zapp">
-                    <Play className="w-4 h-4" />
-                  </Link>
-                  <Link href={`/app/create/${p.id}`} className="p-2 rounded-xl" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Edit">
-                    <Edit className="w-4 h-4" />
-                  </Link>
-                  <button onClick={() => setConfirmDelete(p)} className="p-2 rounded-xl" style={{ background: '#311d28', color: '#ffb1cb' }} title="Delete">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
+              <div
+                className="rounded-2xl p-8 text-sm text-center"
+                style={{ background: innerCard, color: textMuted, border: `1px solid ${border}`, boxShadow: softShadow }}
+              >
+                Loading Zapps…
               </div>
-            ))}
+            ) : filtered.length === 0 ? (
+              <div
+                className="rounded-2xl p-8 text-sm text-center"
+                style={{ background: innerCard, color: textMuted, border: `1px solid ${border}`, boxShadow: softShadow }}
+              >
+                No Zapps match this filter.
+              </div>
+            ) : filtered.map(p => {
+              const presenterHref = p.status === 'live' ? `/app/present/${p.id}` : `/app/present/${p.id}?launch=1`
+              const presenterTitle = p.status === 'live' ? 'Open live controls' : 'Go Zapp'
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-2xl p-4 flex items-center gap-4 transition-shadow hover:shadow-md"
+                  style={{
+                    background: isDark ? innerCard : '#ffffff',
+                    border: `1px solid ${border}`,
+                    boxShadow: softShadow,
+                  }}
+                >
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black uppercase shrink-0"
+                    style={{
+                      background: isDark ? 'rgba(122,58,240,0.18)' : 'rgba(167, 139, 250, 0.15)',
+                      color: isDark ? '#d5c4ff' : '#6d28d9',
+                    }}
+                  >
+                    {p.type}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
+                    <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {p.audienceSize ?? 0} participants</p>
+                    <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: statusStyle[p.status].bg, color: statusStyle[p.status].text }}>{p.status}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href={presenterHref} className="p-2.5 rounded-full" style={{ background: launchBg, color: launchText }} title={presenterTitle}>
+                      <Play className="w-4 h-4" />
+                    </Link>
+                    <Link href={`/app/create/${p.id}?step=questions`} className="p-2.5 rounded-full" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Questions — edit or delete">
+                      <List className="w-4 h-4" />
+                    </Link>
+                    <Link href={`/app/create/${p.id}`} className="p-2.5 rounded-full" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Edit Zapp">
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button type="button" onClick={() => setConfirmDelete(p)} className="p-2.5 rounded-full" style={{ background: '#311d28', color: '#ffb1cb' }} title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-3xl p-5" style={{ background: shellCard, border: `1px solid ${border}` }}>
-            <p className="text-xs uppercase tracking-widest" style={{ color: textMuted }}>Current Plan</p>
-            <p className="text-3xl font-black mt-1" style={{ color: textStrong }}>{planLimits.plan.name}</p>
-            <div className="mt-3 h-2 rounded-full" style={{ background: progressTrack }}>
-              <div className="h-full rounded-full" style={{ width: `${usageBarWidth}%`, background: '#7ef3e1' }} />
+          <div
+            className="rounded-[1.75rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: cardShadow }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: labelMuted }}>
+              Current plan
+            </p>
+            <p className="text-3xl font-black mt-2 tracking-tight" style={{ color: textStrong }}>
+              {planLimits.plan.name}
+            </p>
+            <div className="mt-4 h-2.5 rounded-full overflow-hidden" style={{ background: progressTrack }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${usageBarWidth}%`,
+                  background: isDark ? '#6ee7b7' : 'linear-gradient(90deg, #34d399, #6ee7b7)',
+                }}
+              />
             </div>
-            <p className="text-xs mt-2" style={{ color: textMuted }}>{planLimits.presentationsRemaining === Infinity ? 'Unlimited Zapps available' : `${planLimits.presentationsRemaining} Zapps left on this tier`}</p>
-            <Link href={isTopPlan ? '/app/settings' : '/plans'} className="mt-4 block w-full text-center rounded-xl py-2.5 font-bold text-white" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)' }}>
+            <p className="text-xs mt-3 leading-relaxed" style={{ color: textMuted }}>
+              {planLimits.presentationsRemaining === Infinity
+                ? 'Unlimited Zapps available this month'
+                : `${planLimits.presentationsRemaining} Zapps left this month on this tier`}
+            </p>
+            <Link
+              href={isTopPlan ? '/app/settings' : '/plans'}
+              className="mt-5 block w-full text-center rounded-full py-3 font-bold text-white shadow-md"
+              style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}
+            >
               {isTopPlan ? 'Manage Plan' : 'Explore Upgrades'}
             </Link>
           </div>
 
           {isAdmin && (
-            <Link href="/admin" className="rounded-3xl p-5 block" style={{ background: shellCard, border: `1px solid ${border}` }}>
-              <p className="font-bold" style={{ color: textStrong }}>Admin Panel</p>
-              <p className="text-xs" style={{ color: textMuted }}>Manage users, finance and platform settings.</p>
+            <Link
+              href="/admin"
+              className="rounded-[1.75rem] p-6 block transition-opacity hover:opacity-95"
+              style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: softShadow }}
+            >
+              <p className="font-bold text-lg" style={{ color: textStrong }}>
+                Admin panel
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: textMuted }}>
+                Manage users, finance and platform settings.
+              </p>
             </Link>
           )}
 
-          <div className="rounded-3xl p-5" style={{ background: shellCard, border: `1px solid ${border}` }}>
-            <p className="text-xs uppercase tracking-widest mb-3" style={{ color: textMuted }}>Quick actions</p>
+          <div
+            className="rounded-[1.75rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: softShadow }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-4" style={{ color: labelMuted }}>
+              Quick actions
+            </p>
             <div className="space-y-2">
-              <Link href="/join" className="w-full block rounded-xl px-3 py-2 text-sm font-semibold" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }}>Open Join Screen</Link>
-              <button onClick={() => navigator.clipboard.writeText(window.location.origin + '/join')} className="w-full rounded-xl px-3 py-2 text-sm font-semibold text-left" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }}>Copy Join Link</button>
+              <Link
+                href="/join"
+                className="w-full block rounded-full px-4 py-3 text-sm font-semibold text-center"
+                style={{ background: actionBg, color: isDark ? '#d6cff0' : '#5b21b6', border: `1px solid ${border}` }}
+              >
+                Open Join Screen
+              </Link>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(`${window.location.origin}/join`)}
+                className="w-full rounded-full px-4 py-3 text-sm font-semibold text-center"
+                style={{ background: actionBg, color: isDark ? '#d6cff0' : '#5b21b6', border: `1px solid ${border}` }}
+              >
+                Copy Join Link
+              </button>
             </div>
           </div>
         </section>
@@ -186,9 +430,13 @@ export default function DashboardPage() {
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !isDeleting && setConfirmDelete(null)}>
-          <div className="w-full max-w-sm rounded-2xl p-6" style={{ background: shellCard, border: `1px solid ${border}` }} onClick={e => e.stopPropagation()}>
+          <div
+            className="w-full max-w-sm rounded-[1.5rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: cardShadow }}
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'rgba(255,120,151,0.2)' }}>
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,120,151,0.2)' }}>
                 <AlertTriangle className="w-5 h-5" style={{ color: '#ffb1cb' }} />
               </div>
               <div className="flex-1">
@@ -197,8 +445,8 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <button onClick={() => setConfirmDelete(null)} disabled={isDeleting} className="flex-1 rounded-xl py-2.5 font-semibold" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }}>Cancel</button>
-              <button onClick={handleDelete} disabled={isDeleting} className="flex-1 rounded-xl py-2.5 font-bold" style={{ background: '#7a2947', color: '#ffd9e4' }}>{isDeleting ? 'Deleting...' : 'Delete'}</button>
+              <button type="button" onClick={() => setConfirmDelete(null)} disabled={isDeleting} className="flex-1 rounded-full py-3 font-semibold" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6', border: `1px solid ${border}` }}>Cancel</button>
+              <button type="button" onClick={handleDelete} disabled={isDeleting} className="flex-1 rounded-full py-3 font-bold" style={{ background: '#7a2947', color: '#ffd9e4' }}>{isDeleting ? 'Deleting…' : 'Delete'}</button>
             </div>
           </div>
         </div>

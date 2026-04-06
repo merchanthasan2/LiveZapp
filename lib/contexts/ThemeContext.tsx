@@ -18,7 +18,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 })
 
 function resolveThemeContext(pathname: string) {
-  const immersive = pathname.startsWith('/admin') || pathname.startsWith('/app/present/')
+  const immersive = pathname.startsWith('/app/present/')
   return {
     defaultTheme: immersive ? 'dark' as Theme : 'light' as Theme,
     storageKey: immersive ? 'lz-theme-immersive' : 'lz-theme-standard',

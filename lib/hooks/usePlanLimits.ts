@@ -13,7 +13,7 @@ import { ref, get } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { PLANS } from '@/types/plans'
-import type { Plan, PlanLimits, PlanId } from '@/types/plans'
+import type { Plan, PlanFeatureFlags, PlanLimits, PlanId } from '@/types/plans'
 
 export interface PlanLimitsState {
   plan: Plan
@@ -22,7 +22,7 @@ export interface PlanLimitsState {
   /** Whether the user can create one more presentation right now. */
   canCreatePresentation: boolean
   /**
-   * Sessions remaining toward the lifetime cap.
+   * Sessions remaining toward the monthly Zapp cap.
    * Returns Infinity for unlimited plans.
    */
   presentationsRemaining: number
@@ -36,13 +36,18 @@ export interface PlanLimitsState {
   isPlanExpired: boolean
 }
 
+type PlanOverride = {
+  limits?: Partial<PlanLimits>
+  features?: Partial<PlanFeatureFlags>
+}
+
 /** Cached plan config overrides from Firebase (shared across hook instances) */
-let cachedOverrides: Partial<Record<PlanId, Partial<PlanLimits>>> | null = null
+let cachedOverrides: Partial<Record<PlanId, PlanOverride>> | null = null
 let cacheLoadedAt = 0
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 /** Fetch plan limit overrides from Firebase (returns empty object on any error) */
-async function fetchPlanOverrides(): Promise<Partial<Record<PlanId, Partial<PlanLimits>>>> {
+async function fetchPlanOverrides(): Promise<Partial<Record<PlanId, PlanOverride>>> {
   try {
     const now = Date.now()
     if (cachedOverrides && now - cacheLoadedAt < CACHE_TTL_MS) return cachedOverrides
@@ -50,10 +55,13 @@ async function fetchPlanOverrides(): Promise<Partial<Record<PlanId, Partial<Plan
     const snap = await get(ref(rtdb, 'admin/planConfig'))
     if (!snap.exists()) { cachedOverrides = {}; cacheLoadedAt = now; return {} }
 
-    const raw = snap.val() as Record<string, { limits?: Partial<PlanLimits> }>
-    const overrides: Partial<Record<PlanId, Partial<PlanLimits>>> = {}
+    const raw = snap.val() as Record<string, { limits?: Partial<PlanLimits>; features?: Partial<PlanFeatureFlags> }>
+    const overrides: Partial<Record<PlanId, PlanOverride>> = {}
     for (const [planId, cfg] of Object.entries(raw)) {
-      if (cfg.limits) overrides[planId as PlanId] = cfg.limits
+      overrides[planId as PlanId] = {
+        limits: cfg.limits ?? {},
+        features: cfg.features ?? {},
+      }
     }
     cachedOverrides = overrides
     cacheLoadedAt = now
@@ -73,6 +81,17 @@ function mergedLimits(plan: Plan, overrides: Partial<PlanLimits>): PlanLimits {
   }
 }
 
+function mergedFeatures(plan: Plan, overrides: Partial<PlanFeatureFlags>): PlanFeatureFlags {
+  return {
+    canUseQuiz: overrides.canUseQuiz ?? plan.features.canUseQuiz,
+    canUseQA: overrides.canUseQA ?? plan.features.canUseQA,
+    canUseFeedback: overrides.canUseFeedback ?? plan.features.canUseFeedback,
+    canExportResults: overrides.canExportResults ?? plan.features.canExportResults,
+    canUseBranding: overrides.canUseBranding ?? plan.features.canUseBranding,
+    exportFormats: overrides.exportFormats ?? plan.features.exportFormats,
+  }
+}
+
 /** Invalidate the cache so next hook instance re-fetches from Firebase */
 export function invalidatePlanLimitsCache() {
   cachedOverrides = null
@@ -81,7 +100,7 @@ export function invalidatePlanLimitsCache() {
 
 export function usePlanLimits(): PlanLimitsState {
   const { user } = useAuth()
-  const [overrides, setOverrides] = useState<Partial<Record<PlanId, Partial<PlanLimits>>>>({})
+  const [overrides, setOverrides] = useState<Partial<Record<PlanId, PlanOverride>>>({})
 
   useEffect(() => {
     fetchPlanOverrides().then(setOverrides)
@@ -89,8 +108,11 @@ export function usePlanLimits(): PlanLimitsState {
 
   return useMemo(() => {
     const planId = user?.planId ?? 'free'
-    const plan = PLANS.find(p => p.id === planId) ?? PLANS[0]
-    const limits = mergedLimits(plan, overrides[planId as PlanId] ?? {})
+    const basePlan = PLANS.find(p => p.id === planId) ?? PLANS[0]
+    const override = overrides[planId as PlanId] ?? {}
+    const limits = mergedLimits(basePlan, override.limits ?? {})
+    const features = mergedFeatures(basePlan, override.features ?? {})
+    const plan: Plan = { ...basePlan, limits, features }
 
     const lifetimeCount = user?.lifetimePresentationsCreated ?? 0
     const maxPresentations = limits.maxPresentations

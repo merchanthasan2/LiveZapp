@@ -25,18 +25,22 @@
     "live_sessions": {
       "$code": {
         ".read": "true",
-        ".write": "auth != null",
         "responses": {
           "$questionId": {
             "$participantId": {
-              ".write": "true"
+              ".write": "true",
+              ".validate": "newData.hasChildren(['submittedAt']) && newData.child('answer').exists()"
             }
           }
         },
         "participants": {
           "$participantId": {
-            ".write": "true"
+            ".write": "true",
+            ".validate": "newData.hasChildren(['joinedAt']) && newData.child('name').exists()"
           }
+        },
+        "$field": {
+          ".write": "auth != null"
         }
       }
     },
@@ -51,7 +55,9 @@
     },
     "adminLogs": {
       ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
-      ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
+      "$entryId": {
+        ".write": "(root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin') && !data.exists() && newData.exists()"
+      }
     },
     "admin": {
       ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",

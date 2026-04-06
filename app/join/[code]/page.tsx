@@ -241,20 +241,22 @@ function NameEntryScreen({
     >
       {/* Header */}
       <div
-        className="flex items-center justify-between px-5 py-4 shrink-0"
+        className="w-full shrink-0"
         style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
       >
-        <BrandLockup href="/" size="sm" theme="dark" />
-        {participantCount > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.15)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.25)' }}>
-            <Users className="w-3 h-3" />
-            {participantCount} joined
-          </div>
-        )}
+        <div className="max-w-md mx-auto w-full flex items-center justify-between px-4 sm:px-5 py-4">
+          <BrandLockup href="/" size="sm" theme="dark" />
+          {participantCount > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.15)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.25)' }}>
+              <Users className="w-3 h-3" />
+              {participantCount} joined
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col justify-center px-6 pb-8 max-w-sm mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 pb-8 max-w-md mx-auto w-full">
 
         {/* Brand hero */}
         <motion.div
@@ -396,7 +398,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+      className="min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 text-center"
       style={{ background: 'linear-gradient(160deg, #0D1117 0%, #0A1628 60%, #0F1A1A 100%)' }}
     >
       {/* Animated rings */}
@@ -457,7 +459,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.3 }}
-        className="space-y-5 max-w-xl"
+        className="space-y-5 w-full max-w-xl mx-auto"
       >
         <div
           className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
@@ -647,7 +649,7 @@ export default function ParticipantPage() {
           <BrandLockup href="/" size="sm" theme="light" />
         </div>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6 max-w-sm mx-auto w-full">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 gap-6 max-w-md mx-auto w-full">
           {/* Session ended confirmation */}
           <motion.div
             initial={{ opacity: 0, scale: 0.96 }}
@@ -768,22 +770,24 @@ export default function ParticipantPage() {
 
       {/* Compact top bar */}
       <div
-        className="flex items-center justify-between px-4 py-2.5 shrink-0"
+        className="w-full shrink-0"
         style={{ background: 'rgba(255,255,255,0.95)', borderBottom: '1px solid rgba(0,0,0,0.06)', backdropFilter: 'blur(12px)' }}
       >
-        <div className="flex items-center gap-2">
-          <BrandLockup href="/" size="sm" theme="light" />
-          <p className="text-sm font-semibold truncate max-w-[180px]" style={{ color: '#1A1A2E' }}>{session.title}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {participantName && (
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(101,12,217,0.10)', color: '#650cd9' }}>
-              {participantName}
-            </span>
-          )}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#bda6ff' }}>
-            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-            <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
+        <div className="max-w-xl mx-auto w-full flex items-center justify-between px-4 py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <BrandLockup href="/" size="sm" theme="light" />
+            <p className="text-sm font-semibold truncate max-w-[180px]" style={{ color: '#1A1A2E' }}>{session.title}</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {participantName && (
+              <span className="hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(101,12,217,0.10)', color: '#650cd9' }}>
+                {participantName}
+              </span>
+            )}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#bda6ff' }}>
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
+            </div>
           </div>
         </div>
       </div>
@@ -798,7 +802,7 @@ export default function ParticipantPage() {
       )}
 
       {/* Question content */}
-      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full min-h-0 overflow-hidden">
+      <div className="flex-1 flex flex-col max-w-xl mx-auto w-full min-h-0 overflow-hidden px-4 sm:px-5">
         <AnimatePresence mode="wait">
           <motion.div
             key={`q-${currentQ.id}-${session.currentQuestionIndex}`}

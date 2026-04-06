@@ -140,7 +140,7 @@ export default function AdminFinancialsPage() {
     id:    plan.id,
     name:  plan.name,
     count: users.filter(u => u.planId === plan.id).length,
-    color: plan.id === 'free' ? '#BBDEF0' : plan.id === 'basic' ? '#00A6A6' : plan.id === 'regular' ? '#EFCA08' : '#F08700',
+    color: plan.id === 'free' ? '#BBDEF0' : plan.id === 'basic' ? '#00A6A6' : plan.id === 'regular' ? '#bfa8ff' : '#8f63ff',
     textColor: plan.id === 'free' || plan.id === 'regular' ? '#1A1A2E' : '#FFFFFF',
   }))
   const totalForDist = users.length || 1
@@ -221,13 +221,13 @@ export default function AdminFinancialsPage() {
           color="#FFFFFF" bg="#00A6A6" />
         <KpiCard label="ARR" value={fmtUSD(arr)}
           sub="Annualised recurring revenue" icon={TrendingUp}
-          color="#1A1A2E" bg="#EFCA08" />
+          color="#1A1A2E" bg="#bfa8ff" />
         <KpiCard label="Paid subscribers" value={paidActive.length.toString()}
           sub={`${totalFree} on free plan`} icon={Users}
-          color="#FFFFFF" bg="#F08700" />
+          color="#FFFFFF" bg="#8f63ff" />
         <KpiCard label="ARPU" value={fmtUSD(arpu)}
           sub="Avg revenue per paid user" icon={CreditCard}
-          color="#1A1A2E" bg="#F49F0A" />
+          color="#FFFFFF" bg="#7a3af0" />
       </div>
 
       {/* Plan revenue + distribution */}
@@ -242,7 +242,7 @@ export default function AdminFinancialsPage() {
           </div>
           {planRevenue.map(pr => {
             const mrrPct = mrr > 0 ? Math.round((pr.monthlyRev / mrr) * 100) : 0
-            const badge = { free: { bg: '#BBDEF0', text: '#1A1A2E' }, basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#EFCA08', text: '#1A1A2E' }, pro: { bg: '#F08700', text: '#FFFFFF' } }[pr.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
+            const badge = { free: { bg: '#BBDEF0', text: '#1A1A2E' }, basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#bfa8ff', text: '#1A1A2E' }, pro: { bg: '#8f63ff', text: '#FFFFFF' } }[pr.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
             return (
               <div key={pr.planId} className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -329,7 +329,7 @@ export default function AdminFinancialsPage() {
                       <p className="text-[11px]" style={{ color: '#9CA3AF' }}>{u.email}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs font-bold" style={{ color: daysLeft <= 7 ? '#DC2626' : '#F08700' }}>
+                      <p className="text-xs font-bold" style={{ color: daysLeft <= 7 ? '#DC2626' : '#8f63ff' }}>
                         {daysLeft}d left
                       </p>
                       <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
@@ -347,9 +347,9 @@ export default function AdminFinancialsPage() {
         <div className="rounded-2xl p-6"
           style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
           <div className="flex items-center gap-2 mb-4">
-            <AlertCircle className="w-4 h-4" style={{ color: '#F08700' }} />
+            <AlertCircle className="w-4 h-4" style={{ color: '#8f63ff' }} />
             <h2 className="text-sm font-bold" style={{ color: '#1A1A2E' }}>Cancelled — still active</h2>
-            <span className="ml-auto text-lg font-black" style={{ color: '#F08700' }}>{cancelledActive}</span>
+            <span className="ml-auto text-lg font-black" style={{ color: '#8f63ff' }}>{cancelledActive}</span>
           </div>
           {cancelledActive === 0 ? (
             <p className="text-xs" style={{ color: '#9CA3AF' }}>No users with cancelled but still-active plans</p>
@@ -363,7 +363,7 @@ export default function AdminFinancialsPage() {
                     <p className="text-[11px]" style={{ color: '#9CA3AF' }}>{u.email}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold" style={{ color: '#F08700' }}>Cancelled</p>
+                    <p className="text-xs font-bold" style={{ color: '#8f63ff' }}>Cancelled</p>
                     <p className="text-[11px]" style={{ color: '#9CA3AF' }}>
                       Expires {u.planExpiresAt ? new Date(u.planExpiresAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'}
                     </p>
@@ -400,7 +400,7 @@ export default function AdminFinancialsPage() {
               </thead>
               <tbody>
                 {adminGifted.map((u, i) => {
-                  const badge = { basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#EFCA08', text: '#1A1A2E' }, pro: { bg: '#F08700', text: '#FFFFFF' } }[u.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
+                  const badge = { basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#bfa8ff', text: '#1A1A2E' }, pro: { bg: '#8f63ff', text: '#FFFFFF' } }[u.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
                   return (
                     <tr key={u.uid}
                       style={{ borderBottom: i < adminGifted.length - 1 ? '1px solid #F5F7FA' : 'none' }}
@@ -460,7 +460,7 @@ export default function AdminFinancialsPage() {
               <tbody>
                 {paidActive.map((u, i) => {
                   const plan  = PLANS.find(p => p.id === u.planId)
-                  const badge = { free: { bg: '#BBDEF0', text: '#1A1A2E' }, basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#EFCA08', text: '#1A1A2E' }, pro: { bg: '#F08700', text: '#FFFFFF' } }[u.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
+                  const badge = { free: { bg: '#BBDEF0', text: '#1A1A2E' }, basic: { bg: '#00A6A6', text: '#FFFFFF' }, regular: { bg: '#bfa8ff', text: '#1A1A2E' }, pro: { bg: '#8f63ff', text: '#FFFFFF' } }[u.planId] ?? { bg: '#BBDEF0', text: '#1A1A2E' }
                   const moVal = plan ? (u.billingCycle === 'annual' ? plan.pricePerYear / 12 : plan.pricePerMonth) : 0
                   const isCancelled = !!u.planCancelledAt
                   return (
@@ -490,7 +490,7 @@ export default function AdminFinancialsPage() {
                       <td className="px-5 py-3.5">
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
                           style={isCancelled
-                            ? { background: 'rgba(245,158,11,0.12)', color: '#B45309' }
+                            ? { background: 'rgba(143,99,255,0.16)', color: '#B45309' }
                             : { background: 'rgba(34,197,94,0.10)', color: '#16A34A' }}>
                           {isCancelled ? 'Cancelled' : 'Active'}
                         </span>
@@ -507,3 +507,4 @@ export default function AdminFinancialsPage() {
     </div>
   )
 }
+

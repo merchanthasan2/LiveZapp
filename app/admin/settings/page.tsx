@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import {
   Settings2, QrCode, Hash, CheckCircle2, Smartphone,
-  Info, ExternalLink, Copy, Check, Loader2,
+  Info, ExternalLink, Copy, Check, Loader2, CreditCard,
 } from 'lucide-react'
 import {
   DEFAULT_JOIN_CONFIG,
@@ -79,6 +79,7 @@ function QRPreview({
 export default function AdminSettingsPage() {
   const [config, setConfig] = useState<JoinConfig>(DEFAULT_JOIN_CONFIG)
   const [qrSettings, setQrSettings] = useState<QRSettings>(DEFAULT_QR_SETTINGS)
+  const [requireAddressConfirmationOnPurchase, setRequireAddressConfirmationOnPurchase] = useState(false)
   const [previewCode, setPreviewCode] = useState<string>(() =>
     generateJoinCodeSync(DEFAULT_JOIN_CONFIG.defaultCodeLength)
   )
@@ -90,9 +91,10 @@ export default function AdminSettingsPage() {
   // Load persisted config from RTDB on mount
   useEffect(() => {
     AdminConfigService.getConfig()
-      .then(({ joinConfig, qrSettings: qr }) => {
+      .then(({ joinConfig, qrSettings: qr, checkoutPolicy }) => {
         setConfig(joinConfig)
         setQrSettings(qr)
+        setRequireAddressConfirmationOnPurchase(checkoutPolicy.requireAddressConfirmationOnPurchase)
         setPreviewCode(generateJoinCodeSync(joinConfig.defaultCodeLength))
       })
       .catch(err => console.error('[AdminSettings] Failed to load config:', err))
@@ -113,7 +115,13 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await AdminConfigService.saveConfig({ joinConfig: config, qrSettings })
+      await AdminConfigService.saveConfig({
+        joinConfig: config,
+        qrSettings,
+        checkoutPolicy: {
+          requireAddressConfirmationOnPurchase,
+        },
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -260,6 +268,40 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-text-secondary leading-relaxed">{tip}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Checkout policy */}
+          <section className="glass-card p-7">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center icon-bg-primary">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-text-primary">Checkout policy</h2>
+                <p className="text-xs text-text-secondary">
+                  Control whether buyers must re-save address details before completing payment.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl px-4 py-3 border border-white/50 bg-white/60">
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Require address re-confirmation on purchase</p>
+                <p className="text-xs text-text-secondary mt-0.5">Applies globally, with optional per-user overrides in Admin Users.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequireAddressConfirmationOnPurchase(v => !v)}
+                className="relative w-12 h-7 rounded-full transition-all"
+                style={{ background: requireAddressConfirmationOnPurchase ? '#650cd9' : 'rgba(123,116,135,0.24)' }}
+                aria-pressed={requireAddressConfirmationOnPurchase}
+              >
+                <span
+                  className="absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all"
+                  style={{ left: requireAddressConfirmationOnPurchase ? '22px' : '2px' }}
+                />
+              </button>
             </div>
           </section>
 
