@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { ref, get, update } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { auth, rtdb } from '@/lib/firebase'
 import { PLANS } from '@/types/plans'
 import {
   Users, Search, ChevronUp, ChevronDown, RefreshCw,
-  MoreVertical, X, ExternalLink, Mail, Calendar,
+  X, ExternalLink, Mail, Calendar,
   Shield, AlertTriangle, CheckCircle2, Ban, RotateCcw,
   CreditCard, FileText, Loader2, ChevronRight,
 } from 'lucide-react'
@@ -30,6 +30,7 @@ interface UserRow {
   lastLoginAt:                  string | null
   country:                      string | null
   city:                         string | null
+  requireAddressConfirmationOnPurchase: boolean
   // admin-gifted = paid plan, no billing cycle set by payment
   adminGifted:                  boolean
 }
@@ -58,13 +59,13 @@ const STATUS_STYLE = {
 const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
   free:    { bg: '#BBDEF0', text: '#1A1A2E' },
   basic:   { bg: '#00A6A6', text: '#FFFFFF' },
-  regular: { bg: '#EFCA08', text: '#1A1A2E' },
-  pro:     { bg: '#F08700', text: '#FFFFFF' },
+  regular: { bg: '#bfa8ff', text: '#1A1A2E' },
+  pro:     { bg: '#8f63ff', text: '#FFFFFF' },
 }
 
 const ROLE_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  superadmin: { bg: '#F08700', text: '#FFFFFF', label: 'Super Admin' },
-  admin:      { bg: 'rgba(240,135,0,0.15)', text: '#F08700', label: 'Admin' },
+  superadmin: { bg: '#8f63ff', text: '#FFFFFF', label: 'Super Admin' },
+  admin:      { bg: 'rgba(143,99,255,0.16)', text: '#8f63ff', label: 'Admin' },
   user:       { bg: '#F3F4F6', text: '#6B7280', label: 'User' },
 }
 
@@ -168,6 +169,11 @@ function UserDrawer({
   onRestore,
   onChangePlan,
   onChangeRole,
+  onToggleAddressConfirmationRequirement,
+  onGeneratePasswordReset,
+  onGenerateVerificationLink,
+  onSetPassword,
+  onDeleteAccount,
   isSaving,
   canManageRoles,
 }: {
@@ -177,6 +183,11 @@ function UserDrawer({
   onRestore: (uid: string) => Promise<void>
   onChangePlan: (uid: string, planId: string) => Promise<void>
   onChangeRole: (uid: string, role: string) => Promise<void>
+  onToggleAddressConfirmationRequirement: (uid: string, required: boolean) => Promise<void>
+  onGeneratePasswordReset: (uid: string) => Promise<void>
+  onGenerateVerificationLink: (uid: string) => Promise<void>
+  onSetPassword: (uid: string, password: string) => Promise<void>
+  onDeleteAccount: (uid: string) => Promise<void>
   isSaving: boolean
   canManageRoles: boolean
 }) {
@@ -185,6 +196,8 @@ function UserDrawer({
   const [showSuspendForm, setShowSuspendForm] = useState(false)
   const [selectedRole, setSelectedRole] = useState(user.role)
   const [selectedPlan, setSelectedPlan] = useState(user.planId)
+  const [addressConfirmRequired, setAddressConfirmRequired] = useState(!!user.requireAddressConfirmationOnPurchase)
+  const [manualPassword, setManualPassword] = useState('')
 
   const status = userStatus(user)
   const planInfo = PLANS.find(p => p.id === user.planId)
@@ -219,7 +232,7 @@ function UserDrawer({
           <div className="flex items-center gap-3">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0"
-              style={{ background: user.role === 'admin' ? '#F08700' : '#00A6A6', color: '#FFFFFF' }}
+              style={{ background: user.role === 'admin' ? '#8f63ff' : '#00A6A6', color: '#FFFFFF' }}
             >
               {user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
             </div>
@@ -287,7 +300,7 @@ function UserDrawer({
                   { icon: Mail,     label: 'Email',    val: user.email },
                   { icon: Calendar, label: 'Joined',   val: fmtDate(user.createdAt) },
                   { icon: Calendar, label: 'Last login',val: fmtDate(user.lastLoginAt) },
-                  { icon: FileText, label: 'Zapps',    val: `${user.presentations} active · ${user.lifetimePresentationsCreated} lifetime` },
+                  { icon: FileText, label: 'Zapps',    val: `${user.presentations} active · ${user.lifetimePresentationsCreated} this month` },
                   ...(user.country ? [{ icon: Shield, label: 'Country', val: [user.city, user.country].filter(Boolean).join(', ') }] : []),
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex items-start gap-3">
@@ -317,7 +330,7 @@ function UserDrawer({
                   {planInfo.limits.maxPresentations !== 'unlimited' && (
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span style={{ color: '#6B7280' }}>Lifetime sessions</span>
+                        <span style={{ color: '#6B7280' }}>Monthly sessions</span>
                         <span className="font-semibold" style={{ color: '#1A1A2E' }}>
                           {user.lifetimePresentationsCreated} / {planInfo.limits.maxPresentations}
                         </span>
@@ -398,6 +411,43 @@ function UserDrawer({
           {activeTab === 'actions' && (
             <div className="space-y-3">
 
+              {/* Checkout address confirmation requirement */}
+              <div className="rounded-xl p-4 space-y-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Checkout address confirmation</p>
+                <div className="flex items-center justify-between rounded-lg px-3 py-2.5" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>Require this user to re-save address details before purchase</p>
+                  <button
+                    type="button"
+                    onClick={() => setAddressConfirmRequired(v => !v)}
+                    className="relative w-11 h-6 rounded-full transition-all"
+                    style={{ background: addressConfirmRequired ? '#1A1A2E' : '#D1D5DB' }}
+                    aria-pressed={addressConfirmRequired}
+                  >
+                    <span
+                      className="absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all"
+                      style={{ left: addressConfirmRequired ? '21px' : '2px' }}
+                    />
+                  </button>
+                </div>
+                <button
+                  onClick={() => onToggleAddressConfirmationRequirement(user.uid, addressConfirmRequired)}
+                  disabled={isSaving || addressConfirmRequired === !!user.requireAddressConfirmationOnPurchase}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                  style={{
+                    background: addressConfirmRequired === !!user.requireAddressConfirmationOnPurchase ? '#F3F4F6' : '#1A1A2E',
+                    color: addressConfirmRequired === !!user.requireAddressConfirmationOnPurchase ? '#9CA3AF' : '#FFFFFF',
+                    cursor: addressConfirmRequired === !!user.requireAddressConfirmationOnPurchase ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CreditCard className="w-3.5 h-3.5" />}
+                  {isSaving
+                    ? 'Saving…'
+                    : addressConfirmRequired === !!user.requireAddressConfirmationOnPurchase
+                      ? 'No changes'
+                      : 'Save requirement'}
+                </button>
+              </div>
+
               {/* Change role — superadmin only */}
               {canManageRoles && (
                 <div className="rounded-xl p-4 space-y-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
@@ -438,6 +488,7 @@ function UserDrawer({
                 style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = '#00A6A6')}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = '#E5E7EB')}
+                onClick={() => onGeneratePasswordReset(user.uid)}
               >
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0,166,166,0.10)' }}>
                   <Mail className="w-4 h-4" style={{ color: '#00A6A6' }} />
@@ -448,6 +499,50 @@ function UserDrawer({
                 </div>
                 <ChevronRight className="w-4 h-4 ml-auto" style={{ color: '#D1D5DB' }} />
               </button>
+
+              {/* Resend verification link */}
+              <button
+                className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
+                style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = '#8f63ff')}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = '#E5E7EB')}
+                onClick={() => onGenerateVerificationLink(user.uid)}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(143,99,255,0.12)' }}>
+                  <Mail className="w-4 h-4" style={{ color: '#7a3af0' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#1A1A2E' }}>Generate verification link</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>Create a fresh email verification link for {user.email}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 ml-auto" style={{ color: '#D1D5DB' }} />
+              </button>
+
+              {/* Manual password set */}
+              <div className="rounded-xl p-4 space-y-3" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB' }}>
+                <p className="text-xs font-semibold" style={{ color: '#1A1A2E' }}>Set password manually</p>
+                <input
+                  type="password"
+                  value={manualPassword}
+                  onChange={e => setManualPassword(e.target.value)}
+                  placeholder="Minimum 8 characters"
+                  className="w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                  style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', color: '#1A1A2E' }}
+                />
+                <button
+                  onClick={() => onSetPassword(user.uid, manualPassword)}
+                  disabled={isSaving || manualPassword.trim().length < 8}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2"
+                  style={{
+                    background: manualPassword.trim().length >= 8 ? '#1A1A2E' : '#F3F4F6',
+                    color: manualPassword.trim().length >= 8 ? '#FFFFFF' : '#9CA3AF',
+                    cursor: manualPassword.trim().length >= 8 ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
+                  {isSaving ? 'Updating...' : 'Set password now'}
+                </button>
+              </div>
 
               {/* Suspend / Restore */}
               {!user.suspended ? (
@@ -518,6 +613,23 @@ function UserDrawer({
                   </div>
                 </button>
               )}
+
+              {/* Delete account */}
+              <button
+                className="w-full flex items-center gap-3 p-4 rounded-xl text-left transition-all"
+                style={{ background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.20)' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.10)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.05)')}
+                onClick={() => onDeleteAccount(user.uid)}
+              >
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.10)' }}>
+                  <Ban className="w-4 h-4" style={{ color: '#DC2626' }} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold" style={{ color: '#DC2626' }}>Delete account</p>
+                  <p className="text-xs" style={{ color: '#9CA3AF' }}>Remove user from Auth and database permanently</p>
+                </div>
+              </button>
             </div>
           )}
 
@@ -560,6 +672,25 @@ export default function AdminUsersPage() {
     setTimeout(() => setToastMsg(null), 4000)
   }
 
+  async function runAdminAction(payload: Record<string, unknown>) {
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('Admin session expired. Please sign in again.')
+    const token = await currentUser.getIdToken()
+    const response = await fetch('/api/admin/users/manage', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    })
+    const data = await response.json()
+    if (!response.ok || !data?.success) {
+      throw new Error(String(data?.error ?? 'Admin action failed'))
+    }
+    return data
+  }
+
   async function loadUsers() {
     setIsLoading(true)
     try {
@@ -587,6 +718,7 @@ export default function AdminUsersPage() {
           lastLoginAt:                  u.lastLoginAt   ?? null,
           country:                      u.country       ?? null,
           city:                         u.city          ?? null,
+          requireAddressConfirmationOnPurchase: !!u.requireAddressConfirmationOnPurchase,
           adminGifted:                  planId !== 'free' && !billingCycle,
         }
       })
@@ -638,12 +770,116 @@ export default function AdminUsersPage() {
   async function handleChangePlan(uid: string, planId: string) {
     setIsSaving(true)
     try {
-      await update(ref(rtdb, `users/${uid}`), { planId })
+      await runAdminAction({ action: 'set_plan', targetUid: uid, planId })
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, planId } : u))
       if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, planId } : null)
       showToast(`Plan changed to ${planId}`)
     } catch {
       showToast('Failed to change plan', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleChangeRole(uid: string, role: string) {
+    setIsSaving(true)
+    try {
+      await runAdminAction({ action: 'set_role', targetUid: uid, role })
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role } : u))
+      if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, role } : null)
+      showToast(`Role changed to ${role}`)
+    } catch {
+      showToast('Failed to change role', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleToggleAddressConfirmationRequirement(uid: string, required: boolean) {
+    setIsSaving(true)
+    try {
+      await update(ref(rtdb, `users/${uid}`), { requireAddressConfirmationOnPurchase: required })
+      setUsers(prev => prev.map(u => u.uid === uid ? { ...u, requireAddressConfirmationOnPurchase: required } : u))
+      if (selectedUser?.uid === uid) {
+        setSelectedUser(prev => prev ? { ...prev, requireAddressConfirmationOnPurchase: required } : null)
+      }
+      showToast(required ? 'Address confirmation enabled for this user' : 'Address confirmation disabled for this user')
+    } catch {
+      showToast('Failed to update address confirmation rule', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleGeneratePasswordReset(uid: string) {
+    setIsSaving(true)
+    try {
+      const result = await runAdminAction({ action: 'send_password_reset', targetUid: uid })
+      if (result.link) {
+        await navigator.clipboard.writeText(String(result.link))
+        showToast('Password reset link generated and copied')
+      } else {
+        showToast('Password reset link generated')
+      }
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to generate password reset link', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleGenerateVerificationLink(uid: string) {
+    setIsSaving(true)
+    try {
+      const result = await runAdminAction({ action: 'resend_verification', targetUid: uid })
+      if (result.link) {
+        await navigator.clipboard.writeText(String(result.link))
+        showToast('Verification link generated and copied')
+      } else {
+        showToast('Verification link generated')
+      }
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to generate verification link', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleSetPassword(uid: string, password: string) {
+    setIsSaving(true)
+    try {
+      await runAdminAction({ action: 'set_password', targetUid: uid, password })
+      showToast('Password updated successfully')
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to set password', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleDeleteAccount(uid: string) {
+    if (!confirm('Delete this account from Firebase Auth and database? This cannot be undone.')) return
+    setIsSaving(true)
+    try {
+      await runAdminAction({ action: 'delete_account', targetUid: uid })
+      setUsers(prev => prev.filter(u => u.uid !== uid))
+      if (selectedUser?.uid === uid) setSelectedUser(null)
+      showToast('Account deleted')
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to delete account', false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleSyncMissingProfiles() {
+    setIsSaving(true)
+    try {
+      const result = await runAdminAction({ action: 'sync_missing_profiles' })
+      showToast(result?.message ?? 'Sync complete')
+      await loadUsers()
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to sync missing profiles', false)
     } finally {
       setIsSaving(false)
     }
@@ -687,6 +923,7 @@ export default function AdminUsersPage() {
   const totalPaid    = users.filter(u => u.planId !== 'free').length
   const totalSuspended = users.filter(u => u.suspended).length
   const totalActive  = users.filter(u => userStatus(u) === 'active').length
+  const canManageRoles = true
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl relative">
@@ -714,14 +951,24 @@ export default function AdminUsersPage() {
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Registered accounts and their activity</p>
         </div>
-        <button
-          onClick={loadUsers}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all self-start"
-          style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
-        >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex flex-wrap gap-2 self-start">
+          <button
+            onClick={loadUsers}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <button
+            onClick={() => void handleSyncMissingProfiles()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: '#ede4ff', color: '#6d28d9', border: '1px solid #d8c4ff' }}
+          >
+            <Shield className="w-4 h-4" />
+            Sync missing users
+          </button>
+        </div>
       </div>
 
       {/* Summary tiles */}
@@ -892,7 +1139,7 @@ export default function AdminUsersPage() {
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
-                            style={{ background: u.role === 'admin' ? '#F08700' : '#00A6A6', color: '#FFFFFF' }}>
+                            style={{ background: u.role === 'admin' ? '#8f63ff' : '#00A6A6', color: '#FFFFFF' }}>
                             {u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                           <div>
@@ -985,9 +1232,17 @@ export default function AdminUsersPage() {
           onSuspend={handleSuspend}
           onRestore={handleRestore}
           onChangePlan={handleChangePlan}
+          onChangeRole={handleChangeRole}
+          onToggleAddressConfirmationRequirement={handleToggleAddressConfirmationRequirement}
+          onGeneratePasswordReset={handleGeneratePasswordReset}
+          onGenerateVerificationLink={handleGenerateVerificationLink}
+          onSetPassword={handleSetPassword}
+          onDeleteAccount={handleDeleteAccount}
+          canManageRoles={canManageRoles}
           isSaving={isSaving}
         />
       )}
     </div>
   )
 }
+

@@ -1,6 +1,9 @@
+'use client'
+
 import Link from 'next/link'
-import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { Twitter, Linkedin, Github, Mail } from 'lucide-react'
+import BrandLockup from '@/components/BrandLockup'
 
 const footerLinks = {
   Product: [
@@ -10,7 +13,6 @@ const footerLinks = {
   ],
   Company: [
     { label: 'About', href: '/about' },
-    { label: 'Tools', href: '/#tools' },
     { label: 'Contact', href: '/contact' },
   ],
   Legal: [
@@ -27,93 +29,100 @@ const socialLinks = [
 ]
 
 export default function Footer() {
+  const pathname = usePathname()
+  if (
+    pathname === '/' ||
+    pathname === '/login' ||
+    pathname === '/register' ||
+    pathname === '/checkout' ||
+    pathname.startsWith('/join') ||
+    pathname.startsWith('/app') ||
+    pathname.startsWith('/admin')
+  ) return null
+
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="relative mt-24" aria-label="Site footer">
-      {/* Top gradient divider */}
-      <div className="gradient-divider" />
+    <footer
+      className="relative mt-24"
+      aria-label="Site footer"
+      style={{ background: '#001d3d', borderTop: '1px solid rgba(101,12,217,0.16)' }}
+    >
+      <div className="section-container py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
 
-      <div style={{ background: 'rgba(0,18,30,0.92)', backdropFilter: 'blur(20px)', borderTop: '1px solid rgba(247,127,0,0.10)' }}>
-        <div className="section-container py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
-            {/* Brand */}
-            <div className="lg:col-span-2">
-              <Link href="/" className="inline-block mb-4" aria-label="LiveZapp home">
-                <Image
-                  src="/LiveZapp Logo w_text.png"
-                  alt="LiveZapp"
-                  width={180}
-                  height={56}
-                  className="h-14 w-auto object-contain"
-                />
-              </Link>
-              <p className="text-sm leading-relaxed max-w-xs" style={{ color: '#4E6878' }}>
-                Turn any session into a live, interactive experience. Real-time quizzes, polls, and
-                Q&A that audiences join from any device.
-              </p>
-              <p className="text-xs mt-4" style={{ color: '#4E6878' }}>
-                Part of the{' '}
-                <a
-                  href="https://quantumstep.in"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline"
+          <div className="lg:col-span-2">
+            <BrandLockup href="/" size="md" theme="dark" className="mb-5" />
+
+            <p className="text-sm leading-relaxed max-w-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              Turn any session into a live, interactive experience. Real-time quizzes, polls, and
+              Q&amp;A that audiences join from any device.
+            </p>
+            <p className="text-xs mt-4" style={{ color: 'rgba(255,255,255,0.30)' }}>
+              Part of the{' '}
+              <a
+                href="https://quantumstep.in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition-colors hover:text-yellow"
+                style={{ color: 'rgba(191,168,255,0.85)' }}
+              >
+                QuantumStep
+              </a>{' '}
+              family of modern AI-oriented web products.
+            </p>
+
+            <div className="flex items-center gap-3 mt-6" aria-label="Social media links">
+              {socialLinks.map(({ icon: Icon, label, href }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  aria-label={label}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all"
+                  style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.18)'; e.currentTarget.style.color = '#bfa8ff'; e.currentTarget.style.borderColor = 'rgba(101,12,217,0.35)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = 'rgba(255,255,255,0.45)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)' }}
                 >
-                  QuantumStep
-                </a>{' '}
-                family of modern AI-oriented web products.
-              </p>
-
-              {/* Social */}
-              <div className="flex items-center gap-3 mt-6" aria-label="Social media links">
-                {socialLinks.map(({ icon: Icon, label, href }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    aria-label={label}
-                    className="w-9 h-9 rounded-xl glass-card flex items-center justify-center text-text-secondary hover:text-primary hover:shadow-glass transition-all duration-200"
-                  >
-                    <Icon className="w-4 h-4" />
-                  </Link>
-                ))}
-              </div>
+                  <Icon className="w-4 h-4" />
+                </Link>
+              ))}
             </div>
-
-            {/* Link Columns */}
-            {Object.entries(footerLinks).map(([category, links]) => (
-              <div key={category}>
-                <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#F77F00' }}>
-                  {category}
-                </h3>
-                <ul className="space-y-2.5" role="list">
-                  {links.map(link => (
-                    <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        className="text-sm transition-colors duration-200 hover:text-primary"
-                        style={{ color: '#4E6878' }}
-                      >
-                        {link.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
           </div>
 
-          {/* Bottom bar */}
-          <div className="gradient-divider mt-12 mb-6" />
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: '#334D5E' }}>
-            <p>© {currentYear} QuantumStep. All rights reserved. LiveZapp is a QuantumStep product.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/privacy" className="hover:text-primary transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-primary transition-colors">Terms</Link>
+          {Object.entries(footerLinks).map(([category, links]) => (
+            <div key={category}>
+              <h3 className="text-xs font-black uppercase tracking-widest mb-4" style={{ color: '#bfa8ff' }}>
+                {category}
+              </h3>
+              <ul className="space-y-2.5" role="list">
+                {links.map(link => (
+                  <li key={link.href}>
+                    <Link
+                      href={link.href}
+                      className="text-sm transition-colors duration-200"
+                      style={{ color: 'rgba(255,255,255,0.45)' }}
+                      onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF' }}
+                      onMouseLeave={e => { e.currentTarget.style.color = 'rgba(255,255,255,0.45)' }}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
+          ))}
+        </div>
+
+        <div className="mt-12 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.28)' }}>
+          <p>© {currentYear} QuantumStep. All rights reserved. LiveZapp is a QuantumStep product.</p>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="transition-colors hover:text-white" style={{ color: 'rgba(255,255,255,0.28)' }}>Privacy</Link>
+            <Link href="/terms" className="transition-colors hover:text-white" style={{ color: 'rgba(255,255,255,0.28)' }}>Terms</Link>
           </div>
         </div>
       </div>
     </footer>
   )
 }
+
+

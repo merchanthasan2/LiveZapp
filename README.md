@@ -4,7 +4,9 @@
 
 > LiveZapp lets you create real-time quizzes, polls, and audience Q&A that participants join from any device. No downloads required.
 
-🔗 Live at: [livezapp.quantumstep.in](https://livezapp.quantumstep.in)
+Live URL is configured through `NEXT_PUBLIC_APP_URL` (default: [https://www.live-zapp.com](https://www.live-zapp.com)).
+
+Launch status and remaining deploy steps: [docs/launch-tracker.md](docs/launch-tracker.md).
 
 ---
 
@@ -28,6 +30,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+If the **first page load** in the browser feels slow (not necessarily how long the terminal takes to show “ready”), try Turbopack (`npm run dev:turbo`) and see [docs/dev-server-performance.md](docs/dev-server-performance.md) for a short checklist (AV scanning, path with spaces, profiling).
+
 ### Build for production
 
 ```bash
@@ -48,7 +52,7 @@ npm test
 Create a `.env.local` file at the root. The following variables will be required once Firebase is connected:
 
 ```env
-# TODO – Firebase config (Phase 9)
+# Firebase config
 NEXT_PUBLIC_FIREBASE_API_KEY=
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=
@@ -57,7 +61,7 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 
-> All Firebase functions are currently **stubs** — the app runs fully without these being set.
+> Firebase credentials are required for auth/RTDB-backed features; some UI may still work without them.
 
 ---
 
@@ -90,8 +94,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 │       ├── QuantumStepSection.tsx
 │       └── Testimonials.tsx
 ├── lib/
-│   ├── firebase.ts             # Firebase stubs (TODO)
-│   ├── hooks/useAuth.ts        # Auth hook stub (TODO)
+│   ├── firebase.ts             # Firebase SDK wrapper (auth/RTDB)
+│   ├── hooks/useAuth.ts        # Firebase auth listener hook
 │   └── data/mockData.ts        # All mock/placeholder data
 ├── types/index.ts              # TypeScript type definitions
 ├── __tests__/                  # Jest + React Testing Library tests
@@ -130,3 +134,4 @@ See the [`docs/`](./docs/) folder:
 ## License
 
 © 2026 QuantumStep. All rights reserved.
+

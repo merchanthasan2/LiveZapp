@@ -1,703 +1,457 @@
-'use client'
+﻿'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Plus, Search, FileText,
-  Sparkles, BarChart3, MessageSquare, Cloud, Star, Radio,
-  Clock, CheckCircle2, Users, Play, Trash2, AlertTriangle, Shield,
-} from 'lucide-react'
+import { AlertTriangle, Edit, List, Play, Radio, Search, Trash2, Users } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
+import { useTheme } from '@/lib/contexts/ThemeContext'
 import { PresentationService } from '@/lib/services/PresentationService'
-import { PLANS } from '@/types/plans'
+import { LiveSessionService } from '@/lib/services/LiveSessionService'
 import type { Presentation, PresentationStatus } from '@/types/domain'
 
-// ─── Constants ────────────────────────────────────────────────────────────
-
-const TYPE_BADGE: Record<string, { label: string; bg: string; color: string }> = {
-  quiz:      { label: 'Quiz',       bg: '#00A6A6', color: '#FFFFFF' }, // teal   → white text
-  qa:        { label: 'Q&A',        bg: '#EFCA08', color: '#111111' }, // amber  → black text
-  feedback:  { label: 'Feedback',   bg: '#BBDEF0', color: '#111111' }, // sky    → black text
-  poll:      { label: 'Poll',       bg: '#F49F0A', color: '#111111' }, // golden → black text (NOT white — too low contrast)
-  word_cloud:{ label: 'Word Cloud', bg: '#F08700', color: '#FFFFFF' }, // tiger  → white text
-}
-
-const TYPE_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
-  quiz: Sparkles, qa: MessageSquare, feedback: Star,
-}
-
-const STATUS_CFG: Record<PresentationStatus, { label: string; bg: string; color: string; dot?: boolean }> = {
-  draft:     { label: 'Draft',     bg: '#BBDEF0', color: '#111111' }, // sky    → dark text
-  scheduled: { label: 'Scheduled', bg: '#EFCA08', color: '#111111' }, // amber  → dark text
-  live:      { label: 'Live',      bg: '#F08700', color: '#FFFFFF', dot: true }, // tiger → white text
-  completed: { label: 'Done',      bg: '#00A6A6', color: '#FFFFFF' }, // teal   → white text
-}
-
-
-// ─── Donut chart (SVG) ────────────────────────────────────────────────────
-
-function DonutChart({ total, segments }: {
-  total: number
-  segments: { value: number; color: string; label: string }[]
-}) {
-  const r = 56
-  const cx = 72; const cy = 72
-  const circumference = 2 * Math.PI * r
-  let offset = 0
-
-  const arcs = segments.map(s => {
-    const pct   = total > 0 ? s.value / total : 0
-    const dash  = pct * circumference
-    const gap   = circumference - dash
-    const arc   = { dash, gap, offset, ...s }
-    offset += dash
-    return arc
-  })
-
+/** Decorative sparkline for metric cards (light-mode analytics style). */
+function MetricSparkline({ stroke }: { stroke: string }) {
   return (
-    <div className="flex flex-col items-center mt-4">
-      <div className="relative w-36 h-36">
-        <svg width="144" height="144" viewBox="0 0 144 144">
-          {arcs.map((a, i) => (
-            <circle
-              key={i}
-              r={r} cx={cx} cy={cy}
-              fill="none"
-              stroke={a.color}
-              strokeWidth="18"
-              strokeDasharray={`${a.dash} ${a.gap}`}
-              strokeDashoffset={-a.offset + circumference * 0.25}
-              strokeLinecap="butt"
-            />
-          ))}
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <p className="text-2xl font-black text-[#111111]">{total}</p>
-          <p className="text-[9px] text-[#9CA3AF] font-bold uppercase tracking-wide">TYPES</p>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5 mt-4 w-full">
-        {segments.map((s, i) => (
-          <div key={i} className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-sm" style={{ background: s.color }} />
-              <span className="text-[11px] text-[#6B7280]">{s.label}</span>
-            </div>
-            <span className="text-[11px] font-bold text-[#374151]">{s.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <svg viewBox="0 0 100 28" className="mt-3 h-7 w-full max-w-[140px]" aria-hidden>
+      <path
+        d="M0 22 C 18 8, 32 24, 50 14 S 78 20, 100 6"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity={0.85}
+      />
+    </svg>
   )
 }
-
-// ─── Stat card ────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, bg, textColor, subColor }: {
-  label: string
-  value: string | number
-  bg: string
-  textColor: string
-  subColor: string
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl p-6 flex flex-col justify-between min-h-[120px]"
-      style={{ background: bg }}
-    >
-      <p className="text-sm font-bold" style={{ color: subColor }}>{label}</p>
-      <p className="text-4xl font-black mt-2 leading-none" style={{ color: textColor }}>
-        {value}
-      </p>
-    </motion.div>
-  )
-}
-
-// ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { user, isAdmin } = useAuth()
+  const { isDark } = useTheme()
   const planLimits = usePlanLimits()
   const [presentations, setPresentations] = useState<Presentation[]>([])
-  const [isLoading,     setIsLoading]     = useState(true)
-  const [filter,        setFilter]        = useState<PresentationStatus | 'all'>('all')
-  const [search,        setSearch]        = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<PresentationStatus | 'all'>('all')
   const [confirmDelete, setConfirmDelete] = useState<Presentation | null>(null)
-  const [isDeleting,    setIsDeleting]    = useState(false)
-
-  const plan    = planLimits.plan
-  const maxPres = plan.limits.maxPresentations === 'unlimited' ? 999 : plan.limits.maxPresentations
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    PresentationService.getUserPresentations(user.id)
-      .then(setPresentations)
-      .catch(console.error)
-      .finally(() => setIsLoading(false))
+    let isMounted = true
+
+    const loadPresentations = async () => {
+      setIsLoading(true)
+      try {
+        const rows = await PresentationService.getUserPresentations(user.id)
+        const staleLiveRows = rows.filter(p => p.status === 'live')
+        const nextRows = [...rows]
+
+        if (staleLiveRows.length > 0) {
+          await Promise.all(staleLiveRows.map(async liveRow => {
+            try {
+              if (!liveRow.joinCode) {
+                await PresentationService.updatePresentation(liveRow.id, { status: 'completed' })
+                const missingJoinCodeIndex = nextRows.findIndex(item => item.id === liveRow.id)
+                if (missingJoinCodeIndex >= 0) {
+                  nextRows[missingJoinCodeIndex] = { ...nextRows[missingJoinCodeIndex], status: 'completed' }
+                }
+                return
+              }
+
+              const existing = await LiveSessionService.getSession(liveRow.joinCode)
+              if (existing?.isActive) return
+
+              await PresentationService.updatePresentation(liveRow.id, { status: 'completed' })
+              const index = nextRows.findIndex(item => item.id === liveRow.id)
+              if (index >= 0) {
+                nextRows[index] = { ...nextRows[index], status: 'completed' }
+              }
+            } catch (error) {
+              console.error('[dashboard] live status reconciliation failed', error)
+            }
+          }))
+        }
+
+        if (isMounted) setPresentations(nextRows)
+      } catch (error) {
+        console.error('[dashboard] failed to load presentations', error)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+
+    void loadPresentations()
+    return () => { isMounted = false }
   }, [user])
 
-  const handleDelete = async () => {
+  const filtered = useMemo(
+    () => presentations
+      .filter(p => filter === 'all' || p.status === filter)
+      .filter(p => p.title.toLowerCase().includes(search.toLowerCase())),
+    [presentations, filter, search]
+  )
+
+  const totalAudience = presentations.reduce((a, p) => a + (p.audienceSize || 0), 0)
+  const totalQuestions = presentations.reduce((a, p) => a + (p.questionsCount || 0), 0)
+  const liveNow = presentations.filter(p => p.status === 'live').length
+  const currentPlanIndex = ['free', 'basic', 'regular', 'pro'].indexOf(planLimits.plan.id)
+  const highestPlanIndex = 3
+  const isTopPlan = currentPlanIndex >= highestPlanIndex
+  const usageBarWidth = planLimits.presentationsRemaining === Infinity
+    ? 100
+    : Math.max(10, Math.min(100, ((planLimits.lifetimePresentationsCreated / Math.max(1, planLimits.lifetimePresentationsCreated + planLimits.presentationsRemaining)) * 100)))
+
+  async function handleDelete() {
     if (!confirmDelete || !user) return
     setIsDeleting(true)
     try {
       await PresentationService.deletePresentation(user.id, confirmDelete.id)
       setPresentations(prev => prev.filter(p => p.id !== confirmDelete.id))
-    } catch (e) {
-      console.error('Delete failed', e)
     } finally {
       setIsDeleting(false)
       setConfirmDelete(null)
     }
   }
 
-
-  // ── Derived stats ──────────────────────────────────────────────────────
-  const totalQuestions = presentations.reduce((a, p) => a + (p.questionsCount || 0), 0)
-  const totalAudience  = presentations.reduce((a, p) => a + (p.audienceSize   || 0), 0)
-  const sessionsRun    = presentations.filter(p => p.status === 'completed').length
-  const liveNow        = presentations.filter(p => p.status === 'live').length
-
-  const typeCounts = presentations.reduce<Record<string, number>>((acc, p) => {
-    acc[p.type] = (acc[p.type] ?? 0) + 1
-    return acc
-  }, {})
-
-  const donutSegments = [
-    { value: typeCounts.quiz       ?? 0, color: '#00A6A6', label: 'Quiz' },
-    { value: typeCounts.qa         ?? 0, color: '#EFCA08', label: 'Q&A' },
-    { value: typeCounts.feedback   ?? 0, color: '#F08700', label: 'Feedback' },
-    { value: typeCounts.poll       ?? 0, color: '#F49F0A', label: 'Poll' },
-    { value: typeCounts.word_cloud ?? 0, color: '#6BBDD4', label: 'Word Cloud' }, // mid-blue — #BBDEF0 is too faint against white card
-  ].filter(s => s.value > 0)
-
-  const donutTotal = donutSegments.reduce((a, s) => a + s.value, 0)
-
-  // ── Filtered presentations ─────────────────────────────────────────────
-  const filtered = presentations
-    .filter(p => filter === 'all' || p.status === filter)
-    .filter(p => p.title.toLowerCase().includes(search.toLowerCase()))
-
-  const recent = [...presentations].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-  ).slice(0, 7)
+  const pageBg = isDark ? '#12131c' : '#f8f7ff'
+  const shellCard = isDark ? '#171821' : '#ffffff'
+  const innerCard = isDark ? '#101725' : '#faf9ff'
+  const border = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(122, 58, 240, 0.08)'
+  const cardShadow = isDark
+    ? '0 12px 40px rgba(0,0,0,0.35)'
+    : '0 4px 24px rgba(80, 50, 120, 0.07), 0 1px 3px rgba(15, 23, 42, 0.04)'
+  const softShadow = isDark
+    ? '0 8px 28px rgba(0,0,0,0.28)'
+    : '0 2px 16px rgba(80, 50, 120, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04)'
+  const textStrong = isDark ? '#ffffff' : '#1a1a2e'
+  const textMuted = isDark ? 'rgba(214,207,237,0.72)' : '#6b7280'
+  const labelMuted = isDark ? 'rgba(214,207,237,0.55)' : '#9ca3af'
+  const chipBg = isDark ? '#1d1f2a' : '#f3f0ff'
+  const actionBg = isDark ? '#1f2433' : '#f3f0ff'
+  const launchBg = isDark ? 'rgba(122,58,240,0.3)' : 'rgba(122, 58, 240, 0.12)'
+  const launchText = isDark ? '#f4efff' : '#5b21b6'
+  const progressTrack = isDark ? '#2a2d3a' : '#ede9fe'
+  const metricAccents = isDark
+    ? {
+        a: { iconBg: 'rgba(167,139,250,0.22)', iconFg: '#c4b5fd', spark: '#a78bfa' },
+        b: { iconBg: 'rgba(52,211,153,0.18)', iconFg: '#6ee7b7', spark: '#34d399' },
+        c: { iconBg: 'rgba(251,191,36,0.18)', iconFg: '#fcd34d', spark: '#fbbf24' },
+      }
+    : {
+        a: { iconBg: 'rgba(167, 139, 250, 0.22)', iconFg: '#7c3aed', spark: '#a78bfa' },
+        b: { iconBg: 'rgba(52, 211, 153, 0.18)', iconFg: '#059669', spark: '#34d399' },
+        c: { iconBg: 'rgba(251, 146, 60, 0.16)', iconFg: '#ea580c', spark: '#fb923c' },
+      }
+  const statusStyle: Record<PresentationStatus, { bg: string; text: string }> = isDark
+    ? {
+        draft: { bg: 'rgba(191,168,255,0.18)', text: '#d6c5ff' },
+        scheduled: { bg: 'rgba(103,228,217,0.18)', text: '#95fff4' },
+        live: { bg: 'rgba(126,243,225,0.20)', text: '#7ef3e1' },
+        completed: { bg: 'rgba(247,181,143,0.18)', text: '#ffd0b3' },
+      }
+    : {
+        draft: { bg: '#efe6ff', text: '#6c2bd9' },
+        scheduled: { bg: '#dff7f2', text: '#0f766e' },
+        live: { bg: '#e7faf5', text: '#0f766e' },
+        completed: { bg: '#fff1e8', text: '#c2410c' },
+      }
 
   return (
-    <>
-    <div className="space-y-5 pb-14">
-
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-[#111111] tracking-tight">Dashboard</h1>
-          {liveNow > 0 && (
-            <p className="text-sm text-[#6B7280] mt-0.5 flex items-center gap-1.5">
-              <span className="live-badge"><span className="live-dot" />{liveNow} live</span>
-              session{liveNow > 1 ? 's' : ''} running
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <div
-            className="hidden sm:flex items-center gap-2.5 px-4 py-2.5 rounded-full"
-            style={{ background: '#1A1A1A', minWidth: 260 }}
-          >
-            <Search className="w-3.5 h-3.5 text-white/40 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search Zapps…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="bg-transparent text-sm text-white/70 placeholder:text-white/30 outline-none flex-1"
-            />
-          </div>
-
-          {/* New presentation */}
-
-          <Link href="/app/create" className="btn-primary shrink-0">
-            <Plus className="w-4 h-4" /> New
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Stat cards row ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Zapps"
-          value={presentations.length}
-          bg="#00A6A6"
-          textColor="#FFFFFF"
-          subColor="rgba(255,255,255,0.75)"
-        />
-        <StatCard
-          label="Questions Built"
-          value={totalQuestions.toLocaleString()}
-          bg="#EFCA08"
-          textColor="#111111"
-          subColor="rgba(0,0,0,0.55)"
-        />
-        <StatCard
-          label="Audience Reached"
-          value={totalAudience > 999 ? `${(totalAudience/1000).toFixed(1)}k` : totalAudience}
-          bg="#F49F0A"
-          textColor="#111111"
-          subColor="rgba(0,0,0,0.55)"
-        />
-        <StatCard
-          label="Sessions Run"
-          value={sessionsRun}
-          bg="#F08700"
-          textColor="#FFFFFF"
-          subColor="rgba(255,255,255,0.75)"
-        />
-      </div>
-
-      {/* ── Middle row: chart + donut + recent list ────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-11 gap-4">
-
-        {/* Activity trend — live data coming in Phase 11 */}
-        <div className="lg:col-span-5 glass-card p-5 flex flex-col">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-black text-[#111111]">Activity Trend</h2>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 py-8 text-center">
-            <BarChart3 className="w-8 h-8 text-[#D1D5DB]" />
-            <p className="text-sm font-semibold text-[#6B7280]">No activity yet</p>
-            <p className="text-xs text-[#9CA3AF]">Create your first Zapp to see trends here</p>
-          </div>
-        </div>
-
-        {/* Donut: question types */}
-        <div className="lg:col-span-3 glass-card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-black text-[#111111]">Question Types</h2>
-            <div
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-              style={{ background: '#1A1A1A' }}
+    <div className="min-h-[80vh] p-4 sm:p-6 lg:p-8 rounded-[1.75rem] md:rounded-[2rem]" style={{ background: pageBg }}>
+      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6">
+        <section
+          className="rounded-[1.75rem] p-6 md:p-8"
+          style={{
+            background: shellCard,
+            border: `1px solid ${border}`,
+            boxShadow: cardShadow,
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+            <div className="text-center sm:text-left">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] mb-2" style={{ color: labelMuted }}>
+                Your workspace
+              </p>
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight" style={{ color: textStrong }}>
+                Zapp Dashboard
+              </h1>
+              <p className="text-sm mt-1" style={{ color: textMuted }}>
+                Manage and launch your live Zapps.
+              </p>
+            </div>
+            <Link
+              href="/app/create"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full font-bold text-white text-center shadow-md transition-opacity hover:opacity-95"
+              style={{
+                background: 'linear-gradient(135deg, #650cd9, #7a3af0)',
+                boxShadow: isDark ? '0 8px 24px rgba(101,12,217,0.35)' : '0 8px 24px rgba(101, 12, 217, 0.25)',
+              }}
             >
-              All time
-            </div>
+              Create New
+            </Link>
           </div>
 
-          {donutTotal > 0 ? (
-            <DonutChart total={donutTotal} segments={donutSegments} />
-          ) : (
-            <div className="flex items-center justify-center h-40 text-[#9CA3AF] text-sm">
-              No questions yet
-            </div>
-          )}
-        </div>
-
-        {/* Recent presentations */}
-        <div className="lg:col-span-3 glass-card p-5 flex flex-col">
-          <h2 className="text-base font-black text-[#111111] mb-4">Recent</h2>
-
-          <div className="flex-1 space-y-0 overflow-y-auto scrollbar-hide">
-            {recent.length === 0 ? (
-              <p className="text-sm text-[#9CA3AF] text-center py-8">No presentations yet</p>
-            ) : (
-              recent.map(p => {
-                const badge = TYPE_BADGE[p.type] ?? TYPE_BADGE.quiz
-                return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            {[
+              {
+                label: 'Total participants',
+                value: totalAudience.toLocaleString(),
+                Icon: Users,
+                ...metricAccents.a,
+              },
+              {
+                label: 'Questions built',
+                value: String(totalQuestions),
+                Icon: List,
+                ...metricAccents.b,
+              },
+              {
+                label: 'Live now',
+                value: String(liveNow),
+                Icon: Radio,
+                ...metricAccents.c,
+              },
+            ].map(m => (
+              <div
+                key={m.label}
+                className="rounded-2xl p-5"
+                style={{
+                  background: isDark ? innerCard : '#ffffff',
+                  border: `1px solid ${border}`,
+                  boxShadow: softShadow,
+                }}
+              >
+                <div className="flex items-center justify-between gap-2">
                   <div
-                    key={p.id}
-                    className="flex items-center justify-between py-2.5"
-                    style={{ borderBottom: '1px solid #F3F4F6' }}
+                    className="flex h-11 w-11 items-center justify-center rounded-full"
+                    style={{ background: m.iconBg }}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div
-                        className="w-6 h-6 rounded-full shrink-0"
-                        style={{ background: '#F08700' }}
-                      />
-                      <p className="text-sm font-semibold text-[#111111] truncate max-w-[110px]">
-                        {p.title}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wide"
-                        style={{ background: badge.bg, color: badge.color }}
-                      >
-                        {badge.label}
-                      </span>
-                      <span className="text-xs font-bold text-[#374151]">
-                        {p.questionsCount ?? 0}q
-                      </span>
-                    </div>
+                    <m.Icon className="h-5 w-5" style={{ color: m.iconFg }} aria-hidden />
                   </div>
-                )
-              })
-            )}
+                </div>
+                <p
+                  className="mt-4 text-[10px] font-bold uppercase tracking-[0.18em]"
+                  style={{ color: labelMuted }}
+                >
+                  {m.label}
+                </p>
+                <p className="text-3xl md:text-4xl font-black mt-1 tabular-nums" style={{ color: textStrong }}>
+                  {m.value}
+                </p>
+                <MetricSparkline stroke={m.spark} />
+              </div>
+            ))}
           </div>
 
-          <Link
-            href="/app/create"
-            className="btn-primary w-full justify-center mt-4 text-sm"
-          >
-            New Zapp
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Bottom row: filtered list + plan/stats ────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-        {/* Zapps table */}
-        <div className="glass-card p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-black text-[#111111]">My Zapps</h2>
-            <div
-              className="px-3 py-1.5 rounded-lg text-xs font-bold text-white"
-              style={{ background: '#1A1A1A' }}
-            >
-              {presentations.length} total
+          <div className="flex flex-col sm:flex-row gap-3 mb-5">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2" style={{ color: textMuted }} />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search Zapps…"
+                className="w-full rounded-full pl-11 pr-4 py-3 text-sm outline-none transition-shadow"
+                style={{
+                  background: isDark ? innerCard : '#f8f7ff',
+                  border: `1px solid ${border}`,
+                  color: textStrong,
+                  boxShadow: isDark ? undefined : 'inset 0 1px 2px rgba(255,255,255,0.8)',
+                }}
+              />
             </div>
-          </div>
-
-          {/* Filter pills */}
-          <div className="flex gap-2 mb-4 flex-wrap">
-            {(['all', 'draft', 'live', 'completed'] as const).map(s => {
-              const isActive = filter === s
-              return (
+            <div className="flex gap-2 flex-wrap sm:justify-end">
+              {(['all', 'draft', 'scheduled', 'live', 'completed'] as const).map(s => (
                 <button
                   key={s}
+                  type="button"
                   onClick={() => setFilter(s)}
-                  className="px-3 py-1.5 rounded-full text-xs font-bold capitalize transition-all"
+                  className="px-4 py-2 rounded-full text-xs font-bold capitalize transition-colors"
+                  style={
+                    filter === s
+                      ? {
+                          background: 'linear-gradient(135deg, #650cd9, #7a3af0)',
+                          color: '#fff',
+                          boxShadow: '0 4px 14px rgba(101, 12, 217, 0.28)',
+                        }
+                      : {
+                          background: chipBg,
+                          color: textMuted,
+                          border: `1px solid ${border}`,
+                        }
+                  }
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {isLoading ? (
+              <div
+                className="rounded-2xl p-8 text-sm text-center"
+                style={{ background: innerCard, color: textMuted, border: `1px solid ${border}`, boxShadow: softShadow }}
+              >
+                Loading Zapps…
+              </div>
+            ) : filtered.length === 0 ? (
+              <div
+                className="rounded-2xl p-8 text-sm text-center"
+                style={{ background: innerCard, color: textMuted, border: `1px solid ${border}`, boxShadow: softShadow }}
+              >
+                No Zapps match this filter.
+              </div>
+            ) : filtered.map(p => {
+              const presenterHref = p.status === 'live' ? `/app/present/${p.id}` : `/app/present/${p.id}?launch=1`
+              const presenterTitle = p.status === 'live' ? 'Open live controls' : 'Go Zapp'
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-2xl p-4 flex items-center gap-4 transition-shadow hover:shadow-md"
                   style={{
-                    background: isActive
-                      ? s === 'live' ? '#F08700' : '#00A6A6'
-                      : 'transparent',
-                    color: isActive ? '#fff' : '#374151',
-                    border: isActive
-                      ? 'none'
-                      : '1.5px solid rgba(0,0,0,0.12)',
+                    background: isDark ? innerCard : '#ffffff',
+                    border: `1px solid ${border}`,
+                    boxShadow: softShadow,
                   }}
                 >
-                  {s === 'live' && isActive && <span className="inline-block w-1.5 h-1.5 rounded-full bg-white mr-1 animate-pulse align-middle" />}
-                  {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-                </button>
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black uppercase shrink-0"
+                    style={{
+                      background: isDark ? 'rgba(122,58,240,0.18)' : 'rgba(167, 139, 250, 0.15)',
+                      color: isDark ? '#d5c4ff' : '#6d28d9',
+                    }}
+                  >
+                    {p.type}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
+                    <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {p.audienceSize ?? 0} participants</p>
+                    <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: statusStyle[p.status].bg, color: statusStyle[p.status].text }}>{p.status}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link href={presenterHref} className="p-2.5 rounded-full" style={{ background: launchBg, color: launchText }} title={presenterTitle}>
+                      <Play className="w-4 h-4" />
+                    </Link>
+                    <Link href={`/app/create/${p.id}?step=questions`} className="p-2.5 rounded-full" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Questions — edit or delete">
+                      <List className="w-4 h-4" />
+                    </Link>
+                    <Link href={`/app/create/${p.id}`} className="p-2.5 rounded-full" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Edit Zapp">
+                      <Edit className="w-4 h-4" />
+                    </Link>
+                    <button type="button" onClick={() => setConfirmDelete(p)} className="p-2.5 rounded-full" style={{ background: '#311d28', color: '#ffb1cb' }} title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
               )
             })}
           </div>
+        </section>
 
-          {/* List */}
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1,2,3].map(i => (
-                <div key={i} className="h-10 rounded-xl shimmer-skeleton" />
-              ))}
+        <section className="space-y-4">
+          <div
+            className="rounded-[1.75rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: cardShadow }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color: labelMuted }}>
+              Current plan
+            </p>
+            <p className="text-3xl font-black mt-2 tracking-tight" style={{ color: textStrong }}>
+              {planLimits.plan.name}
+            </p>
+            <div className="mt-4 h-2.5 rounded-full overflow-hidden" style={{ background: progressTrack }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${usageBarWidth}%`,
+                  background: isDark ? '#6ee7b7' : 'linear-gradient(90deg, #34d399, #6ee7b7)',
+                }}
+              />
             </div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-10">
-              <p className="text-[#9CA3AF] text-sm">
-                {filter === 'all' ? 'No presentations yet' : `No ${filter} presentations`}
-              </p>
-              {filter === 'all' && (
-                <Link href="/app/create" className="btn-primary inline-flex mt-3 text-sm">
-                  <Plus className="w-4 h-4" /> Create one
-                </Link>
-              )}
-            </div>
-          ) : (
-            <AnimatePresence>
-              {filtered.slice(0, 6).map((p, i) => {
-                const st    = STATUS_CFG[p.status]
-                const badge = TYPE_BADGE[p.type] ?? TYPE_BADGE.quiz
-                return (
-                  <motion.div
-                    key={p.id}
-                    layout
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ delay: i * 0.04 }}
-                    className="flex items-center gap-3 py-2.5"
-                    style={{ borderBottom: '1px solid #F3F4F6' }}
-                  >
-                    {/* Dot */}
-                    <div
-                      className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-                      style={{ background: badge.bg }}
-                    >
-                      <span className="text-[8px] font-black" style={{ color: badge.color }}>
-                        {badge.label[0]}
-                      </span>
-                    </div>
+            <p className="text-xs mt-3 leading-relaxed" style={{ color: textMuted }}>
+              {planLimits.presentationsRemaining === Infinity
+                ? 'Unlimited Zapps available this month'
+                : `${planLimits.presentationsRemaining} Zapps left this month on this tier`}
+            </p>
+            <Link
+              href={isTopPlan ? '/app/settings' : '/plans'}
+              className="mt-5 block w-full text-center rounded-full py-3 font-bold text-white shadow-md"
+              style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}
+            >
+              {isTopPlan ? 'Manage Plan' : 'Explore Upgrades'}
+            </Link>
+          </div>
 
-                    {/* Title */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-[#111111] truncate">{p.title}</p>
-                      <p className="text-[10px] text-[#9CA3AF]">{p.questionsCount ?? 0} questions</p>
-                    </div>
-
-                    {/* Status badge */}
-                    <span
-                      className="text-[9px] font-bold uppercase px-2 py-0.5 rounded-md tracking-wide shrink-0"
-                      style={{ background: st.bg, color: st.color }}
-                    >
-                      {st.dot && <span className="inline-block w-1 h-1 rounded-full bg-green-600 mr-1 align-middle" />}
-                      {st.label}
-                    </span>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Link
-                        href={`/app/present/${p.id}`}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#F08700] hover:bg-orange-50 transition-colors"
-                        title="Go Live"
-                      >
-                        <Play className="w-3.5 h-3.5" />
-                      </Link>
-                      <Link
-                        href={`/app/create/${p.id}`}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#00A6A6] hover:bg-teal-50 transition-colors"
-                        title="Edit"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                      </Link>
-                      <button
-                        onClick={() => setConfirmDelete(p)}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#EF4444] hover:bg-red-50 transition-colors"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          )}
-        </div>
-
-        {/* Plan usage + impact visual */}
-        <div className="flex flex-col gap-4">
-
-          {/* Admin Panel card — admins only */}
           {isAdmin && (
             <Link
               href="/admin"
-              className="flex items-center gap-4 p-5 rounded-2xl transition-all group"
-              style={{
-                background: 'linear-gradient(135deg, rgba(240,135,0,0.12) 0%, rgba(240,135,0,0.06) 100%)',
-                border: '1px solid rgba(240,135,0,0.28)',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'linear-gradient(135deg, rgba(240,135,0,0.20) 0%, rgba(240,135,0,0.10) 100%)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'linear-gradient(135deg, rgba(240,135,0,0.12) 0%, rgba(240,135,0,0.06) 100%)')}
+              className="rounded-[1.75rem] p-6 block transition-opacity hover:opacity-95"
+              style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: softShadow }}
             >
-              <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: '#F08700' }}
-              >
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black" style={{ color: '#1A1A2E' }}>Admin Panel</p>
-                <p className="text-xs mt-0.5" style={{ color: '#C07800' }}>Users · Revenue · Sessions · Settings</p>
-              </div>
-              <div
-                className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-lg shrink-0"
-                style={{ background: '#F08700', color: '#FFFFFF' }}
-              >
-                Open →
-              </div>
+              <p className="font-bold text-lg" style={{ color: textStrong }}>
+                Admin panel
+              </p>
+              <p className="text-xs mt-1 leading-relaxed" style={{ color: textMuted }}>
+                Manage users, finance and platform settings.
+              </p>
             </Link>
           )}
 
-          {/* Plan usage card */}
-          <div className="glass-card p-5">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-base font-black text-[#111111]">Plan Usage</h2>
-              <span
-                className="text-[10px] font-black uppercase tracking-wide px-2.5 py-1 rounded-lg"
-                style={{
-                  background: plan.id === 'pro' ? '#F08700' : plan.id === 'free' ? '#6B7280' : '#00A6A6',
-                  color: '#fff',
-                }}
+          <div
+            className="rounded-[1.75rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: softShadow }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-4" style={{ color: labelMuted }}>
+              Quick actions
+            </p>
+            <div className="space-y-2">
+              <Link
+                href="/join"
+                className="w-full block rounded-full px-4 py-3 text-sm font-semibold text-center"
+                style={{ background: actionBg, color: isDark ? '#d6cff0' : '#5b21b6', border: `1px solid ${border}` }}
               >
-                {plan.name}
-              </span>
-            </div>
-
-            {/* Expiry notice */}
-            {user?.planExpiresAt && plan.id !== 'free' && (
-              <p className="text-[10px] text-[#9CA3AF] mb-4">
-                {planLimits.isPlanExpired
-                  ? <span className="text-red-500 font-semibold">Plan expired — upgrade to continue</span>
-                  : user?.planCancelledAt
-                  ? `Cancelled · Access until ${new Date(user.planExpiresAt).toLocaleDateString()}`
-                  : `Active until ${new Date(user.planExpiresAt).toLocaleDateString()}`
-                }
-              </p>
-            )}
-
-            <div className="space-y-4 mt-4">
-              {[
-                {
-                  label: 'Sessions (lifetime)',
-                  used: planLimits.lifetimePresentationsCreated,
-                  limit: maxPres,
-                  tooltip: 'Counts all sessions ever created, including deleted',
-                },
-                {
-                  label: 'Questions Built',
-                  used: totalQuestions,
-                  limit: plan.limits.maxQuestionsPerPresentation,
-                  tooltip: 'Per-session question limit',
-                },
-                {
-                  label: 'Max Participants',
-                  used: totalAudience,
-                  limit: plan.limits.maxParticipantsPerSession,
-                  tooltip: 'Max participants per live session',
-                },
-              ].map(({ label, used, limit }) => {
-                const pct    = Math.min(Math.round((used / limit) * 100), 100)
-                const isWarn = pct > 75
-                return (
-                  <div key={label}>
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-xs font-semibold text-[#374151]">{label}</span>
-                      <span className="text-xs font-bold" style={{ color: isWarn ? '#F08700' : '#9CA3AF' }}>
-                        {used}<span className="text-[#D1D5DB]">/{limit === 999 ? '∞' : limit}</span>
-                      </span>
-                    </div>
-                    <div className="usage-bar-track">
-                      <motion.div
-                        className={`usage-bar-fill ${isWarn ? 'usage-bar-fill-warning' : ''}`}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1], delay: 0.3 }}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex gap-2 mt-5">
-              <Link href="/plans" className="btn-primary flex-1 justify-center text-sm">
-                {plan.id === 'free' ? 'Upgrade Plan' : 'Change Plan'}
+                Open Join Screen
               </Link>
-              {plan.id !== 'free' && (
-                <Link href="/app/settings" className="btn-ghost text-sm px-3">
-                  Manage
-                </Link>
-              )}
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(`${window.location.origin}/join`)}
+                className="w-full rounded-full px-4 py-3 text-sm font-semibold text-center"
+                style={{ background: actionBg, color: isDark ? '#d6cff0' : '#5b21b6', border: `1px solid ${border}` }}
+              >
+                Copy Join Link
+              </button>
             </div>
           </div>
+        </section>
+      </div>
 
-          {/* Impact stats */}
-          <div className="glass-card p-5">
-            <h2 className="text-base font-black text-[#111111] mb-4">Impact</h2>
-
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Sessions',   value: sessionsRun,    bg: '#00A6A6', textColor: '#FFFFFF' }, // teal   → white
-                { label: 'Live Now',   value: liveNow,        bg: '#F08700', textColor: '#FFFFFF' }, // tiger  → white
-                { label: 'Questions',  value: totalQuestions, bg: '#EFCA08', textColor: '#111111' }, // amber  → black
-              ].map(({ label, value, bg, textColor }) => (
-                <div
-                  key={label}
-                  className="rounded-2xl p-3 text-center"
-                  style={{ background: bg }}
-                >
-                  <p className="text-2xl font-black" style={{ color: textColor }}>{value}</p>
-                  <p className="text-[10px] font-semibold mt-0.5" style={{ color: textColor === '#FFFFFF' ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.55)' }}>{label}</p>
-                </div>
-              ))}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !isDeleting && setConfirmDelete(null)}>
+          <div
+            className="w-full max-w-sm rounded-[1.5rem] p-6"
+            style={{ background: shellCard, border: `1px solid ${border}`, boxShadow: cardShadow }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,120,151,0.2)' }}>
+                <AlertTriangle className="w-5 h-5" style={{ color: '#ffb1cb' }} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold" style={{ color: textStrong }}>Delete Zapp?</h3>
+                <p className="text-sm" style={{ color: textMuted }}>{confirmDelete.title} will be permanently deleted.</p>
+              </div>
             </div>
-
-            {/* Decorative geometric accent — nod to the Bauhaus palette */}
-            <div className="mt-4 rounded-2xl overflow-hidden h-20 relative flex items-center justify-center gap-3"
-              style={{ background: '#F0F6F9' }}>
-              <div className="w-14 h-14 rounded-full" style={{ background: '#00A6A6', opacity: 0.7 }} />
-              <div className="w-14 h-14 rounded-2xl rotate-12" style={{ background: '#EFCA08', opacity: 0.7 }} />
-              <div className="w-14 h-14" style={{
-                background: '#F08700', opacity: 0.7,
-                clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)',
-              }} />
-              <div className="w-10 h-10 rounded-lg" style={{ background: '#BBDEF0', border: '3px solid #00A6A6' }} />
-              <p className="absolute inset-0 flex items-center justify-center text-[10px] font-black text-[#374151] tracking-widest uppercase opacity-40">
-                LiveZapp
-              </p>
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setConfirmDelete(null)} disabled={isDeleting} className="flex-1 rounded-full py-3 font-semibold" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6', border: `1px solid ${border}` }}>Cancel</button>
+              <button type="button" onClick={handleDelete} disabled={isDeleting} className="flex-1 rounded-full py-3 font-bold" style={{ background: '#7a2947', color: '#ffd9e4' }}>{isDeleting ? 'Deleting…' : 'Delete'}</button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    {/* ── Delete confirm modal ──────────────────────────────────────── */}
-    <AnimatePresence>
-      {confirmDelete && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-            onClick={() => !isDeleting && setConfirmDelete(null)}
-          />
-
-          {/* Dialog */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 8 }}
-            transition={{ duration: 0.18 }}
-            className="fixed z-50 inset-0 flex items-center justify-center p-4 pointer-events-none"
-          >
-            <div
-              className="w-full max-w-sm rounded-2xl p-6 pointer-events-auto"
-              style={{ background: '#FFFFFF', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
-            >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(239,68,68,0.1)' }}>
-                  <AlertTriangle className="w-5 h-5" style={{ color: '#EF4444' }} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base font-bold" style={{ color: '#111111' }}>Delete Zapp?</h3>
-                  <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-                    <span className="font-semibold" style={{ color: '#111111' }}>&quot;{confirmDelete.title}&quot;</span> will be permanently deleted. This cannot be undone.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 mt-5">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  disabled={isDeleting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
-                  style={{ background: '#F5F7FA', color: '#374151', border: '1px solid #E5E7EB' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-bold transition-colors disabled:opacity-50"
-                  style={{ background: '#EF4444', color: '#FFFFFF' }}
-                >
-                  {isDeleting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Deleting…
-                    </span>
-                  ) : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        </>
       )}
-    </AnimatePresence>
-    </>
+    </div>
   )
 }
+

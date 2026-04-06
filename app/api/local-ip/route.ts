@@ -4,8 +4,12 @@ import os from 'os'
 /**
  * Returns the server's local network IP address.
  * Used in dev so presenters can share a scannable URL on the same LAN.
+ * Disabled in production to avoid exposing host network details.
  */
 export function GET() {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ ip: null, disabled: true }, { status: 404 })
+  }
   const interfaces = os.networkInterfaces()
   let localIp: string | null = null
 

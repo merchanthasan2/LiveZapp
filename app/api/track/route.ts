@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { ref, push } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { adminDb } from '@/lib/server/firebaseAdmin'
 
 function parseUA(ua: string): { device: 'mobile' | 'tablet' | 'desktop'; os: string; browser: string } {
   // Device
@@ -154,7 +153,7 @@ export async function POST(req: NextRequest) {
       sessionId: sessionId ?? null,
     }
 
-    await push(ref(rtdb, 'analytics/pageviews'), record)
+    await adminDb().ref('analytics/pageviews').push(record)
 
     return NextResponse.json({ ok: true })
   } catch (err) {

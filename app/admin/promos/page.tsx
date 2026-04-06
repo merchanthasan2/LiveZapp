@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { ref, get, set, update } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
+import { SITE_URL } from '@/lib/site'
 import { PLANS } from '@/types/plans'
 import {
   Tag, Plus, Copy, Check, X, RefreshCw,
@@ -49,8 +50,6 @@ function generateCode(): string {
 }
 
 // ─── Create modal ─────────────────────────────────────────────────────────────
-
-const SITE_URL = 'https://live-zapp.com'
 
 function CreateModal({ onClose, onCreate }: {
   onClose: () => void

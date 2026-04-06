@@ -1,64 +1,63 @@
-# LiveZapp — Phased Roadmap
+# LiveZapp - Phased Roadmap
 
-## ✅ Phase 1 — Scaffold & Design System
-Config, Tailwind tokens, TypeScript types, Firebase stubs, global CSS.
+## Completed foundation work
 
-## ✅ Phase 2 — Shared Layout
-Navbar (blurred, mobile slide-over), Footer, root `app/layout.tsx`.
+### Phase 1 - Scaffold and design system
+- Next.js 14 App Router setup
+- Tailwind design tokens and shared utilities
+- TypeScript, Jest, and build configuration
 
-## ✅ Phase 3 — Home Page
-Hero, Features, How it works, Pricing preview, QuantumStep section, Testimonials.
+### Phase 2 - Shared layout and marketing pages
+- Global layout, navbar, footer
+- Home page, plans, about, and contact pages
 
-## ✅ Phase 4 — Marketing Pages
-`/plans` (full table + checkmarks), `/about`, `/contact` (React Hook Form + Zod).
+### Phase 3 - Auth and account entry
+- Login and register flows
+- Firebase Auth bootstrap
+- Protected app/admin layouts
 
-## ✅ Phase 5 — Auth Pages
-`/login` and `/register` with glassmorphism cards, RHF + Zod validation, stub submit handlers.
+### Phase 4 - Core app shell and realtime data
+- Dashboard backed by RTDB services
+- Presentation CRUD and question CRUD
+- Join-code generation and admin config persistence
 
-## ✅ Phase 6 — App Shells
-`/app/dashboard` (presentations table, usage bars), `/admin` (isAdmin guard, stat cards, Recharts chart), nested layouts.
+### Phase 5 - Presentation builder
+- Multi-step create flow
+- Question editors for quiz, poll, Q&A, word cloud, and feedback
+- Inline/live preview panel inside the builder
 
-## ✅ Phase 7 — Tests & Docs
-Jest + RTL tests for Navbar and PricingCards. README.md, docs/architecture.md, docs/design-system.md.
+### Phase 6 - Live session engine
+- Presenter view with realtime controls and results
+- Participant join-by-code flow
+- Leaderboard support for quiz sessions
+
+### Phase 7 - Admin tooling
+- Traffic analytics dashboard with date filtering
+- Admin overview stat cards via `AdminStatsService`
+- Users, sessions, promos, plans, SEO, and financial admin pages
+
+### Phase 8 - Payments baseline
+- PayPal order endpoints
+- Plan limit enforcement in backend services
+
+### Phase 9 - Test and tooling baseline
+- Jest smoke tests for navbar and pricing preview
+- Shared Jest setup/mocks
+- Checked-in ESLint configuration
 
 ---
 
-## 🔜 Phase 8 — Firebase Authentication
-- [ ] Add real Firebase config to `.env.local`
-- [ ] Initialize Firebase in `lib/firebase.ts`
-- [ ] Replace `useAuth` stub with `onAuthStateChanged` listener
-- [ ] Protect `/app/*` and `/admin` with Next.js middleware
-- [ ] Send confirmation email on register
+## Open work
 
-## 🔜 Phase 9 — Firestore Data Layer
-- [ ] Create Firestore collections: `users`, `presentations`, `questions`, `sessions`
-- [ ] Replace `MOCK_PRESENTATIONS` with real Firestore reads
-- [ ] Write presentation CRUD operations via `lib/presentations.ts`
-- [ ] Add React Query for data fetching and cache invalidation
+### Product / UX
+- Decide whether the current inline builder preview is sufficient or if a dedicated pre-live review step should be added
 
-## 🔜 Phase 10 — Presentation Builder
-- [ ] `/app/create` — multi-step presentation creation wizard
-- [ ] Question types: multiple choice, poll, word cloud, open text
-- [ ] Preview mode before going live
+### Billing lifecycle
+- Add webhook-backed upgrade/downgrade lifecycle handling
 
-## 🔜 Phase 11 — Live Session Engine
-- [ ] Firebase RTDB or Firestore for real-time audience response updates
-- [ ] Presenter view: display live charts and results as responses arrive
-- [ ] Participant view: join by code, submit answers, see leaderboard
-
-## 🔜 Phase 12 — Admin Analytics
-- [ ] Connect `/admin` traffic chart to real data (Google Analytics / Firestore)
-- [ ] Replace mock stat cards with Firestore aggregation queries
-- [ ] Add date-range filtering for traffic charts
-
-## 🔜 Phase 13 — Payments & Plans
-- [ ] Integrate Stripe (or Razorpay for India) for subscription billing
-- [ ] Enforce plan limits on presentations, questions, and audience size server-side
-- [ ] Upgrade / downgrade flows with Stripe webhooks
-
-## 🔜 Phase 14 — Polish & Launch
-- [ ] Add `/privacy` and `/terms` pages (legal content)
-- [ ] SEO: sitemap.xml, robots.txt, structured data
-- [ ] Performance audit: Lighthouse score target 90+
-- [ ] Deploy to Vercel with `livezapp.quantumstep.in` subdomain
-- [ ] Set up CI/CD with GitHub Actions
+### Launch checklist
+- Add `/privacy` and `/terms`
+- Add `robots.txt` and `sitemap.xml`
+- Run Lighthouse/performance polish toward the 90+ target
+- Finalize deployment to the production domain
+- Add CI/CD automation

@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
+import RouteFrame from '@/components/RouteFrame'
 import { ThemeProvider } from '@/lib/contexts/ThemeContext'
+import { SITE_URL } from '@/lib/site'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -22,11 +22,11 @@ export const metadata: Metadata = {
   keywords: ['interactive presentations', 'live polls', 'audience engagement', 'quizzes', 'LiveZapp', 'QuantumStep'],
   authors: [{ name: 'QuantumStep', url: 'https://quantumstep.in' }],
   creator: 'QuantumStep',
-  metadataBase: new URL('https://livezapp.com'),
+  metadataBase: new URL(SITE_URL),
   openGraph: {
     title: 'LiveZapp – Live Interactive Presentations',
     description: 'Create real-time quizzes, polls, and audience Q&A. Built by QuantumStep.',
-    url: 'https://livezapp.com',
+    url: SITE_URL,
     siteName: 'LiveZapp',
     locale: 'en_US',
     type: 'website',
@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   },
   robots: { index: true, follow: true },
   icons: {
-    icon: '/LiveZapp Logo only.png',
-    shortcut: '/LiveZapp Logo only.png',
-    apple: '/LiveZapp Logo only.png',
+    icon: '/brand/livezapp-logo-only.png',
+    shortcut: '/brand/livezapp-logo-only.png',
+    apple: '/brand/livezapp-logo-only.png',
   },
 }
 
@@ -49,11 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans antialiased">
         <ThemeProvider>
-          <Navbar />
-          <main className="pt-20">
-            {children}
-          </main>
-          <Footer />
+          <RouteFrame>{children}</RouteFrame>
         </ThemeProvider>
       </body>
     </html>

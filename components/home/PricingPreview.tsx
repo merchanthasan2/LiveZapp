@@ -27,7 +27,7 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
       {plan.isRecommended && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
           <div className="flex items-center gap-1.5 px-4 py-1.5 gradient-primary rounded-full shadow-btn-primary">
-            <Star className="w-3 h-3 text-yellow-300 fill-yellow-300" />
+            <Star className="w-3 h-3 text-primary fill-primary" />
             <span className="text-xs font-bold text-white">Most popular</span>
           </div>
         </div>
@@ -56,7 +56,7 @@ function PlanCard({ plan, index }: { plan: Plan; index: number }) {
       <dl className="space-y-2.5 mb-6 flex-1">
         {[
           {
-            label: 'Presentations',
+            label: 'Monthly Zapps',
             value: plan.limits.maxPresentations === 'unlimited' ? '∞ Unlimited' : String(plan.limits.maxPresentations),
           },
           { label: 'Questions/session', value: String(plan.limits.maxQuestionsPerPresentation) },

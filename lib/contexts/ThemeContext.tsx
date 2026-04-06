@@ -1,6 +1,7 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 
 type Theme = 'light' | 'dark'
 
@@ -16,28 +17,37 @@ const ThemeContext = createContext<ThemeContextValue>({
   isDark: false,
 })
 
+function resolveThemeContext(pathname: string) {
+  const immersive = pathname.startsWith('/app/present/')
+  return {
+    defaultTheme: immersive ? 'dark' as Theme : 'light' as Theme,
+    storageKey: immersive ? 'lz-theme-immersive' : 'lz-theme-standard',
+  }
+}
+
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light')
+  const pathname = usePathname() || '/'
+  const { defaultTheme, storageKey } = useMemo(() => resolveThemeContext(pathname), [pathname])
+  const [theme, setTheme] = useState<Theme>(defaultTheme)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    const saved = localStorage.getItem('lz-theme') as Theme | null
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-    const resolved = saved ?? (prefersDark ? 'dark' : 'light')
-    setTheme(resolved)
   }, [])
 
   useEffect(() => {
     if (!mounted) return
+    const saved = localStorage.getItem(storageKey) as Theme | null
+    const resolved = saved ?? defaultTheme
+    setTheme(resolved)
+  }, [defaultTheme, mounted, storageKey])
+
+  useEffect(() => {
+    if (!mounted) return
     const html = document.documentElement
-    if (theme === 'dark') {
-      html.classList.add('dark')
-    } else {
-      html.classList.remove('dark')
-    }
-    localStorage.setItem('lz-theme', theme)
-  }, [theme, mounted])
+    html.classList.toggle('dark', theme === 'dark')
+    localStorage.setItem(storageKey, theme)
+  }, [theme, mounted, storageKey])
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light')
 

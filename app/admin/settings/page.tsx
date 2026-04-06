@@ -3,16 +3,18 @@
 import { useState, useEffect } from 'react'
 import {
   Settings2, QrCode, Hash, CheckCircle2, Smartphone,
-  Info, ExternalLink, Copy, Check, Loader2,
+  Info, ExternalLink, Copy, Check, Loader2, CreditCard,
 } from 'lucide-react'
 import {
   DEFAULT_JOIN_CONFIG,
   DEFAULT_QR_SETTINGS,
-  generateJoinCode,
+  generateJoinCodeSync,
   type JoinConfig,
   type QRSettings,
 } from '@/types/join'
 import { AdminConfigService } from '@/lib/services/AdminConfigService'
+import { SITE_HOST, toAbsoluteUrl } from '@/lib/site'
+import { QRCodeSVG } from 'qrcode.react'
 
 // ─── QR Code preview (SVG placeholder — replace with `qrcode.react` in Phase 9) ────
 function QRPreview({
@@ -22,31 +24,24 @@ function QRPreview({
   joinCode: string
   codeLength: number
 }) {
-  const joinUrl = `https://livezapp.quantumstep.in/join/${joinCode}`
+  const joinUrl = toAbsoluteUrl(`/join/${joinCode}`)
 
   return (
     <div className="flex flex-col items-center gap-4 p-8 glass-card rounded-3xl">
-      {/* QR placeholder SVG — represents the QR grid visually */}
+      {/* Real QR for the join URL */}
       <div className="relative w-48 h-48 bg-white rounded-2xl shadow-glass flex items-center justify-center overflow-hidden border-2 border-primary/20">
-        {/* Simulated QR grid pattern */}
-        <div className="absolute inset-3 grid grid-cols-7 gap-0.5">
-          {Array.from({ length: 49 }).map((_, i) => (
-            <div
-              key={i}
-              className={`rounded-sm ${
-                // Simulate QR finder patterns at corners + random modules
-                (i < 7 && (i % 7 === 0 || i % 7 === 6)) ||
-                (i >= 42 && (i % 7 === 0 || i % 7 === 6)) ||
-                (i % 7 === 0 && i < 42) ||
-                (Math.sin(i * 7 + 3) > 0.2)
-                  ? 'bg-text-primary'
-                  : 'bg-transparent'
-              }`}
-            />
-          ))}
+        <div className="absolute inset-0 flex items-center justify-center p-3">
+          <QRCodeSVG
+            value={joinUrl}
+            size={168}
+            bgColor="#ffffff"
+            fgColor="#111111"
+            level="M"
+          />
         </div>
-        {/* LiveZapp logo in centre */}
-        <div className="z-10 w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-btn-primary">
+
+        {/* LiveZapp logo in centre (decorative overlay) */}
+        <div className="z-10 w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-btn-primary pointer-events-none">
           <QrCode className="w-5 h-5 text-white" />
         </div>
       </div>
@@ -61,7 +56,7 @@ function QRPreview({
         </p>
         <p className="text-xs text-text-secondary">
           or visit{' '}
-          <span className="text-primary font-semibold">livezapp.quantumstep.in/join</span>
+          <span className="text-primary font-semibold">{SITE_HOST}/join</span>
         </p>
       </div>
 
@@ -84,8 +79,9 @@ function QRPreview({
 export default function AdminSettingsPage() {
   const [config, setConfig] = useState<JoinConfig>(DEFAULT_JOIN_CONFIG)
   const [qrSettings, setQrSettings] = useState<QRSettings>(DEFAULT_QR_SETTINGS)
+  const [requireAddressConfirmationOnPurchase, setRequireAddressConfirmationOnPurchase] = useState(false)
   const [previewCode, setPreviewCode] = useState<string>(() =>
-    generateJoinCode(DEFAULT_JOIN_CONFIG.defaultCodeLength)
+    generateJoinCodeSync(DEFAULT_JOIN_CONFIG.defaultCodeLength)
   )
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -95,10 +91,11 @@ export default function AdminSettingsPage() {
   // Load persisted config from RTDB on mount
   useEffect(() => {
     AdminConfigService.getConfig()
-      .then(({ joinConfig, qrSettings: qr }) => {
+      .then(({ joinConfig, qrSettings: qr, checkoutPolicy }) => {
         setConfig(joinConfig)
         setQrSettings(qr)
-        setPreviewCode(generateJoinCode(joinConfig.defaultCodeLength))
+        setRequireAddressConfirmationOnPurchase(checkoutPolicy.requireAddressConfirmationOnPurchase)
+        setPreviewCode(generateJoinCodeSync(joinConfig.defaultCodeLength))
       })
       .catch(err => console.error('[AdminSettings] Failed to load config:', err))
       .finally(() => setIsLoading(false))
@@ -108,17 +105,23 @@ export default function AdminSettingsPage() {
   const handleCodeLengthChange = (len: number) => {
     setConfig(c => ({ ...c, defaultCodeLength: len }))
     setQrSettings(q => ({ ...q, codeLength: len }))
-    setPreviewCode(generateJoinCode(len))
+    setPreviewCode(generateJoinCodeSync(len))
   }
 
   const handleRegenerate = () => {
-    setPreviewCode(generateJoinCode(config.defaultCodeLength))
+    setPreviewCode(generateJoinCodeSync(config.defaultCodeLength))
   }
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await AdminConfigService.saveConfig({ joinConfig: config, qrSettings })
+      await AdminConfigService.saveConfig({
+        joinConfig: config,
+        qrSettings,
+        checkoutPolicy: {
+          requireAddressConfirmationOnPurchase,
+        },
+      })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -129,7 +132,7 @@ export default function AdminSettingsPage() {
   }
 
   const handleCopyUrl = () => {
-    const url = `https://livezapp.quantumstep.in/join/${previewCode}`
+    const url = toAbsoluteUrl(`/join/${previewCode}`)
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
@@ -232,7 +235,7 @@ export default function AdminSettingsPage() {
                     onClick={() => {
                       setQrSettings(q => ({ ...q, codeLength: len }))
                       setConfig(c => ({ ...c, defaultCodeLength: len }))
-                      setPreviewCode(generateJoinCode(len))
+                      setPreviewCode(generateJoinCodeSync(len))
                     }}
                     className={`flex-1 py-2.5 rounded-2xl text-xs font-bold border transition-all duration-200 ${
                       qrSettings.codeLength === len
@@ -265,6 +268,40 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-text-secondary leading-relaxed">{tip}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Checkout policy */}
+          <section className="glass-card p-7">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center icon-bg-primary">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-text-primary">Checkout policy</h2>
+                <p className="text-xs text-text-secondary">
+                  Control whether buyers must re-save address details before completing payment.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between rounded-2xl px-4 py-3 border border-white/50 bg-white/60">
+              <div>
+                <p className="text-sm font-semibold text-text-primary">Require address re-confirmation on purchase</p>
+                <p className="text-xs text-text-secondary mt-0.5">Applies globally, with optional per-user overrides in Admin Users.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequireAddressConfirmationOnPurchase(v => !v)}
+                className="relative w-12 h-7 rounded-full transition-all"
+                style={{ background: requireAddressConfirmationOnPurchase ? '#650cd9' : 'rgba(123,116,135,0.24)' }}
+                aria-pressed={requireAddressConfirmationOnPurchase}
+              >
+                <span
+                  className="absolute top-0.5 h-6 w-6 rounded-full bg-white transition-all"
+                  style={{ left: requireAddressConfirmationOnPurchase ? '22px' : '2px' }}
+                />
+              </button>
             </div>
           </section>
 
@@ -322,7 +359,6 @@ export default function AdminSettingsPage() {
 
           <p className="text-[11px] text-text-secondary text-center">
             This preview updates live. The actual QR image is generated per session.
-            {/* TODO Phase 9: replace SVG placeholder with qrcode.react */}
           </p>
         </div>
       </div>

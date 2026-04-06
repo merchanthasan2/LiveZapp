@@ -4,7 +4,7 @@
 export type PlanId = 'free' | 'basic' | 'regular' | 'pro'
 
 export interface PlanLimits {
-  /** Lifetime total sessions a user can ever create (including deleted). */
+  /** Max Zapps per month (plan catalogue; same field used for all tiers including Free). */
   maxPresentations: number | 'unlimited'
   maxQuestionsPerPresentation: number
   maxParticipantsPerSession: number

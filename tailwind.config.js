@@ -8,35 +8,43 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* ── Brand palette ── */
-        'pale-sky':      '#BBDEF0',
-        teal:            '#00A6A6',
-        'teal-hover':    '#008A8A',
-        amber:           '#EFCA08',
-        'golden-orange': '#F49F0A',
-        'deep-orange':   '#F08700',
-        success:         '#22C55E',
-        danger:          '#EF4444',
+        /* ── New brand palette ── */
+        ink:        '#000814',
+        prussian:   '#001d3d',
+        navy:       '#003566',
+        yellow:     '#650cd9',
+        gold:       '#8f63ff',
+        persian:    '#072ac8',
+        dodger:     '#1e96fc',
+        icy:        '#a2d6f9',
+        success:    '#22C55E',
+        danger:     '#EF4444',
 
         /* ── Surfaces ── */
-        bg:              '#F5F7FA',
-        'bg-base':       '#F5F7FA',
-        'bg-card':       '#FFFFFF',
-        sidebar:         '#BBDEF0',
+        bg:         '#000814',
+        'bg-base':  '#000814',
+        'bg-card':  '#001d3d',
+        sidebar:    '#001d3d',
 
         /* ── Text ── */
-        'text-primary':   '#1A1A2E',
-        'text-secondary': '#6B7280',
-        'text-muted':     '#9CA3AF',
+        'text-primary':   '#FFFFFF',
+        'text-secondary': 'rgba(255,255,255,0.65)',
+        'text-muted':     'rgba(255,255,255,0.38)',
 
-        /* ── Legacy aliases (keep existing tailwind classes working) ── */
-        primary:         '#00A6A6',
-        'primary-hover': '#008A8A',
-        secondary:       '#EFCA08',
-        accent:          '#F49F0A',
-        hot:             '#F08700',
-        live:            '#F08700',
-        sky:             '#BBDEF0',
+        /* ── Semantic aliases — keeps existing component classes working ── */
+        primary:         '#650cd9',
+        'primary-hover': '#7a3af0',
+        secondary:       '#1e96fc',
+        accent:          '#650cd9',
+        hot:             '#650cd9',
+        live:            '#650cd9',
+        teal:            '#650cd9',
+        'teal-hover':    '#7a3af0',
+        amber:           '#7a3af0',
+        'golden-orange': '#650cd9',
+        'deep-orange':   '#650cd9',
+        'pale-sky':      '#001d3d',
+        sky:             '#001d3d',
       },
 
       fontFamily: {
@@ -57,17 +65,17 @@ module.exports = {
       },
 
       boxShadow: {
-        card:            '0 1px 4px rgba(0,0,0,0.06)',
-        'card-hover':    '0 4px 16px rgba(0,0,0,0.10)',
-        'btn-primary':   '0 2px 8px rgba(0,166,166,0.25)',
+        card:          '0 1px 4px rgba(0,0,0,0.40)',
+        'card-hover':  '0 8px 32px rgba(0,0,0,0.55)',
+        'btn-primary': '0 2px 12px rgba(101,12,217,0.35)',
       },
 
       backgroundImage: {
-        'gradient-main':    'linear-gradient(135deg, #F5F7FA 0%, #EAF0F5 100%)',
-        'gradient-primary': 'linear-gradient(135deg, #00A6A6 0%, #008A8A 100%)',
-        'gradient-amber':   'linear-gradient(135deg, #EFCA08 0%, #D4B000 100%)',
-        'gradient-live':    'linear-gradient(135deg, #F08700 0%, #D97400 100%)',
-        'gradient-accent':  'linear-gradient(135deg, #F49F0A 0%, #F08700 100%)',
+        'gradient-main':    'linear-gradient(135deg, #000814 0%, #001d3d 100%)',
+        'gradient-primary': 'linear-gradient(135deg, #650cd9 0%, #8f63ff 100%)',
+        'gradient-amber':   'linear-gradient(135deg, #7a3af0 0%, #650cd9 100%)',
+        'gradient-live':    'linear-gradient(135deg, #650cd9 0%, #8f63ff 100%)',
+        'gradient-accent':  'linear-gradient(135deg, #7a3af0 0%, #650cd9 100%)',
         'gradient-success': 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
       },
 
@@ -87,8 +95,8 @@ module.exports = {
           '50%':     { opacity: '0.35', transform: 'scale(0.72)' },
         },
         glowRing: {
-          '0%,100%': { boxShadow: '0 0 0 0 rgba(240,135,0,0.55)' },
-          '50%':     { boxShadow: '0 0 0 8px rgba(240,135,0,0)' },
+          '0%,100%': { boxShadow: '0 0 0 0 rgba(101,12,217,0.55)' },
+          '50%':     { boxShadow: '0 0 0 10px rgba(101,12,217,0)' },
         },
         shimmer: {
           '0%':   { backgroundPosition: '-200% 0' },

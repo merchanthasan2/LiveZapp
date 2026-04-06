@@ -15,6 +15,7 @@ import { ref, update, get, set } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
+import { AdminConfigService } from '@/lib/services/AdminConfigService'
 import { PLANS, annualSavingPercent } from '@/types/plans'
 import type { PlanId } from '@/types/plans'
 
@@ -108,6 +109,8 @@ function CheckoutContent() {
   const [payStatus, setPayStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
   const [payError, setPayError] = useState('')
   const [profileComplete, setProfileComplete] = useState(false)
+  const [requiresAddressConfirmation, setRequiresAddressConfirmation] = useState(false)
+  const [addressConfirmedThisSession, setAddressConfirmedThisSession] = useState(false)
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -120,8 +123,21 @@ function CheckoutContent() {
   useEffect(() => {
     if (!user) return
     const fetchProfile = async () => {
-      const snap = await get(ref(rtdb, `users/${user.id}/profile`))
+      const [snap, userSnap, adminConfig] = await Promise.all([
+        get(ref(rtdb, `users/${user.id}/profile`)),
+        get(ref(rtdb, `users/${user.id}`)),
+        AdminConfigService.getConfig().catch(() => null),
+      ])
+
       const saved = snap.exists() ? snap.val() : {}
+      const userRoot = userSnap.exists() ? userSnap.val() : {}
+      const requiresGlobalConfirm = !!adminConfig?.checkoutPolicy?.requireAddressConfirmationOnPurchase
+      const requiresUserConfirm = !!userRoot?.requireAddressConfirmationOnPurchase
+      const requiresConfirm = requiresGlobalConfirm || requiresUserConfirm
+
+      setRequiresAddressConfirmation(requiresConfirm)
+      setAddressConfirmedThisSession(!requiresConfirm)
+
       setProfile(prev => ({
         ...prev,
         fullName: saved.fullName || user.name || '',
@@ -135,18 +151,19 @@ function CheckoutContent() {
         postalCode: saved.postalCode || '',
         country: saved.country || '',
       }))
-      // If profile was already saved, mark complete
-      if (saved.fullName && saved.phone && saved.addressLine1 && saved.city) {
-        setProfileComplete(true)
-        setProfileSaved(true)
-      }
+
+      const hasRequiredProfile = !!(saved.fullName && saved.phone && saved.addressLine1 && saved.city)
+      setProfileComplete(hasRequiredProfile)
+      setProfileSaved(hasRequiredProfile && !requiresConfirm)
     }
     fetchProfile()
   }, [user])
 
-  const set = (key: keyof ProfileData, value: string) => {
+  const setProfileField = (key: keyof ProfileData, value: string) => {
     setProfile(prev => ({ ...prev, [key]: value }))
     if (profileErrors[key]) setProfileErrors(prev => ({ ...prev, [key]: undefined }))
+    if (profileSaved) setProfileSaved(false)
+    if (addressConfirmedThisSession) setAddressConfirmedThisSession(false)
   }
 
   const validateProfile = (): boolean => {
@@ -163,9 +180,14 @@ function CheckoutContent() {
 
   const saveProfile = async () => {
     if (!validateProfile() || !user) return
+    const confirmedAt = new Date().toISOString()
     await update(ref(rtdb, `users/${user.id}/profile`), profile)
+    await update(ref(rtdb, `users/${user.id}`), {
+      lastAddressConfirmationAt: confirmedAt,
+    })
     setProfileSaved(true)
     setProfileComplete(true)
+    setAddressConfirmedThisSession(true)
   }
 
   // ── PayPal callbacks ──────────────────────────────────────────────────────
@@ -263,7 +285,8 @@ function CheckoutContent() {
     )
   }
 
-  const canPay = profileComplete && (billing === 'annual' || recurringAck)
+  const addressConfirmationDone = !requiresAddressConfirmation || addressConfirmedThisSession
+  const canPay = profileComplete && addressConfirmationDone && (billing === 'annual' || recurringAck)
 
   return (
     <div className="min-h-screen py-12 px-4" style={{ background: '#0A0E1A' }}>
@@ -378,13 +401,13 @@ function CheckoutContent() {
                     label="Full Name" id="fullName" required
                     placeholder="John Smith"
                     value={profile.fullName}
-                    onChange={e => set('fullName', e.target.value)}
+                    onChange={e => setProfileField('fullName', e.target.value)}
                   />
                   <InputField
                     label="Email" id="email" type="email" required
                     placeholder="you@example.com"
                     value={profile.email}
-                    onChange={e => set('email', e.target.value)}
+                    onChange={e => setProfileField('email', e.target.value)}
                   />
                 </div>
                 {(profileErrors.fullName || profileErrors.email) && (
@@ -396,12 +419,12 @@ function CheckoutContent() {
                     label="Phone Number" id="phone" type="tel" required
                     placeholder="+1 555 000 0000"
                     value={profile.phone}
-                    onChange={e => set('phone', e.target.value)}
+                    onChange={e => setProfileField('phone', e.target.value)}
                   />
                   <InputField
                     label="Date of Birth" id="dob" type="date"
                     value={profile.dateOfBirth}
-                    onChange={e => set('dateOfBirth', e.target.value)}
+                    onChange={e => setProfileField('dateOfBirth', e.target.value)}
                   />
                 </div>
                 {profileErrors.phone && <p className="text-xs text-red-400">{profileErrors.phone}</p>}
@@ -426,26 +449,26 @@ function CheckoutContent() {
                         label="Address Line 1" id="addr1" required
                         placeholder="123 Main Street"
                         value={profile.addressLine1}
-                        onChange={e => set('addressLine1', e.target.value)}
+                        onChange={e => setProfileField('addressLine1', e.target.value)}
                       />
                       <InputField
                         label="Address Line 2" id="addr2"
                         placeholder="Apt, suite, floor (optional)"
                         value={profile.addressLine2}
-                        onChange={e => set('addressLine2', e.target.value)}
+                        onChange={e => setProfileField('addressLine2', e.target.value)}
                       />
                       <div className="grid grid-cols-2 gap-3">
                         <InputField
                           label="City" id="city" required
                           placeholder="Mumbai"
                           value={profile.city}
-                          onChange={e => set('city', e.target.value)}
+                          onChange={e => setProfileField('city', e.target.value)}
                         />
                         <InputField
                           label="State / Province" id="state"
                           placeholder="Maharashtra"
                           value={profile.state}
-                          onChange={e => set('state', e.target.value)}
+                          onChange={e => setProfileField('state', e.target.value)}
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
@@ -453,13 +476,13 @@ function CheckoutContent() {
                           label="Postal Code" id="postal"
                           placeholder="400001"
                           value={profile.postalCode}
-                          onChange={e => set('postalCode', e.target.value)}
+                          onChange={e => setProfileField('postalCode', e.target.value)}
                         />
                         <InputField
                           label="Country" id="country" required
                           placeholder="India"
                           value={profile.country}
-                          onChange={e => set('country', e.target.value)}
+                          onChange={e => setProfileField('country', e.target.value)}
                         />
                       </div>
                     </div>
@@ -480,6 +503,11 @@ function CheckoutContent() {
                     <><Check className="w-4 h-4" /> Details Saved</>
                   ) : 'Save Details & Continue'}
                 </button>
+                {requiresAddressConfirmation && !addressConfirmedThisSession && (
+                  <p className="text-xs text-yellow-300">
+                    Address confirmation required: save your details once in this checkout session before payment.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -525,7 +553,7 @@ function CheckoutContent() {
                 style={{ borderColor: 'rgba(84,120,255,0.12)' }}
               >
                 {[
-                  [`Sessions (lifetime)`, plan.limits.maxPresentations === 'unlimited' ? 'Unlimited' : `${plan.limits.maxPresentations}`],
+                  [`Sessions (monthly)`, plan.limits.maxPresentations === 'unlimited' ? 'Unlimited' : `${plan.limits.maxPresentations}`],
                   [`Max participants`, plan.limits.maxParticipantsPerSession.toLocaleString()],
                   [`Questions / session`, `${plan.limits.maxQuestionsPerPresentation}`],
                   [`Live at once`, `${plan.limits.maxActiveSessions}`],
@@ -596,6 +624,18 @@ function CheckoutContent() {
               </div>
             )}
 
+            {!addressConfirmationDone && (
+              <div
+                className="flex items-start gap-3 p-4 rounded-xl"
+                style={{ background: 'rgba(250,204,21,0.10)', border: '1px solid rgba(250,204,21,0.22)' }}
+              >
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: '#FACC15' }} />
+                <p className="text-xs" style={{ color: '#FDE68A' }}>
+                  Your account requires address re-confirmation for purchases. Save details above to continue.
+                </p>
+              </div>
+            )}
+
             {/* Error */}
             {payStatus === 'error' && (
               <div
@@ -631,7 +671,9 @@ function CheckoutContent() {
                   <p className="text-center text-xs text-white/30 mt-2">
                     {!profileComplete
                       ? 'Complete your details above to unlock payment'
-                      : 'Please confirm the recurring charge above'}
+                      : !addressConfirmationDone
+                        ? 'Save your details to confirm billing address before payment'
+                        : 'Please confirm the recurring charge above'}
                   </p>
                 )}
               </div>

@@ -165,6 +165,29 @@ export const LiveSessionService = {
   },
 
   /**
+   * One-time fetch of all responses for a question.
+   * Path: live_sessions/{code}/responses/{questionId}
+   */
+  async getResponsesForQuestion(
+    joinCode: string,
+    questionId: string,
+  ): Promise<Record<string, ParticipantResponse>> {
+    const snap = await get(ref(rtdb, `live_sessions/${joinCode}/responses/${questionId}`))
+    return snap.exists() ? (snap.val() as Record<string, ParticipantResponse>) : {}
+  },
+
+  /**
+   * One-time fetch of all participants for a session.
+   * Path: live_sessions/{code}/participants/{participantId}
+   */
+  async getParticipants(
+    joinCode: string,
+  ): Promise<Record<string, { name?: string; joinedAt?: string }>> {
+    const snap = await get(ref(rtdb, `live_sessions/${joinCode}/participants`))
+    return snap.exists() ? (snap.val() as Record<string, { name?: string; joinedAt?: string }>) : {}
+  },
+
+  /**
    * Real-time subscription to participant list.
    * Returns an unsubscribe function.
    */

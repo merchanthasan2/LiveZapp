@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ref, get, set } from 'firebase/database'
 import { rtdb } from '@/lib/firebase'
+import { DEFAULT_ROBOTS_TXT, SITE_HOST, toAbsoluteUrl } from '@/lib/site'
 import {
   Search, Globe, CheckCircle2, AlertCircle,
   Save, RefreshCw, Loader2, ExternalLink,
@@ -30,16 +31,7 @@ const DEFAULT_CONFIG: SeoConfig = {
   googleVerification:     '',
   bingVerification:       '',
   ga4MeasurementId:       '',
-  robotsTxtContent: `User-agent: *
-Allow: /
-Allow: /plans
-Allow: /about
-Allow: /contact
-Disallow: /admin
-Disallow: /app
-Disallow: /join
-Disallow: /checkout
-Sitemap: https://livezapp.com/sitemap.xml`,
+  robotsTxtContent:       DEFAULT_ROBOTS_TXT,
   updatedAt: null,
   updatedBy: null,
 }
@@ -251,7 +243,7 @@ export default function AdminSeoPage() {
               hint="1200×630px image shown when pages are shared on social media"
               value={config.defaultOgImageUrl}
               onChange={v => set_('defaultOgImageUrl', v)}
-              placeholder="https://livezapp.com/og-image.png"
+              placeholder={toAbsoluteUrl('/og-image.png')}
             />
 
             {/* SERP preview */}
@@ -259,7 +251,7 @@ export default function AdminSeoPage() {
               <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: '#9CA3AF' }}>SERP preview</p>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-4 h-4 rounded-full" style={{ background: '#00A6A6' }} />
-                <span className="text-xs" style={{ color: '#1A0A6B' }}>livezapp.com</span>
+                <span className="text-xs" style={{ color: '#1A0A6B' }}>{SITE_HOST}</span>
               </div>
               <p className="text-base font-medium" style={{ color: '#1558D6' }}>
                 {config.siteTitle || 'Page title'}

@@ -1,211 +1,102 @@
-# LiveZapp — Implementation Plan
+# LiveZapp - Implementation Plan
 
-**Goal:** Production-ready Next.js 14 App Router SaaS for interactive presentations & live audience engagement. Visual style: glassmorphism, pastel gradients, modern typography.
+## Current snapshot
+
+As of 2026-04-05, the application is in a stable development state:
+
+- Production build passes
+- TypeScript check passes
+- Jest suite passes
+- ESLint is configured and runs cleanly apart from existing hook-dependency warnings
+- Firebase Auth and RTDB are active in the main app flow
 
 ---
 
-## Stack (Locked)
+## Locked stack
 
 | Layer | Choice |
 |---|---|
-| Framework | Next.js 14+ App Router |
+| Framework | Next.js 14 App Router |
 | Language | TypeScript |
 | Styling | Tailwind CSS |
-| Components | RSC by default; `"use client"` for forms/charts/interactive |
-| State | Zustand skeleton + context; placeholder hooks for React Query & Firebase |
-| Charts | Recharts (mock data) |
 | Forms | React Hook Form + Zod |
-| Icons | Lucide React |
-| Animation | Framer Motion (subtle) |
+| Animation | Framer Motion |
+| Charts | Recharts |
+| Auth | Firebase Auth |
+| Live data | Firebase Realtime Database |
+| Admin analytics | Firestore when available, RTDB fallback |
+| Payments | PayPal via Next.js API routes |
 | Tests | Jest + React Testing Library |
+| Linting | ESLint via `eslint-config-next` |
 
 ---
 
-## Phase 1 — Scaffold & Design System ✅
+## Completed work
 
-- `package.json` — all deps installed
-- `tailwind.config.js` — custom colors, gradients, glass shadows, `glass-card` / `btn-primary` utilities
-- `postcss.config.mjs` — ESM `export default` (CommonJS bug fixed)
-- `tsconfig.json`, `next.config.js`, `jest.config.js`
-- `app/globals.css` — CSS variables, gradient-bg, glass utilities, button utilities
-- `types/index.ts` — barrel re-export of all domain + UI types
+### 1. Foundation and design system
+- App scaffold, Tailwind tokens, shared utilities, and domain types are in place
 
----
+### 2. Marketing and account entry
+- Home, plans, about, contact, login, and register pages are implemented
 
-## Phase 2 — Domain Type System ✅
+### 3. Authenticated app shell
+- Dashboard, builder, presenter, join, checkout, and settings routes exist
+- Admin layouts and route groups are wired up
 
-> All types are canonical. Import from the domain file directly or via the `@/types` barrel.
+### 4. Firebase authentication
+- `lib/firebase.ts` initializes the real SDK
+- `lib/hooks/useAuth.ts` listens to auth state and hydrates the user profile
+- Protected app/admin flows are enforced at the layout level
 
-### [NEW] `types/domain.ts`
-Core presentation & question domain:
-- `PresentationType` — `"quiz" | "qa" | "feedback"`
-- `PresentationStatus` — `"draft" | "scheduled" | "live" | "completed"`
-- `BaseQuestion`, `Option`
-- `QuizQuestion` — `kind: "quiz"`, options, timerSeconds, correctOptionId, points
-- `QAQuestion` — `kind: "qa"`, allowMultipleSubmissions
-- `FeedbackQuestion` — `kind: "feedback"`, feedbackType, scaleMax, options
-- `Question` — discriminated union
-- `QuestionSet` — groups questions per presentation
-- `Presentation` — full domain record with joinCode, joinLink, qrCodeUrl
+### 5. Realtime data layer
+- Presentation, question, live-session, branding, admin-config, and join-code services are implemented
+- Dashboard and live session flows read/write against RTDB
 
-### [NEW] `types/auth.ts`
-- `Role` — `"admin" | "user"`
-- `BaseUser`, `AdminUser`, `RegularUser`
-- `User` — discriminated union (`user.role === 'admin'` to narrow)
-- Imports `PlanId` from `types/plans`
+### 6. Presentation builder
+- Multi-step builder is implemented
+- Question-type editors are implemented
+- The builder already includes an inline participant/live preview panel
 
-### [NEW] `types/plans.ts`
-- `PlanId` — `"free" | "basic" | "regular" | "pro"`
-- `PlanLimits` — maxPresentations, maxQuestionsPerPresentation, maxParticipantsPerSession, maxActiveSessions
-- `PlanFeatureFlags` — canUseQuiz, canUseQA, canUseFeedback, canExportResults, exportFormats
-- `Plan` — full plan shape
-- `PLANS: Plan[]` — canonical plan data (4 tiers; Regular is `isRecommended`)
+### 7. Live session engine
+- Presenter controls, participant join flow, realtime responses, and quiz leaderboard are implemented
 
-### [NEW] `types/join.ts`
-- `JoinConfig` + `DEFAULT_JOIN_CONFIG` (defaultCodeLength: 6, allowed: [6, 8, 10])
-- `LiveSession` — presentationId, joinCode, isActive, startedAt/endedAt
-- `QRSettings` + `DEFAULT_QR_SETTINGS`
-- `generateJoinCode(length)` — numeric stub (TODO: server-side uniqueness check Phase 11)
+### 8. Admin analytics and operations
+- Traffic analytics dashboard is live
+- Admin overview stat cards are served by `AdminStatsService`
+- Supporting admin pages for users, plans, promos, sessions, SEO, and financials are present
 
-### [MODIFY] `types/index.ts`
-Barrel re-exporting all 4 domain files + UI-only types (TrafficMetric, Testimonial, StatCard, NavLink, UsageStats, DashboardPresentation).
+### 9. Payments baseline
+- PayPal order endpoints are wired in
+- Plan limits are enforced server-side in service logic
+
+### 10. Tooling
+- Jest configuration and shared test setup are now checked in
+- ESLint configuration is now checked in
 
 ---
 
-## Phase 3 — Shared Layout ✅
+## Remaining work
 
-- `components/Navbar.tsx` — scroll-blur, mobile slide-over (Framer Motion)
-- `components/Footer.tsx` — brand, links, copyright
-- `app/layout.tsx` — Inter font, gradient body, Navbar + Footer, SEO metadata
+### 1. Dedicated pre-live review step
+- Product decision: keep the current inline preview, or add a separate preview-before-go-live step
 
----
+### 2. Billing lifecycle completion
+- Add webhook-driven upgrade/downgrade synchronization and renewal/cancellation handling
 
-## Phase 4 — Home Page ✅
+### 3. Legal and SEO pages
+- Add `/privacy`
+- Add `/terms`
+- Add `robots.txt`
+- Add `sitemap.xml`
 
-- `components/home/HeroSection.tsx`
-- `components/home/FeaturesSection.tsx`
-- `components/home/HowItWorks.tsx`
-- `components/home/PricingPreview.tsx`
-- `components/home/QuantumStepSection.tsx`
-- `components/home/Testimonials.tsx`
-- `app/page.tsx` — Server Component composing all sections
-
----
-
-## Phase 5 — Marketing Pages ✅
-
-- `app/plans/page.tsx` — uses new `Plan` type (pricePerMonth, limits.*, features.canUse*, exportFormats). Comparison table uses typed boolean flags.
-- `app/about/page.tsx` — QuantumStep + LiveZapp brand story
-- `app/contact/page.tsx` — React Hook Form + Zod, success state
+### 4. Launch polish
+- Run a Lighthouse/performance pass
+- Finalize production deployment
+- Add CI/CD automation
 
 ---
 
-## Phase 6 — Auth Pages ✅
+## Notes
 
-- `app/login/page.tsx` — glass card, RHF + Zod, show/hide password
-- `app/register/page.tsx` — glass card, RHF + Zod, strong password rules, success state
-
----
-
-## Phase 7 — Mock & Sample Data ✅
-
-### [NEW] `mock/sampleData.ts`
-Rich domain-level data:
-- `SAMPLE_USER_ID`
-- `SAMPLE_PRESENTATIONS: Presentation[]` — 3 presentations (quiz, qa, feedback) with join codes & links
-- `QUIZ_QUESTIONS: QuizQuestion[]` — 2 quiz questions with options, timers, points
-- `QA_QUESTIONS: QAQuestion[]` — 1 open Q&A question
-- `FEEDBACK_QUESTIONS: FeedbackQuestion[]` — 1 rating + 1 short_text
-- `SAMPLE_QUESTION_SETS: QuestionSet[]` — 3 sets, one per presentation
-
-### [MODIFY] `lib/data/mockData.ts`
-UI-only data only (PLANS moved to `types/plans.ts`):
-- `MOCK_PRESENTATIONS: DashboardPresentation[]` — lightweight rows for dashboard table
-- `MOCK_TRAFFIC: TrafficMetric[]` — 30 days, deterministic formula (no Math.random to avoid hydration issues)
-- `TESTIMONIALS: Testimonial[]`
-
----
-
-## Phase 8 — App Shells ✅
-
-### User area
-- `app/app/layout.tsx` — sidebar layout (Dashboard, New, Settings)
-- `app/app/dashboard/page.tsx` — filterable table (draft/scheduled/live/completed), usage progress bars, quick stats
-
-### Admin area
-- `app/admin/layout.tsx` — admin sidebar (Overview, Traffic, LiveZapp, QuantumStep, Tools, **Settings**)
-- `app/admin/page.tsx` — isAdmin guard, 4 stat cards, Recharts 14-day line chart, access denied page
-- `app/admin/settings/page.tsx` — **JoinConfig & QR Settings** editor:
-  - Code length toggle (6 / 8 / 10 digits) with guidance
-  - QR best-practice tips (4 points)
-  - Live QR preview with branding CTA, copy URL, regenerate
-  - TODO marker for Firestore persistence (Phase 12)
-
-### Auth hook
-- `lib/hooks/useAuth.ts` — updated to use `User / Role / PlanId` from domain types; isAdmin checks both `role` field and email allowlist
-
----
-
-## Phase 9 — Docs & Tests ✅
-
-- `README.md` — install, run, build, env vars, folder structure, stack table
-- `docs/architecture.md` — full folder tree, layer responsibilities, RSC rendering strategy
-- `docs/design-system.md` — color tokens, typography, components, spacing, animation conventions, utility classes
-- `docs/phases.md` — Phases 1–7 done, Phases 8–14 roadmap (Firebase, builder, live engine, payments, launch)
-- `__tests__/Navbar.test.tsx` — brand text, nav links, action buttons, hamburger toggle
-- `__tests__/PricingCards.test.tsx` — 4 plan names, 1 Most popular badge, CTA buttons
-
----
-
-## Phase 10 — Firebase Authentication ✅
-
-- [x] Add Firebase config to `.env.local`
-- [x] Initialize SDK in `lib/firebase.ts`
-- [x] Replace `useAuth` stub with `onAuthStateChanged`, handling real Auth state. Auto-provisions the 3 development accounts into Firebase seamlessly.
-- [x] Layout guards to protect `/app` and `/admin`
-- [x] Email confirmation on register (Deferred - testing mode)
-
-## Phase 11 — Realtime Data Layer (In Progress)
-
-- [ ] Define RTDB Schema for: `presentations`, `questions`, `live_sessions`
-- [ ] Implement `PresentationService` for RTDB CRUD
-- [ ] Implement `QuestionService` for RTDB CRUD
-- [ ] Server-side `generateJoinCode` with uniqueness check (RTDB)
-- [ ] Persist JoinConfig + QRSettings to `/admin/config` RTDB path
-- [ ] Replace `MOCK_PRESENTATIONS` with async RTDB calls in Dashboard
-
-## Phase 12 — Presentation Builder (Upcoming)
-
-- [ ] `/app/create` — multi-step wizard
-- [ ] Question types: QuizQuestion, QAQuestion, FeedbackQuestion (all 3 domain types)
-- [ ] Preview mode before going live
-
-## Phase 13 — Live Session Engine (Upcoming)
-
-- [ ] Implement real-time listener for active sessions
-- [ ] Presenter view with live charts/results (RTDB sync)
-- [ ] Participant join by code (6/8/10 digits per JoinConfig)
-- [ ] Leaderboard for quiz sessions (RTDB aggregation)
-
-## Phase 14 — Admin Analytics (Upcoming)
-
-- [ ] Connect `/admin` traffic chart to real analytics
-- [ ] Firestore aggregation for stat cards
-- [ ] Date-range filtering
-
-## Phase 15 — Payments & Launch (Upcoming)
-
-- [ ] Stripe / Razorpay subscription billing
-- [ ] Plan limit enforcement server-side (using PlanLimits)
-- [ ] `/privacy`, `/terms`
-- [ ] sitemap.xml, robots.txt, Lighthouse 90+
-- [ ] Deploy to Vercel → livezapp.quantumstep.in
-
----
-
-## Design System Reference
-
-See `docs/design-system.md` for color tokens, typography, component classes, animation conventions.
-
-> [!NOTE]
-> Firebase is now active and initialized for Auth. The UI uses real Firebase credentials and syncs role/plan to Firestore. The admin emails guard is now handled dynamically through Firestore's `role` field.
+- The admin overview stats item should be considered implemented: the current code loads Firestore data first and falls back to RTDB when needed.
+- The preview-mode item is partially complete already through the builder's inline preview UI; only a dedicated review stage remains undecided.

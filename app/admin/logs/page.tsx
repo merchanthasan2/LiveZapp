@@ -110,7 +110,7 @@ export default function AdminLogsPage() {
             Audit <span style={{ color: '#00A6A6' }}>Log</span>
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-            Immutable record of all admin actions · {logs.length} entries
+            Append-only audit trail from the admin app · {logs.length} entries
           </p>
         </div>
         <div className="flex gap-2 self-start">
@@ -125,15 +125,6 @@ export default function AdminLogsPage() {
             <Download className="w-4 h-4" /> Export
           </button>
         </div>
-      </div>
-
-      {/* Immutability notice */}
-      <div className="rounded-xl p-4 flex items-start gap-3"
-        style={{ background: 'rgba(239,68,68,0.04)', border: '1px solid rgba(239,68,68,0.12)' }}>
-        <Shield className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#DC2626' }} />
-        <p className="text-xs" style={{ color: '#374151' }}>
-          <span className="font-semibold">Immutable log.</span> Audit entries cannot be edited or deleted — they are append-only in Firebase. This log records all admin actions for compliance and security review.
-        </p>
       </div>
 
       {/* Filters */}
