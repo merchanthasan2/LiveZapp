@@ -421,7 +421,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
           <img
             src={brandLogoUrl}
             alt={brandName || sessionTitle}
-            className="h-20 w-20 rounded-[1.6rem] object-contain z-10 bg-white/95 p-2.5 shadow-2xl"
+            className="h-20 w-20 rounded-[1.6rem] object-contain z-10 shadow-2xl"
           />
         ) : (
           <div

@@ -25,6 +25,7 @@
     "live_sessions": {
       "$code": {
         ".read": "true",
+        ".write": "auth != null && ((!data.exists() && newData.child('hostId').val() === auth.uid) || data.child('hostId').val() === auth.uid || root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin')",
         "responses": {
           "$questionId": {
             "$participantId": {

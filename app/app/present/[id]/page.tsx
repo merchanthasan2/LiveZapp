@@ -290,35 +290,35 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
       transition={{ duration: 0.4 }}
-      className="h-full flex items-center justify-center px-4 md:px-8 py-6"
+      className="h-full flex items-center justify-center px-3 sm:px-5 md:px-8 py-4 md:py-6"
     >
-      <div className="w-full max-w-[92vw] rounded-[2.75rem] border overflow-hidden relative" style={{ background: '#15151d', borderColor: 'rgba(191,168,255,0.16)', boxShadow: '0 28px 80px rgba(0,0,0,0.40)' }}>
+      <div className="w-full max-w-[min(96vw,1480px)] rounded-[2rem] md:rounded-[2.75rem] border overflow-hidden relative mx-auto" style={{ background: '#15151d', borderColor: 'rgba(191,168,255,0.16)', boxShadow: '0 28px 80px rgba(0,0,0,0.40)' }}>
         <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.26), transparent 30%), radial-gradient(circle at bottom right, rgba(83,216,209,0.12), transparent 24%)' }} />
-        <div className="relative z-10 p-8 md:p-12 xl:p-14">
-          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8 mb-10">
-            <div className="flex items-center gap-4 min-w-0">
+        <div className="relative z-10 p-5 sm:p-7 md:p-10 xl:p-14">
+          <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 md:gap-8 mb-8 md:mb-10">
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-5 min-w-0 text-center sm:text-left">
               {brandLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={brandLogoUrl} alt={brandName || 'Brand logo'} className="h-20 max-w-[180px] rounded-2xl object-contain bg-white/95 p-2.5" />
+                <img src={brandLogoUrl} alt={brandName || 'Brand logo'} className="h-16 sm:h-20 max-w-[180px] rounded-2xl object-contain shrink-0" />
               ) : (
                 <BrandLockup href="/" size="lg" theme="dark" />
               )}
-              <div className="min-w-0">
+              <div className="min-w-0 max-w-3xl">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#9CA3AF' }}>Join lobby</p>
-                <p className="text-3xl md:text-4xl xl:text-5xl font-black truncate mt-2" style={{ color: '#f4efff' }}>{brandName || 'LiveZapp Session'}</p>
+                <p className="text-3xl md:text-4xl xl:text-5xl font-black mt-2 break-words" style={{ color: '#f4efff' }}>{brandName || 'LiveZapp Session'}</p>
                 <p className="text-base md:text-lg mt-2 max-w-3xl" style={{ color: '#b6acc7' }}>Invite everyone in, let the room fill, then start the Zapp when you&apos;re ready.</p>
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-3 rounded-[1.35rem] px-6 py-4 self-start" style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', boxShadow: '0 16px 34px rgba(101,12,217,0.28)' }}>
+            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-[1.35rem] px-5 sm:px-6 py-4 self-center xl:self-start min-w-[200px]" style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', boxShadow: '0 16px 34px rgba(101,12,217,0.28)' }}>
               <span className="text-[11px] uppercase tracking-[0.18em] font-black" style={{ color: 'rgba(255,255,255,0.76)' }}>Game PIN</span>
               <span className="text-3xl md:text-4xl font-black tracking-[0.22em]" style={{ color: '#ffffff' }}>{joinCode}</span>
             </div>
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] items-stretch">
-            <div className="rounded-[2.4rem] p-7 text-center flex flex-col justify-center" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
-              <div className="mx-auto w-full max-w-[36rem] aspect-square p-5 rounded-[2rem] flex items-center justify-center" style={{ background: '#ffffff' }}>
+          <div className="grid gap-6 md:gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(320px,0.92fr)] items-center">
+            <div className="rounded-[2rem] md:rounded-[2.4rem] p-5 sm:p-6 md:p-7 text-center flex flex-col justify-center mx-auto w-full max-w-[42rem]" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
+              <div className="mx-auto w-full max-w-[min(78vw,34rem)] aspect-square p-4 sm:p-5 rounded-[1.6rem] md:rounded-[2rem] flex items-center justify-center" style={{ background: '#ffffff' }}>
                 <div className="w-full h-full flex items-center justify-center">
                   <QRCodeSVG value={qrUrl} size={360} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: '100%', display: 'block' }} />
                 </div>
@@ -327,7 +327,7 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
               <p className="text-sm mt-2" style={{ color: 'rgba(255,255,255,0.50)' }}>The QR stays on stage until you press Start Zapp.</p>
             </div>
 
-            <div className="space-y-5 flex flex-col justify-center">
+            <div className="space-y-4 md:space-y-5 flex flex-col justify-center w-full max-w-[28rem] mx-auto">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[1.5rem] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>Presenter brand</p>
@@ -347,7 +347,7 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
 
               <button
                 onClick={onStart}
-                className="flex items-center justify-center gap-3 px-8 py-5 rounded-[1.6rem] font-black text-xl transition-all"
+                className="flex items-center justify-center gap-3 px-6 sm:px-8 py-4 sm:py-5 rounded-[1.6rem] font-black text-lg sm:text-xl transition-all w-full"
                 style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', color: '#FFFFFF', boxShadow: '0 18px 38px rgba(101,12,217,0.32)' }}
               >
                 <Play className="w-5 h-5" fill="currentColor" />
@@ -1025,7 +1025,7 @@ export default function PresentPage() {
               <div className="flex items-center gap-4">
                 {presentation.brandLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-14 w-auto max-w-[124px] rounded-xl object-contain bg-white/95 p-2" />
+                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-14 w-auto max-w-[124px] rounded-xl object-contain" />
                 ) : (
                   <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: `${launchAccent}22` }}>
                     <Sparkles className="w-6 h-6" style={{ color: launchAccent }} />
@@ -1432,23 +1432,23 @@ export default function PresentPage() {
           </div>
         </nav>
 
-        <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 md:px-8 pt-5 md:pt-6 min-h-[calc(100vh-92px)] flex">
+        <main className="max-w-[1600px] mx-auto w-full px-3 sm:px-5 md:px-8 pt-4 md:pt-6 min-h-[calc(100vh-92px)] flex justify-center">
           <section className="flex-1 rounded-[2.5rem] border overflow-hidden relative" style={{ background: surfaceCard, borderColor: borderSoft }}>
             <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.10), transparent 24%)' }} />
-            <div className="relative z-10 p-6 md:p-10 xl:p-12 grid gap-8 lg:grid-cols-[1fr_1.08fr] items-stretch min-h-[76vh]">
-              <div className="space-y-6 flex flex-col justify-center items-center lg:items-start text-center lg:text-left">
-                <div className="flex items-center justify-center lg:justify-start gap-4">
+            <div className="relative z-10 p-5 sm:p-6 md:p-10 xl:p-12 grid gap-8 xl:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)] items-center min-h-[76vh] max-w-[1440px] mx-auto">
+              <div className="space-y-6 flex flex-col justify-center items-center xl:items-start text-center xl:text-left w-full max-w-[42rem] mx-auto xl:mx-0">
+                <div className="flex flex-col sm:flex-row items-center justify-center xl:justify-start gap-4 md:gap-5 w-full">
                   {session.brandLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-20 max-w-[170px] rounded-2xl object-contain bg-white/95 p-2.5" />
+                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-16 sm:h-20 max-w-[170px] rounded-2xl object-contain shrink-0" />
                   ) : (
                     <div className="w-20 h-20 rounded-[1.75rem] flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.14)' }}>
                       <Sparkles className="w-9 h-9" style={{ color: '#650cd9' }} />
                     </div>
                   )}
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: textMuted }}>Lobby is live</p>
-                    <h1 className="text-4xl md:text-5xl xl:text-6xl font-black mt-2" style={{ color: textStrong }}>{presentation.title}</h1>
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl xl:text-6xl font-black mt-2 break-words" style={{ color: textStrong }}>{presentation.title}</h1>
                   </div>
                 </div>
 
@@ -1456,7 +1456,7 @@ export default function PresentPage() {
                   This Go Zapp lobby is ready. Share the QR code and PIN, welcome people in, then take the Zapp fullscreen when you&apos;re ready to begin.
                 </p>
 
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-3 w-full">
                   {[
                     { label: 'Prompts', value: `${questions.length} ready` },
                     { label: 'Brand', value: session.brandName || 'LiveZapp' },
@@ -1469,25 +1469,25 @@ export default function PresentPage() {
                   ))}
                 </div>
 
-                <div className="flex flex-wrap justify-center lg:justify-start gap-3 pt-2">
-                  <button onClick={handleStartZapp} disabled={isStarting || questions.length === 0} className="inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-black text-white disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 20px 40px rgba(101,12,217,0.35)' }}>
+                <div className="flex flex-wrap justify-center xl:justify-start gap-3 pt-2 w-full">
+                  <button onClick={handleStartZapp} disabled={isStarting || questions.length === 0} className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 md:px-8 py-4 text-base md:text-lg font-black text-white disabled:opacity-40 disabled:cursor-not-allowed min-w-[180px]" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 20px 40px rgba(101,12,217,0.35)' }}>
                     <Play className="w-5 h-5" fill="currentColor" />
                     {isStarting ? 'Starting...' : 'Start Zapp'}
                   </button>
-                  <button onClick={toggleFullscreen} className="inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-lg font-black text-white" style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${borderSoft}`, boxShadow: '0 20px 40px rgba(0,0,0,0.12)' }}>
+                  <button onClick={toggleFullscreen} className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 md:px-8 py-4 text-base md:text-lg font-black text-white min-w-[180px]" style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${borderSoft}`, boxShadow: '0 20px 40px rgba(0,0,0,0.12)' }}>
                     <Maximize2 className="w-5 h-5" />
                     Fullscreen Stage
                   </button>
-                  <button onClick={copyCode} className="btn-ghost px-5 py-4 text-base" style={{ color: isDark ? '#f4efff' : '#4a4455', borderColor: borderSoft }}>
+                  <button onClick={copyCode} className="btn-ghost px-5 py-4 text-base min-w-[160px] justify-center" style={{ color: isDark ? '#f4efff' : '#4a4455', borderColor: borderSoft }}>
                     <Copy className="w-4 h-4" />
                     {codeCopied ? 'Copied' : 'Copy Zapp Code'}
                   </button>
                 </div>
               </div>
 
-              <div className="grid gap-6 md:grid-cols-[1.05fr_0.95fr] items-stretch">
-                <div className="rounded-[2rem] p-6 text-center border flex flex-col justify-center" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
-                  <div className="mx-auto w-full max-w-[28rem] aspect-square rounded-[1.8rem] p-5 flex items-center justify-center" style={{ background: '#ffffff' }}>
+              <div className="grid gap-5 lg:gap-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(280px,0.96fr)] items-center w-full max-w-[46rem] mx-auto">
+                <div className="rounded-[2rem] p-5 md:p-6 text-center border flex flex-col justify-center order-1" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
+                  <div className="mx-auto w-full max-w-[min(78vw,26rem)] aspect-square rounded-[1.8rem] p-4 sm:p-5 flex items-center justify-center" style={{ background: '#ffffff' }}>
                     <div className="w-full h-full flex items-center justify-center">
                       <QRCodeSVG value={joinUrl} size={520} bgColor="#ffffff" fgColor="#111111" level="H" style={{ width: '100%', height: '100%', display: 'block' }} />
                     </div>
@@ -1495,10 +1495,10 @@ export default function PresentPage() {
                   <p className="text-lg mt-5 font-semibold" style={{ color: textMuted }}>Scan to join the Zapp</p>
                 </div>
 
-                <div className="space-y-5 flex flex-col justify-center">
+                <div className="space-y-4 md:space-y-5 flex flex-col justify-center order-2 max-w-[26rem] mx-auto w-full">
                   <div className="rounded-[2rem] p-6 border" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
                     <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: textMuted }}>Game PIN</p>
-                    <button onClick={copyCode} className="mt-4 text-5xl md:text-6xl font-black tracking-[0.18em]" style={{ color: '#650cd9' }}>
+                    <button onClick={copyCode} className="mt-4 text-4xl sm:text-5xl md:text-6xl font-black tracking-[0.18em] break-all text-center w-full" style={{ color: '#650cd9' }}>
                       {session.joinCode}
                     </button>
                     <p className="text-sm mt-3" style={{ color: textMuted }}>Share this code or the QR to bring participants into the Zapp lobby.</p>

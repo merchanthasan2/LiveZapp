@@ -550,7 +550,7 @@ export default function CreatePage() {
 
                   {brandLogoUrl ? (
                     <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f6f1fa', border: `1px solid ${border}` }}>
-                      <img src={brandLogoUrl} alt="Zapp logo" className="h-12 w-auto max-w-[110px] rounded object-contain bg-white/90 p-2" />
+                      <img src={brandLogoUrl} alt="Zapp logo" className="h-12 w-auto max-w-[110px] rounded object-contain" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate" style={{ color: textStrong }}>Custom logo added</p>
                         <p className="text-xs mt-1" style={{ color: textSoft }}>This will appear on the presenter join screen and participant entry view.</p>
@@ -630,7 +630,7 @@ export default function CreatePage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       {brandLogoUrl ? (
-                        <img src={brandLogoUrl} alt="Brand logo preview" className="h-10 max-w-[96px] rounded object-contain bg-white/90 p-1.5" />
+                        <img src={brandLogoUrl} alt="Brand logo preview" className="h-10 max-w-[96px] rounded object-contain" />
                       ) : (
                         <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${COLOR_PALETTES[selectedPalette].primary}22` }}>
                           <Sparkles className="w-4 h-4" style={{ color: COLOR_PALETTES[selectedPalette].primary }} />
