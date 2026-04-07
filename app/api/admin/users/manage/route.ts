@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminAuth, adminDb } from '@/lib/server/firebaseAdmin'
+import { writeAdminAuditLog } from '@/lib/server/adminAuditLog'
 import { isPrivilegedRole, resolveTrustedRoleForUser } from '@/lib/server/trustedRoles'
 import { verifyBearerToken } from '@/lib/server/verifyBearerUid'
 
@@ -40,7 +41,7 @@ async function ensureAdmin(request: NextRequest) {
   if (!isPrivilegedRole(role)) {
     throw new Error('Admin privileges required')
   }
-  return { uid: decoded.uid, role }
+  return { uid: decoded.uid, role, email: decoded.email ?? null }
 }
 
 function sanitizeRole(role: string) {
@@ -79,9 +80,23 @@ async function sendFirebaseEmailAction(email: string, requestType: 'PASSWORD_RES
   }
 }
 
+async function recordAuditLog(
+  request: NextRequest,
+  payload: Omit<Parameters<typeof writeAdminAuditLog>[0], 'headers'>,
+) {
+  try {
+    await writeAdminAuditLog({
+      headers: request.headers,
+      ...payload,
+    })
+  } catch (error) {
+    console.error('[api/admin/users/manage] audit log failed', error)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { uid: adminUid, role: adminRole } = await ensureAdmin(request)
+    const { uid: adminUid, role: adminRole, email: adminEmail } = await ensureAdmin(request)
     const payload = (await request.json()) as ManagePayload
     const action = payload.action
 
@@ -115,6 +130,15 @@ export async function POST(request: NextRequest) {
         nextPageToken = batch.pageToken
       } while (nextPageToken)
 
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'profiles_synced',
+        targetLabel: 'Firebase Auth profiles',
+        previousValue: { synced: 0 },
+        newValue: { synced },
+      })
+
       return NextResponse.json({ success: true, message: `Synced ${synced} auth user(s)`, synced })
     }
 
@@ -125,7 +149,9 @@ export async function POST(request: NextRequest) {
 
     const dbRef = adminDb().ref(`users/${targetUid}`)
     const dbSnap = await dbRef.get()
-    const targetRole = String(dbSnap.val()?.role ?? 'user')
+    const targetUser = (dbSnap.exists() ? dbSnap.val() : {}) as Record<string, unknown>
+    const targetRole = String(targetUser.role ?? 'user')
+    const targetEmail = typeof targetUser.email === 'string' ? targetUser.email : null
 
     const isProtectedMutation =
       action === 'set_role' ||
@@ -155,12 +181,30 @@ export async function POST(request: NextRequest) {
     if (action === 'set_role') {
       const role = sanitizeRole(String(payload.role ?? 'user'))
       await dbRef.update({ role, updatedAt: new Date().toISOString(), updatedBy: adminUid })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'role_changed',
+        targetUid,
+        targetEmail,
+        previousValue: { role: targetRole },
+        newValue: { role },
+      })
       return NextResponse.json({ success: true, message: `Role updated to ${role}` })
     }
 
     if (action === 'set_plan') {
       const planId = sanitizePlan(String(payload.planId ?? 'free'))
       await dbRef.update({ planId, updatedAt: new Date().toISOString(), updatedBy: adminUid })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'plan_changed',
+        targetUid,
+        targetEmail,
+        previousValue: { planId: String(targetUser.planId ?? 'free') },
+        newValue: { planId },
+      })
       return NextResponse.json({ success: true, message: `Plan updated to ${planId}` })
     }
 
@@ -176,6 +220,16 @@ export async function POST(request: NextRequest) {
         requireAddressConfirmationOnPurchase: payload.required,
         updatedAt: new Date().toISOString(),
         updatedBy: adminUid,
+      })
+
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'address_confirmation_requirement_changed',
+        targetUid,
+        targetEmail,
+        previousValue: { required: Boolean(targetUser.requireAddressConfirmationOnPurchase) },
+        newValue: { required: payload.required },
       })
 
       return NextResponse.json({
@@ -200,6 +254,21 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date().toISOString(),
         updatedBy: adminUid,
       })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'user_suspended',
+        targetUid,
+        targetEmail,
+        previousValue: {
+          suspended: Boolean(targetUser.suspended),
+          suspendedReason: targetUser.suspendedReason ?? null,
+        },
+        newValue: {
+          suspended: true,
+          suspendedReason: reason,
+        },
+      })
       return NextResponse.json({ success: true, message: 'Account suspended' })
     }
 
@@ -213,6 +282,21 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date().toISOString(),
         updatedBy: adminUid,
       })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'user_restored',
+        targetUid,
+        targetEmail,
+        previousValue: {
+          suspended: Boolean(targetUser.suspended),
+          suspendedReason: targetUser.suspendedReason ?? null,
+        },
+        newValue: {
+          suspended: false,
+          suspendedReason: null,
+        },
+      })
       return NextResponse.json({ success: true, message: 'Account restored' })
     }
 
@@ -224,6 +308,15 @@ export async function POST(request: NextRequest) {
       }
       await adminAuth().updateUser(targetUid, { password })
       await dbRef.update({ passwordUpdatedAt: new Date().toISOString(), passwordUpdatedBy: adminUid })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'password_changed',
+        targetUid,
+        targetEmail: userRecord.email ?? targetEmail,
+        previousValue: null,
+        newValue: { passwordUpdated: true },
+      })
       return NextResponse.json({ success: true, message: 'Password updated' })
     }
 
@@ -234,6 +327,15 @@ export async function POST(request: NextRequest) {
       }
       await sendFirebaseEmailAction(userRecord.email, 'PASSWORD_RESET')
       await dbRef.update({ resetLinkGeneratedAt: new Date().toISOString(), resetLinkGeneratedBy: adminUid })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'password_reset_sent',
+        targetUid,
+        targetEmail: userRecord.email,
+        previousValue: null,
+        newValue: { emailSent: true },
+      })
       return NextResponse.json({ success: true, message: 'Password reset email sent' })
     }
 
@@ -244,11 +346,33 @@ export async function POST(request: NextRequest) {
       }
       await sendFirebaseEmailAction(userRecord.email, 'VERIFY_EMAIL')
       await dbRef.update({ verificationLinkGeneratedAt: new Date().toISOString(), verificationLinkGeneratedBy: adminUid })
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'verification_sent',
+        targetUid,
+        targetEmail: userRecord.email,
+        previousValue: null,
+        newValue: { emailSent: true },
+      })
       return NextResponse.json({ success: true, message: 'Verification email sent' })
     }
 
     if (action === 'delete_account') {
       await adminAuth().getUser(targetUid)
+      await recordAuditLog(request, {
+        adminUid,
+        adminEmail,
+        action: 'user_deleted',
+        targetUid,
+        targetEmail,
+        previousValue: {
+          email: targetEmail,
+          role: targetRole,
+          planId: String(targetUser.planId ?? 'free'),
+        },
+        newValue: null,
+      })
       await adminAuth().deleteUser(targetUid)
       await dbRef.remove()
       return NextResponse.json({ success: true, message: 'Account deleted from Auth and RTDB' })

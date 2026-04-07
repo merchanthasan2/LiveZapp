@@ -5,6 +5,7 @@ import {
   Settings2, QrCode, Hash, CheckCircle2, Smartphone,
   Info, ExternalLink, Copy, Check, Loader2, CreditCard,
 } from 'lucide-react'
+import { auth } from '@/lib/firebase'
 import {
   DEFAULT_JOIN_CONFIG,
   DEFAULT_QR_SETTINGS,
@@ -115,13 +116,34 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      await AdminConfigService.saveConfig({
+      const currentUser = auth.currentUser
+      if (!currentUser) {
+        throw new Error('Admin session expired. Please sign in again.')
+      }
+
+      const nextConfig = {
         joinConfig: config,
         qrSettings,
         checkoutPolicy: {
           requireAddressConfirmationOnPurchase,
         },
+      }
+
+      const token = await currentUser.getIdToken()
+      const response = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(nextConfig),
       })
+
+      const data = await response.json() as { success?: boolean; error?: string }
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save admin settings')
+      }
+
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {

@@ -1,15 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ref, get } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { auth } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import {
   ClipboardList, Search, RefreshCw, Download,
   Shield, AlertCircle, CheckCircle2, User,
   CreditCard, Ban, Settings2, Clock,
 } from 'lucide-react'
-import type { AuditLog } from '@/lib/services/AdminLogService'
+import type { AdminAuditLog } from '@/lib/types/adminAuditLog'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -22,9 +21,11 @@ function fmtDateTime(d: string) {
 
 const ACTION_STYLES: Record<string, { icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>, bg: string, text: string }> = {
   plan_changed:    { icon: CreditCard,  bg: 'rgba(0,166,166,0.10)',  text: '#007A7A' },
+  role_changed:    { icon: Shield,      bg: 'rgba(122,58,240,0.10)', text: '#7A3AF0' },
   user_suspended:  { icon: Ban,         bg: 'rgba(239,68,68,0.10)',  text: '#DC2626' },
   user_restored:   { icon: CheckCircle2,bg: 'rgba(34,197,94,0.10)',  text: '#16A34A' },
   promo_created:   { icon: Shield,      bg: 'rgba(239,202,8,0.12)',  text: '#8A7000' },
+  promo_activated: { icon: CheckCircle2,bg: 'rgba(34,197,94,0.10)',  text: '#16A34A' },
   promo_deactivated:{ icon: AlertCircle,bg: 'rgba(245,158,11,0.12)', text: '#B45309' },
   settings_changed:{ icon: Settings2,   bg: '#F3F4F6',               text: '#6B7280' },
   admin_action:    { icon: User,        bg: '#F3F4F6',               text: '#6B7280' },
@@ -41,24 +42,40 @@ function humaniseAction(action: string): string {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminLogsPage() {
-  const { user }  = useAuth()
-  const [logs, setLogs]         = useState<AuditLog[]>([])
+  const { user } = useAuth()
+  const [logs, setLogs] = useState<AdminAuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch]     = useState('')
+  const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => {
+    if (!user) return
+    void loadData()
+  }, [user])
 
   async function loadData() {
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      setLogs([])
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
     try {
-      const snap = await get(ref(rtdb, 'adminLogs'))
-      if (!snap.exists()) { setLogs([]); return }
-      const data = snap.val() as Record<string, any>
-      const rows: AuditLog[] = Object.entries(data)
-        .map(([id, v]) => ({ id, ...v } as AuditLog))
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      setLogs(rows)
+      const token = await currentUser.getIdToken()
+      const response = await fetch('/api/admin/logs', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        cache: 'no-store',
+      })
+      const data = await response.json() as { success?: boolean; logs?: AdminAuditLog[]; error?: string }
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load audit logs')
+      }
+
+      setLogs(Array.isArray(data.logs) ? data.logs : [])
     } catch (e) {
       console.error('[admin/logs] load failed', e)
     } finally {
@@ -73,7 +90,7 @@ export default function AdminLogsPage() {
         fmtDateTime(l.timestamp),
         l.adminEmail,
         l.action,
-        l.targetEmail ?? l.targetUid ?? '—',
+        l.targetLabel ?? l.targetEmail ?? l.targetUid ?? '—',
         l.previousValue ? JSON.stringify(l.previousValue) : '—',
         l.newValue ? JSON.stringify(l.newValue) : '—',
       ]),
@@ -93,6 +110,7 @@ export default function AdminLogsPage() {
   const filtered = logs.filter(l => {
     const matchSearch = !search ||
       l.adminEmail?.toLowerCase().includes(search.toLowerCase()) ||
+      l.targetLabel?.toLowerCase().includes(search.toLowerCase()) ||
       l.targetEmail?.toLowerCase().includes(search.toLowerCase()) ||
       l.action?.toLowerCase().includes(search.toLowerCase())
     const matchAction = actionFilter === 'all' || l.action === actionFilter
@@ -216,7 +234,9 @@ export default function AdminLogsPage() {
                       </td>
                       {/* Target */}
                       <td className="px-5 py-3.5">
-                        {l.targetEmail ? (
+                        {l.targetLabel ? (
+                          <p className="text-xs font-semibold" style={{ color: '#374151' }}>{l.targetLabel}</p>
+                        ) : l.targetEmail ? (
                           <p className="text-xs" style={{ color: '#374151' }}>{l.targetEmail}</p>
                         ) : l.targetUid ? (
                           <p className="text-xs font-mono" style={{ color: '#9CA3AF' }}>{l.targetUid.slice(0, 10)}…</p>

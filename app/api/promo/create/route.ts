@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/server/firebaseAdmin'
+import { writeAdminAuditLog } from '@/lib/server/adminAuditLog'
 import { resolveTrustedRoleForUser } from '@/lib/server/trustedRoles'
 import { verifyBearerToken } from '@/lib/server/verifyBearerUid'
 
@@ -30,7 +31,7 @@ type PromoActionResponse = {
   promo?: PromoCodeRecord
 }
 
-async function ensureAdmin(request: NextRequest): Promise<string> {
+async function ensureAdmin(request: NextRequest): Promise<{ uid: string; email: string | null }> {
   let decoded
   try {
     decoded = await verifyBearerToken(request)
@@ -52,7 +53,10 @@ async function ensureAdmin(request: NextRequest): Promise<string> {
     throw new Error('Admin privileges required')
   }
 
-  return decoded.uid
+  return {
+    uid: decoded.uid,
+    email: decoded.email ?? null,
+  }
 }
 
 function normalizePayload(body: PromoCreateRequest): PromoCreateRequest {
@@ -88,9 +92,23 @@ function validatePayload(body: PromoCreateRequest): string | null {
   return null
 }
 
+async function recordAuditLog(
+  request: NextRequest,
+  payload: Omit<Parameters<typeof writeAdminAuditLog>[0], 'headers'>,
+) {
+  try {
+    await writeAdminAuditLog({
+      headers: request.headers,
+      ...payload,
+    })
+  } catch (error) {
+    console.error('[api/promo/create] audit log failed:', error)
+  }
+}
+
 export async function POST(request: NextRequest): Promise<NextResponse<PromoActionResponse>> {
   try {
-    const adminUid = await ensureAdmin(request)
+    const { uid: adminUid, email: adminEmail } = await ensureAdmin(request)
     const payload = normalizePayload(await request.json() as PromoCreateRequest)
     const validationError = validatePayload(payload)
     if (validationError) {
@@ -110,6 +128,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoActi
     }
 
     await adminDb().ref(`promoCodes/${payload.code}`).set(promo)
+    await recordAuditLog(request, {
+      adminUid,
+      adminEmail,
+      action: 'promo_created',
+      targetLabel: payload.code,
+      previousValue: null,
+      newValue: {
+        discountType: payload.discountType,
+        discountValue: payload.discountValue,
+        isActive: payload.isActive,
+        targetPlanId: payload.targetPlanId,
+      },
+    })
 
     return NextResponse.json({
       success: true,
@@ -129,7 +160,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoActi
 
 export async function PATCH(request: NextRequest): Promise<NextResponse<PromoActionResponse>> {
   try {
-    await ensureAdmin(request)
+    const { uid: adminUid, email: adminEmail } = await ensureAdmin(request)
     const body = await request.json() as { code?: string; isActive?: boolean }
     const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
     if (!code) {
@@ -146,9 +177,19 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<PromoAct
       return NextResponse.json({ success: false, error: `Code "${code}" not found` }, { status: 404 })
     }
 
+    const existingPromo = existing.val() as PromoCodeRecord
     await promoRef.update({
       isActive: body.isActive,
       updatedAt: new Date().toISOString(),
+    })
+
+    await recordAuditLog(request, {
+      adminUid,
+      adminEmail,
+      action: body.isActive ? 'promo_activated' : 'promo_deactivated',
+      targetLabel: code,
+      previousValue: { isActive: Boolean(existingPromo.isActive) },
+      newValue: { isActive: body.isActive },
     })
 
     return NextResponse.json({ success: true, code })
