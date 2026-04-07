@@ -19,6 +19,7 @@ export interface LiveSessionData {
   questions: Question[]
   brandLogoUrl?: string  // Firebase Storage download URL for host's logo
   brandName?: string     // Host's display / brand name
+  brandAccentColor?: string
 }
 
 export interface ParticipantResponse {
@@ -41,8 +42,9 @@ export const LiveSessionService = {
     questions: Question[]
     brandLogoUrl?: string
     brandName?: string
+    brandAccentColor?: string
   }): Promise<void> {
-    const { presentationId, hostId, joinCode, title, questions, brandLogoUrl, brandName } = params
+    const { presentationId, hostId, joinCode, title, questions, brandLogoUrl, brandName, brandAccentColor } = params
     const session: LiveSessionData = {
       id: joinCode,
       presentationId,
@@ -57,6 +59,7 @@ export const LiveSessionService = {
       questions,
       ...(brandLogoUrl ? { brandLogoUrl } : {}),
       ...(brandName    ? { brandName    } : {}),
+      ...(brandAccentColor ? { brandAccentColor } : {}),
     }
     await set(ref(rtdb, `live_sessions/${joinCode}`), session)
     await update(ref(rtdb, `presentations/${presentationId}`), {

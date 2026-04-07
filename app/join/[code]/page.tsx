@@ -3,12 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { get, ref } from 'firebase/database'
 import {
   CheckCircle2, Sparkles, BarChart3, Cloud,
   MessageSquare, Star, Send, Zap, ArrowRight, Users,
 } from 'lucide-react'
 import Image from 'next/image'
 import BrandLockup from '@/components/BrandLockup'
+import { rtdb } from '@/lib/firebase'
 import { LiveSessionService, LiveSessionData, ParticipantResponse } from '@/lib/services/LiveSessionService'
 import type {
   Question, QuizQuestion, PollQuestion,
@@ -31,12 +33,72 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
   quiz: Sparkles, poll: BarChart3, word_cloud: Cloud, qa: MessageSquare, feedback: Star,
 }
 
-const KIND_META: Record<string, { bg: string; text: string; accent: string }> = {
-  quiz:       { bg: '#650cd9', text: '#FFFFFF', accent: '#650cd9' },
-  poll:       { bg: '#bda6ff', text: '#FFFFFF', accent: '#bda6ff' },
-  word_cloud: { bg: '#53d8d1', text: '#1A1A2E', accent: '#0f5f59' },
-  qa:         { bg: '#650cd9', text: '#FFFFFF', accent: '#650cd9' },
-  feedback:   { bg: '#ffb19f', text: '#1A1A2E', accent: '#912f03' },
+const DEFAULT_ACCENT = '#650cd9'
+
+type ParticipantTheme = {
+  accent: string
+  accentStrong: string
+  accentSoft: string
+  accentSoftStrong: string
+  accentBorder: string
+  accentRing: string
+  accentSurface: string
+  accentGradientTo: string
+  accentText: string
+}
+
+function normalizeHexColor(value?: string | null): string {
+  if (!value) return DEFAULT_ACCENT
+  const trimmed = value.trim()
+  if (!/^#?[0-9A-Fa-f]{6}$/.test(trimmed)) return DEFAULT_ACCENT
+  return trimmed.startsWith('#') ? trimmed.toUpperCase() : `#${trimmed.toUpperCase()}`
+}
+
+function hexToRgb(hex: string) {
+  const clean = normalizeHexColor(hex).slice(1)
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  }
+}
+
+function rgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function mix(hex: string, otherHex: string, weight: number): string {
+  const a = hexToRgb(hex)
+  const b = hexToRgb(otherHex)
+  const clamp = Math.max(0, Math.min(1, weight))
+  const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0')
+  return `#${toHex(a.r + (b.r - a.r) * clamp)}${toHex(a.g + (b.g - a.g) * clamp)}${toHex(a.b + (b.b - a.b) * clamp)}`.toUpperCase()
+}
+
+function readableText(hex: string): string {
+  const { r, g, b } = hexToRgb(hex)
+  const [rs, gs, bs] = [r, g, b].map(v => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  const luminance = 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
+  return luminance > 0.58 ? '#111827' : '#FFFFFF'
+}
+
+function buildParticipantTheme(accent?: string | null): ParticipantTheme {
+  const base = normalizeHexColor(accent)
+  return {
+    accent: base,
+    accentStrong: mix(base, '#12081F', 0.3),
+    accentSoft: rgba(base, 0.10),
+    accentSoftStrong: rgba(base, 0.16),
+    accentBorder: rgba(base, 0.28),
+    accentRing: rgba(base, 0.18),
+    accentSurface: mix(base, '#FFFFFF', 0.90),
+    accentGradientTo: mix(base, '#FFFFFF', 0.18),
+    accentText: readableText(base),
+  }
 }
 
 const WAITING_MESSAGES = [
@@ -49,8 +111,8 @@ const WAITING_MESSAGES = [
 
 // â”€â”€â”€ Response components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function QuizView({ question, onSubmit, submitted }: {
-  question: QuizQuestion; onSubmit: (a: string) => void; submitted: boolean
+function QuizView({ question, onSubmit, submitted, theme }: {
+  question: QuizQuestion; onSubmit: (a: string) => void; submitted: boolean; theme: ParticipantTheme
 }) {
   const [selected, setSelected] = useState<string | null>(null)
   return (
@@ -62,20 +124,20 @@ function QuizView({ question, onSubmit, submitted }: {
           onClick={() => !submitted && setSelected(opt.id)}
           className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]"
           style={{
-            background: selected === opt.id ? 'rgba(101,12,217,0.10)' : '#FFFFFF',
-            border: `2px solid ${selected === opt.id ? '#650cd9' : '#E5E7EB'}`,
-            boxShadow: selected === opt.id ? '0 0 0 3px rgba(101,12,217,0.12)' : 'none',
+            background: selected === opt.id ? theme.accentSoft : '#FFFFFF',
+            border: `2px solid ${selected === opt.id ? theme.accent : '#E5E7EB'}`,
+            boxShadow: selected === opt.id ? `0 0 0 3px ${theme.accentRing}` : 'none',
             opacity: submitted ? 0.65 : 1,
           }}
         >
-          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id ? '#650cd9' : '#F5F7FA', color: selected === opt.id ? '#FFFFFF' : '#9CA3AF' }}>
+          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id ? theme.accent : theme.accentSurface, color: selected === opt.id ? theme.accentText : theme.accentStrong }}>
             {String.fromCharCode(65 + i)}
           </span>
           <span className="text-base font-medium" style={{ color: '#1A1A2E' }}>{opt.label}</span>
         </button>
       ))}
       {!submitted && (
-        <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#650cd9', color: '#FFFFFF' }}>
+        <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
           Submit answer <Send className="w-4 h-4" />
         </button>
       )}
@@ -83,8 +145,8 @@ function QuizView({ question, onSubmit, submitted }: {
   )
 }
 
-function PollView({ question, onSubmit, submitted }: {
-  question: PollQuestion; onSubmit: (a: string[]) => void; submitted: boolean
+function PollView({ question, onSubmit, submitted, theme }: {
+  question: PollQuestion; onSubmit: (a: string[]) => void; submitted: boolean; theme: ParticipantTheme
 }) {
   const [selected, setSelected] = useState<string[]>([])
   const toggle = (id: string) => {
@@ -93,22 +155,22 @@ function PollView({ question, onSubmit, submitted }: {
   }
   return (
     <div className="space-y-3">
-      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: '#9CA3AF' }}>
+      <p className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: theme.accentStrong }}>
         {question.allowMultipleSelections ? 'Select all that apply' : 'Choose one'}
       </p>
       {question.options.map(opt => {
         const isSelected = selected.includes(opt.id)
         return (
-          <button key={opt.id} disabled={submitted} onClick={() => !submitted && toggle(opt.id)} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]" style={{ background: isSelected ? 'rgba(189,166,255,0.10)' : '#FFFFFF', border: `2px solid ${isSelected ? '#bda6ff' : '#E5E7EB'}`, boxShadow: isSelected ? '0 0 0 3px rgba(189,166,255,0.10)' : 'none', opacity: submitted ? 0.65 : 1 }}>
-            <span className="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all" style={{ borderColor: isSelected ? '#bda6ff' : '#D1D5DB', background: isSelected ? '#bda6ff' : 'transparent' }}>
+          <button key={opt.id} disabled={submitted} onClick={() => !submitted && toggle(opt.id)} className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]" style={{ background: isSelected ? theme.accentSoft : '#FFFFFF', border: `2px solid ${isSelected ? theme.accent : '#E5E7EB'}`, boxShadow: isSelected ? `0 0 0 3px ${theme.accentRing}` : 'none', opacity: submitted ? 0.65 : 1 }}>
+            <span className="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all" style={{ borderColor: isSelected ? theme.accent : '#D1D5DB', background: isSelected ? theme.accent : 'transparent' }}>
               {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
             </span>
-            <span className="text-base font-medium" style={{ color: isSelected ? '#bda6ff' : '#1A1A2E' }}>{opt.label}</span>
+            <span className="text-base font-medium" style={{ color: isSelected ? theme.accentStrong : '#1A1A2E' }}>{opt.label}</span>
           </button>
         )
       })}
       {!submitted && (
-        <button disabled={selected.length === 0} onClick={() => onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#bda6ff', color: '#FFFFFF' }}>
+        <button disabled={selected.length === 0} onClick={() => onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
           Submit <Send className="w-4 h-4" />
         </button>
       )}
@@ -116,8 +178,8 @@ function PollView({ question, onSubmit, submitted }: {
   )
 }
 
-function WordCloudView({ question, onSubmit, submitted }: {
-  question: WordCloudQuestion; onSubmit: (a: string[]) => void; submitted: boolean
+function WordCloudView({ question, onSubmit, submitted, theme }: {
+  question: WordCloudQuestion; onSubmit: (a: string[]) => void; submitted: boolean; theme: ParticipantTheme
 }) {
   const max = question.maxWordsPerResponse
   const [added, setAdded] = useState<string[]>([])
@@ -132,27 +194,27 @@ function WordCloudView({ question, onSubmit, submitted }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#9CA3AF' }}>Add up to {max} word{max > 1 ? 's' : ''}</p>
-        <span className="text-sm font-bold" style={{ color: added.length >= max ? '#bda6ff' : '#9CA3AF' }}>{added.length}/{max}</span>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.accentStrong }}>Add up to {max} word{max > 1 ? 's' : ''}</p>
+        <span className="text-sm font-bold" style={{ color: added.length >= max ? theme.accent : '#9CA3AF' }}>{added.length}/{max}</span>
       </div>
       {added.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {added.map((w, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold" style={{ background: 'rgba(83,216,209,0.18)', border: '1.5px solid rgba(83,216,209,0.45)', color: '#0f5f59' }}>
+            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold" style={{ background: theme.accentSoftStrong, border: `1.5px solid ${theme.accentBorder}`, color: theme.accentStrong }}>
               {w}
-              {!submitted && <button onClick={() => setAdded(prev => prev.filter((_, idx) => idx !== i))} className="font-bold" style={{ color: '#0f5f59' }}>x</button>}
+              {!submitted && <button onClick={() => setAdded(prev => prev.filter((_, idx) => idx !== i))} className="font-bold" style={{ color: theme.accentStrong }}>x</button>}
             </span>
           ))}
         </div>
       )}
       {!submitted && !atMax && (
         <div className="flex gap-2">
-          <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase...' : 'Add another...'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#53d8d1' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? '#53d8d1' : 'rgba(83,216,209,0.20)', color: '#1A1A2E', border: '2px solid transparent', boxShadow: canAdd ? '0 2px 12px rgba(83,216,209,0.35)' : 'none' }}>Add</button>
+          <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase...' : 'Add another...'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? theme.accent : theme.accentSoftStrong, color: canAdd ? theme.accentText : theme.accentStrong, border: '2px solid transparent', boxShadow: canAdd ? `0 2px 12px ${theme.accentRing}` : 'none' }}>Add</button>
         </div>
       )}
       {!submitted && (
-        <button disabled={added.length === 0} onClick={() => onSubmit(added)} className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: '#53d8d1', color: '#1A1A2E' }}>
+        <button disabled={added.length === 0} onClick={() => onSubmit(added)} className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
           Submit {added.length} word{added.length !== 1 ? 's' : ''} <Send className="w-4 h-4" />
         </button>
       )}
@@ -160,13 +222,13 @@ function WordCloudView({ question, onSubmit, submitted }: {
   )
 }
 
-function QAView({ onSubmit, submitted }: { question: QAQuestion; onSubmit: (a: string) => void; submitted: boolean }) {
+function QAView({ onSubmit, submitted, theme }: { question: QAQuestion; onSubmit: (a: string) => void; submitted: boolean; theme: ParticipantTheme }) {
   const [text, setText] = useState('')
   return (
     <div className="space-y-3">
-      <textarea rows={4} placeholder="Type your response here..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem', lineHeight: 1.5 }} onFocus={e => { e.currentTarget.style.borderColor = '#650cd9' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+      <textarea rows={4} placeholder="Type your response here..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem', lineHeight: 1.5 }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
       {!submitted && (
-        <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: '#650cd9', color: '#FFFFFF' }}>
+        <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
           Submit <Send className="w-4 h-4" />
         </button>
       )}
@@ -174,7 +236,7 @@ function QAView({ onSubmit, submitted }: { question: QAQuestion; onSubmit: (a: s
   )
 }
 
-function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQuestion; onSubmit: (a: string | number) => void; submitted: boolean }) {
+function FeedbackView({ question, onSubmit, submitted, theme }: { question: FeedbackQuestion; onSubmit: (a: string | number) => void; submitted: boolean; theme: ParticipantTheme }) {
   const [rating, setRating] = useState(0)
   const [text, setText] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
@@ -184,11 +246,11 @@ function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQue
       <div className="space-y-6">
         <div className="flex gap-2 justify-center flex-wrap">
           {Array.from({ length: max }, (_, i) => i + 1).map(n => (
-            <button key={n} disabled={submitted} onClick={() => setRating(n)} className="w-14 h-14 rounded-2xl font-black text-2xl transition-all active:scale-95" style={{ background: rating >= n ? '#ffb19f' : '#F5F7FA', border: `2px solid ${rating >= n ? '#ffb19f' : '#E5E7EB'}`, boxShadow: rating >= n ? '0 0 0 3px rgba(255,177,159,0.15)' : 'none' }}>*</button>
+            <button key={n} disabled={submitted} onClick={() => setRating(n)} className="w-14 h-14 rounded-2xl font-black text-2xl transition-all active:scale-95" style={{ background: rating >= n ? theme.accent : '#F5F7FA', color: rating >= n ? theme.accentText : theme.accentStrong, border: `2px solid ${rating >= n ? theme.accent : '#E5E7EB'}`, boxShadow: rating >= n ? `0 0 0 3px ${theme.accentRing}` : 'none' }}>*</button>
           ))}
         </div>
-        {rating > 0 && !submitted && <p className="text-center text-sm font-bold" style={{ color: '#ffb19f' }}>{rating} / {max} stars selected</p>}
-        {!submitted && <button disabled={rating === 0} onClick={() => onSubmit(rating)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit rating <Send className="w-4 h-4" /></button>}
+        {rating > 0 && !submitted && <p className="text-center text-sm font-bold" style={{ color: theme.accentStrong }}>{rating} / {max} stars selected</p>}
+        {!submitted && <button disabled={rating === 0} onClick={() => onSubmit(rating)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>Submit rating <Send className="w-4 h-4" /></button>}
       </div>
     )
   }
@@ -196,18 +258,18 @@ function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQue
     return (
       <div className="space-y-3">
         {question.options.map(opt => (
-          <button key={opt.id} disabled={submitted} onClick={() => setSelected(opt.id)} className="w-full px-4 py-4 rounded-2xl text-base font-medium text-left transition-all active:scale-[0.98]" style={{ background: selected === opt.id ? 'rgba(255,177,159,0.10)' : '#FFFFFF', border: `2px solid ${selected === opt.id ? '#ffb19f' : '#E5E7EB'}`, color: selected === opt.id ? '#912f03' : '#1A1A2E' }}>
+          <button key={opt.id} disabled={submitted} onClick={() => setSelected(opt.id)} className="w-full px-4 py-4 rounded-2xl text-base font-medium text-left transition-all active:scale-[0.98]" style={{ background: selected === opt.id ? theme.accentSoft : '#FFFFFF', border: `2px solid ${selected === opt.id ? theme.accent : '#E5E7EB'}`, color: selected === opt.id ? theme.accentStrong : '#1A1A2E' }}>
             {opt.label}
           </button>
         ))}
-        {!submitted && <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-2 transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
+        {!submitted && <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-2 transition-all disabled:opacity-40" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>Submit <Send className="w-4 h-4" /></button>}
       </div>
     )
   }
   return (
     <div className="space-y-3">
-      <textarea rows={question.feedbackType === 'long_text' ? 5 : 3} placeholder="Your response..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = '#ffb19f' }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-      {!submitted && <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: '#ffb19f', color: '#1A1A2E' }}>Submit <Send className="w-4 h-4" /></button>}
+      <textarea rows={question.feedbackType === 'long_text' ? 5 : 3} placeholder="Your response..." disabled={submitted} value={text} onChange={e => setText(e.target.value)} className="w-full px-4 py-4 rounded-xl text-base outline-none resize-none" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
+      {!submitted && <button disabled={!text.trim()} onClick={() => onSubmit(text.trim())} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>Submit <Send className="w-4 h-4" /></button>}
     </div>
   )
 }
@@ -216,7 +278,7 @@ function FeedbackView({ question, onSubmit, submitted }: { question: FeedbackQue
 
 function NameEntryScreen({
   sessionTitle, participantCount, nameInput, setNameInput, onJoin, isJoining,
-  brandLogoUrl, brandName,
+  brandLogoUrl, brandName, theme,
 }: {
   sessionTitle: string
   participantCount: number
@@ -226,6 +288,7 @@ function NameEntryScreen({
   isJoining: boolean
   brandLogoUrl?: string
   brandName?: string
+  theme: ParticipantTheme
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
   useEffect(() => { inputRef.current?.focus() }, [])
@@ -247,7 +310,7 @@ function NameEntryScreen({
         <div className="max-w-md mx-auto w-full flex items-center justify-between px-4 sm:px-5 py-4">
           <BrandLockup href="/" size="sm" theme="dark" />
           {participantCount > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: 'rgba(101,12,217,0.15)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.25)' }}>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold" style={{ background: theme.accentSoft, color: theme.accent, border: `1px solid ${theme.accentBorder}` }}>
               <Users className="w-3 h-3" />
               {participantCount} joined
             </div>
@@ -277,8 +340,8 @@ function NameEntryScreen({
             <div
               className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6"
               style={{
-                background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
-                boxShadow: '0 8px 32px rgba(101,12,217,0.35)',
+                background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`,
+                boxShadow: `0 8px 32px ${theme.accentRing}`,
               }}
             >
               <Zap className="w-10 h-10 text-white" />
@@ -328,7 +391,7 @@ function NameEntryScreen({
                 background: 'rgba(255,255,255,0.07)',
                 backdropFilter: 'blur(8px)',
               }}
-              onFocus={e => { e.currentTarget.style.borderColor = '#650cd9'; e.currentTarget.style.background = 'rgba(101,12,217,0.10)' }}
+              onFocus={e => { e.currentTarget.style.borderColor = theme.accent; e.currentTarget.style.background = theme.accentSoft }}
               onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)'; e.currentTarget.style.background = 'rgba(255,255,255,0.07)' }}
             />
           </div>
@@ -338,10 +401,10 @@ function NameEntryScreen({
             onClick={onJoin}
             className="w-full flex items-center justify-center gap-3 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
-              color: '#FFFFFF',
+              background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`,
+              color: theme.accentText,
               padding: '1.1rem',
-              boxShadow: nameInput.trim() ? '0 6px 24px rgba(101,12,217,0.40)' : 'none',
+              boxShadow: nameInput.trim() ? `0 6px 24px ${theme.accentRing}` : 'none',
             }}
           >
             {isJoining ? (
@@ -376,12 +439,13 @@ function NameEntryScreen({
 
 // â”€â”€â”€ Wait screen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandName }: {
+function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandName, theme }: {
   name: string
   sessionTitle: string
   participantCount: number
   brandLogoUrl?: string
   brandName?: string
+  theme: ParticipantTheme
 }) {
   const [messageIndex, setMessageIndex] = useState((name.length + sessionTitle.length) % WAITING_MESSAGES.length)
 
@@ -410,7 +474,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
             style={{
               width: 60 + i * 44,
               height: 60 + i * 44,
-              border: '1.5px solid rgba(101,12,217,0.20)',
+              border: `1.5px solid ${theme.accentBorder}`,
             }}
             animate={{ scale: [1, 1.06, 1], opacity: [0.3, 0.6, 0.3] }}
             transition={{ duration: 2.5, repeat: Infinity, delay: i * 0.4 }}
@@ -426,9 +490,9 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
         ) : (
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center z-10"
-            style={{ background: 'rgba(101,12,217,0.15)', border: '1.5px solid rgba(101,12,217,0.35)' }}
+            style={{ background: theme.accentSoft, border: `1.5px solid ${theme.accentBorder}` }}
           >
-            <Zap className="w-8 h-8" style={{ color: '#650cd9' }} />
+            <Zap className="w-8 h-8" style={{ color: theme.accent }} />
           </div>
         )}
       </div>
@@ -446,7 +510,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
         <p className="text-base font-medium" style={{ color: 'rgba(255,255,255,0.50)' }}>
           You are all set for
         </p>
-        <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#650cd9' }}>
+        <p style={{ fontSize: '1.2rem', fontWeight: 700, color: theme.accent }}>
           {sessionTitle}
         </p>
         <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.42)' }}>
@@ -463,11 +527,11 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
       >
         <div
           className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.10)' }}
+          style={{ background: theme.accentSoft, border: `1px solid ${theme.accentBorder}` }}
         >
           <motion.div
             className="w-2.5 h-2.5 rounded-full"
-            style={{ background: '#bda6ff' }}
+            style={{ background: theme.accent }}
             animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
             transition={{ duration: 1.4, repeat: Infinity }}
           />
@@ -513,7 +577,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
             <motion.div
               key={i}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ background: '#650cd9' }}
+              style={{ background: theme.accent }}
               animate={{ opacity: [0.2, 1, 0.2], scale: [1, 1.3, 1] }}
               transition={{ duration: 1.6, repeat: Infinity, delay: i * 0.2 }}
             />
@@ -536,6 +600,7 @@ export default function ParticipantPage() {
   const [error,            setError]             = useState('')
   const [answered,         setAnswered]          = useState<Record<string, boolean>>({})
   const [participantCount, setParticipantCount]  = useState(0)
+  const [presentationAccentColor, setPresentationAccentColor] = useState<string | null>(null)
 
   // Name / join state
   const [participantName, setParticipantName] = useState<string | null>(null)
@@ -564,6 +629,16 @@ export default function ParticipantPage() {
     const unsubP = LiveSessionService.subscribeToParticipants(code, setParticipantCount)
     return () => { unsub(); unsubP() }
   }, [code])
+
+  useEffect(() => {
+    if (!session?.presentationId || session.brandAccentColor) {
+      setPresentationAccentColor(session?.brandAccentColor ?? null)
+      return
+    }
+    get(ref(rtdb, `presentations/${session.presentationId}/brandAccentColor`))
+      .then(snap => setPresentationAccentColor(snap.exists() ? snap.val() : null))
+      .catch(() => setPresentationAccentColor(null))
+  }, [session?.presentationId, session?.brandAccentColor])
 
   // Auto-rejoin when session loads and name is already known
   useEffect(() => {
@@ -727,7 +802,7 @@ export default function ParticipantPage() {
   const currentQ   = questions[session.currentQuestionIndex]
   const isAnswered = currentQ ? !!answered[currentQ.id] : false
   const KindIcon   = currentQ ? (KIND_ICON[currentQ.kind] ?? Sparkles) : Sparkles
-  const kindMeta   = currentQ ? (KIND_META[currentQ.kind] ?? KIND_META.quiz) : KIND_META.quiz
+  const theme = buildParticipantTheme(session.brandAccentColor || presentationAccentColor)
 
   // â”€â”€ Name entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!participantName || !hasJoined) {
@@ -743,6 +818,7 @@ export default function ParticipantPage() {
           isJoining={isJoining}
           brandLogoUrl={session.brandLogoUrl}
           brandName={session.brandName}
+          theme={theme}
         />
       </AnimatePresence>
     )
@@ -759,6 +835,7 @@ export default function ParticipantPage() {
           participantCount={participantCount}
           brandLogoUrl={session.brandLogoUrl}
           brandName={session.brandName}
+          theme={theme}
         />
       </AnimatePresence>
     )
@@ -766,7 +843,7 @@ export default function ParticipantPage() {
 
   // â”€â”€ Active session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#F5F7FA' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: mix(theme.accent, '#FFFFFF', 0.965) }}>
 
       {/* Compact top bar */}
       <div
@@ -780,13 +857,13 @@ export default function ParticipantPage() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {participantName && (
-              <span className="hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: 'rgba(101,12,217,0.10)', color: '#650cd9' }}>
+              <span className="hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: theme.accentSoft, color: theme.accentStrong }}>
                 {participantName}
               </span>
             )}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: '#bda6ff' }}>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: theme.accent }}>
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-[9px] font-black text-white uppercase tracking-widest">Live</span>
+              <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: theme.accentText }}>Live</span>
             </div>
           </div>
         </div>
@@ -796,7 +873,7 @@ export default function ParticipantPage() {
       {questions.length > 0 && (
         <div className="flex gap-0.5 shrink-0">
           {questions.map((_, i) => (
-            <div key={i} className="flex-1 h-1 transition-all duration-500" style={{ background: i < session.currentQuestionIndex ? '#650cd9' : i === session.currentQuestionIndex ? 'rgba(101,12,217,0.45)' : '#E5E7EB' }} />
+            <div key={i} className="flex-1 h-1 transition-all duration-500" style={{ background: i < session.currentQuestionIndex ? theme.accent : i === session.currentQuestionIndex ? theme.accentRing : '#E5E7EB' }} />
           ))}
         </div>
       )}
@@ -819,17 +896,17 @@ export default function ParticipantPage() {
             }}
           >
             {/* Question header â€” full-width brand color band */}
-            <div className="px-5 pt-7 pb-8 shrink-0" data-question-header style={{ background: kindMeta.bg }}>
+            <div className="px-5 pt-7 pb-8 shrink-0" data-question-header style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentGradientTo})` }}>
               <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: 'rgba(0,0,0,0.18)' }}>
-                  <KindIcon className="w-3.5 h-3.5" style={{ color: kindMeta.text }} />
-                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: kindMeta.text }}>{currentQ.kind.replace('_', ' ')}</span>
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.16)' }}>
+                  <KindIcon className="w-3.5 h-3.5" style={{ color: theme.accentText }} />
+                  <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.accentText }}>{currentQ.kind.replace('_', ' ')}</span>
                 </div>
-                <span className="text-sm font-bold" style={{ color: kindMeta.text, opacity: 0.65 }}>
+                <span className="text-sm font-bold" style={{ color: theme.accentText, opacity: 0.7 }}>
                   {session.currentQuestionIndex + 1} / {questions.length}
                 </span>
               </div>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: kindMeta.text, lineHeight: 1.3, letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: theme.accentText, lineHeight: 1.3, letterSpacing: '-0.02em' }}>
                 {currentQ.prompt || <span style={{ opacity: 0.55, fontStyle: 'italic' }}>Waiting for question...</span>}
               </h2>
             </div>
@@ -846,11 +923,11 @@ export default function ParticipantPage() {
                 </motion.div>
               ) : (
                 <>
-                  {currentQ.kind === 'quiz'       && <QuizView      question={currentQ as QuizQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} />}
-                  {currentQ.kind === 'poll'       && <PollView      question={currentQ as PollQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} />}
-                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} />}
-                  {currentQ.kind === 'qa'         && <QAView        question={currentQ as QAQuestion}        onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} />}
-                  {currentQ.kind === 'feedback'   && <FeedbackView  question={currentQ as FeedbackQuestion}  onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} />}
+                  {currentQ.kind === 'quiz'       && <QuizView      question={currentQ as QuizQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'poll'       && <PollView      question={currentQ as PollQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'qa'         && <QAView        question={currentQ as QAQuestion}        onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'feedback'   && <FeedbackView  question={currentQ as FeedbackQuestion}  onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
                 </>
               )}
             </div>

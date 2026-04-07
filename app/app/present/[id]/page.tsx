@@ -682,6 +682,7 @@ export default function PresentPage() {
         questions,
         brandLogoUrl: branding?.logoUrl || undefined,
         brandName:    branding?.brandName || undefined,
+        brandAccentColor: presentation.brandAccentColor || branding?.accentColor || undefined,
       })
       const newSession = await LiveSessionService.getSession(joinCode)
       if (newSession) { setSession(newSession); setCurrentIndex(0) }
