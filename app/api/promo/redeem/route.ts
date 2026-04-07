@@ -22,6 +22,7 @@ interface PromoRedeemResponse {
 type RtdbPromo = {
   code?: string
   isActive?: boolean
+  validFrom?: string | null
   validUntil?: string | null
   maxRedemptions?: number | null
   currentRedemptions?: number
@@ -30,6 +31,81 @@ type RtdbPromo = {
   durationMonths?: number | null
   postExpiryPlanId?: string | null
   targetPlanId?: string | null
+}
+
+type PromoPayload = {
+  code: string
+  discountType?: 'percent' | 'fixed'
+  discountValue?: number
+  durationMonths?: number | null
+  postExpiryPlanId?: string | null
+  targetPlanId?: string | null
+}
+
+function resolvePromoValidUntil(value?: string | null): Date | null {
+  if (!value) return null
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+
+  if (/T00:00:00(?:\.000)?Z$/.test(value)) {
+    const endOfDay = new Date(parsed)
+    endOfDay.setUTCHours(23, 59, 59, 999)
+    return endOfDay
+  }
+
+  return parsed
+}
+
+function addMonthsFromNow(months: number) {
+  const expiry = new Date()
+  expiry.setMonth(expiry.getMonth() + months)
+  return expiry.toISOString()
+}
+
+async function applyPromoToUser(userId: string, promo: PromoPayload, source: 'builtin' | 'campaign') {
+  const redeemedAt = new Date().toISOString()
+  const userRef = adminDb().ref(`users/${userId}`)
+  const userSnap = await userRef.get()
+  const existingUser = userSnap.exists() ? (userSnap.val() as Record<string, unknown>) : {}
+
+  const updates: Record<string, unknown> = {
+    id: userId,
+    updatedAt: redeemedAt,
+    onboardingOfferCode: promo.code,
+    onboardingOfferPlanId: promo.targetPlanId ?? null,
+    onboardingOfferDurationMonths: promo.durationMonths ?? null,
+    onboardingOfferGrantedAt: redeemedAt,
+    planCancelledAt: null,
+  }
+
+  if (!userSnap.exists()) {
+    updates.createdAt = redeemedAt
+    updates.name = typeof existingUser.name === 'string' ? existingUser.name : 'New User'
+    updates.email = typeof existingUser.email === 'string' ? existingUser.email : ''
+    updates.role = typeof existingUser.role === 'string' ? existingUser.role : 'user'
+    updates.planId = typeof existingUser.planId === 'string' ? existingUser.planId : 'free'
+  }
+
+  if (promo.targetPlanId) {
+    updates.planId = promo.targetPlanId
+  }
+
+  if (promo.durationMonths) {
+    updates.planExpiresAt = addMonthsFromNow(promo.durationMonths)
+  }
+
+  await userRef.update(updates)
+  await adminDb().ref(`users/${userId}/promoRedemptions/${promo.code}`).set({
+    code: promo.code,
+    redeemedAt,
+    discountType: promo.discountType ?? 'percent',
+    discountValue: promo.discountValue ?? 0,
+    durationMonths: promo.durationMonths ?? null,
+    postExpiryPlanId: promo.postExpiryPlanId ?? null,
+    targetPlanId: promo.targetPlanId ?? null,
+    source,
+  })
 }
 
 /**
@@ -71,18 +147,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
     const snap = await adminDb().ref(`promoCodes/${codeUpper}`).get()
     const promo = snap.val() as RtdbPromo | null
 
+    const existingRedemptionSnap = await adminDb().ref(`users/${userId}/promoRedemptions/${codeUpper}`).get()
+
     if (!promo) {
       if (builtinPromo) {
-        await adminDb().ref(`users/${userId}/promoRedemptions/${codeUpper}`).set({
-          code: builtinPromo.code,
-          redeemedAt: new Date().toISOString(),
-          discountType: builtinPromo.discountType,
-          discountValue: builtinPromo.discountValue,
-          durationMonths: builtinPromo.durationMonths,
-          postExpiryPlanId: builtinPromo.postExpiryPlanId,
-          targetPlanId: builtinPromo.targetPlanId,
-          source: 'builtin',
-        })
+        if (!existingRedemptionSnap.exists()) {
+          await applyPromoToUser(userId, builtinPromo, 'builtin')
+        }
 
         return NextResponse.json({
           success: true,
@@ -107,7 +178,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
       )
     }
 
-    if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
+    if (promo.validFrom && new Date(promo.validFrom) > new Date()) {
+      return NextResponse.json(
+        { success: false, error: 'This promo code is not active yet' },
+        { status: 400 },
+      )
+    }
+
+    const validUntil = resolvePromoValidUntil(promo.validUntil)
+    if (validUntil && validUntil < new Date()) {
       return NextResponse.json(
         { success: false, error: 'This promo code has expired' },
         { status: 400 },
@@ -121,18 +200,33 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoRede
       )
     }
 
-    const newCount = (promo.currentRedemptions ?? 0) + 1
-    await adminDb().ref(`promoCodes/${codeUpper}/currentRedemptions`).set(newCount)
+    if (!existingRedemptionSnap.exists()) {
+      const redemptionCountRef = adminDb().ref(`promoCodes/${codeUpper}/currentRedemptions`)
+      const transactionResult = await redemptionCountRef.transaction((currentCount) => {
+        const numericCount = Number(currentCount ?? 0)
+        if (promo.maxRedemptions != null && numericCount >= promo.maxRedemptions) {
+          return
+        }
 
-    await adminDb().ref(`users/${userId}/promoRedemptions/${codeUpper}`).set({
-      code: promo.code ?? codeUpper,
-      redeemedAt: new Date().toISOString(),
-      discountType: promo.discountType,
-      discountValue: promo.discountValue,
-      durationMonths: promo.durationMonths,
-      postExpiryPlanId: promo.postExpiryPlanId,
-      targetPlanId: promo.targetPlanId,
-    })
+        return numericCount + 1
+      })
+
+      if (!transactionResult.committed) {
+        return NextResponse.json(
+          { success: false, error: 'This promo code has reached its redemption limit' },
+          { status: 400 },
+        )
+      }
+
+      await applyPromoToUser(userId, {
+        code: promo.code ?? codeUpper,
+        discountType: promo.discountType,
+        discountValue: promo.discountValue,
+        durationMonths: promo.durationMonths,
+        postExpiryPlanId: promo.postExpiryPlanId,
+        targetPlanId: promo.targetPlanId,
+      }, 'campaign')
+    }
 
     return NextResponse.json({
       success: true,

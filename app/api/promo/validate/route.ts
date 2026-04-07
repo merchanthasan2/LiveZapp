@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getBuiltinPromo } from '@/lib/promo/builtinPromos'
 import { adminDb } from '@/lib/server/firebaseAdmin'
+import { getRequestIp, hitRateLimit } from '@/lib/server/rateLimit'
 
 interface PromoValidationRequest {
   code: string
@@ -23,6 +24,7 @@ interface PromoValidationResponse {
 type RtdbPromo = {
   code?: string
   isActive?: boolean
+  validFrom?: string | null
   validUntil?: string | null
   maxRedemptions?: number | null
   currentRedemptions?: number
@@ -33,12 +35,38 @@ type RtdbPromo = {
   targetPlanId?: string | null
 }
 
+const PROMO_VALIDATE_WINDOW_MS = 60 * 1000
+const PROMO_VALIDATE_MAX_PER_WINDOW = 20
+
+function resolvePromoValidUntil(value?: string | null): Date | null {
+  if (!value) return null
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+
+  if (/T00:00:00(?:\.000)?Z$/.test(value)) {
+    const endOfDay = new Date(parsed)
+    endOfDay.setUTCHours(23, 59, 59, 999)
+    return endOfDay
+  }
+
+  return parsed
+}
+
 /**
  * POST /api/promo/validate
  * Validates a promo code (reads RTDB via Firebase Admin).
  */
 export async function POST(request: NextRequest): Promise<NextResponse<PromoValidationResponse>> {
   try {
+    const ip = getRequestIp(request.headers)
+    if (hitRateLimit(`promo-validate:${ip}`, PROMO_VALIDATE_MAX_PER_WINDOW, PROMO_VALIDATE_WINDOW_MS)) {
+      return NextResponse.json(
+        { success: false, error: 'Too many promo validation requests. Try again shortly.' },
+        { status: 429 },
+      )
+    }
+
     const body = (await request.json()) as PromoValidationRequest
     const { code } = body
 
@@ -79,7 +107,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<PromoVali
       )
     }
 
-    if (promo.validUntil && new Date(promo.validUntil) < new Date()) {
+    if (promo.validFrom && new Date(promo.validFrom) > new Date()) {
+      return NextResponse.json(
+        { success: false, error: 'This promo code is not active yet' },
+        { status: 400 },
+      )
+    }
+
+    const validUntil = resolvePromoValidUntil(promo.validUntil)
+    if (validUntil && validUntil < new Date()) {
       return NextResponse.json(
         { success: false, error: 'This promo code has expired' },
         { status: 400 },

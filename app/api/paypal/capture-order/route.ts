@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PLANS } from '@/types/plans'
+import { adminDb } from '@/lib/server/firebaseAdmin'
+import { verifyBearerUid } from '@/lib/server/verifyBearerUid'
 
 const PAYPAL_BASE =
   process.env.PAYPAL_MODE === 'live'
@@ -28,6 +30,17 @@ async function getAccessToken(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
+    let tokenUid: string | null
+    try {
+      tokenUid = await verifyBearerUid(req)
+    } catch {
+      return NextResponse.json({ error: 'Server authentication is not configured.' }, { status: 503 })
+    }
+
+    if (!tokenUid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { orderId, planId, billingCycle = 'monthly' } = await req.json()
 
     if (!orderId || !planId) {
@@ -63,7 +76,16 @@ export async function POST(req: NextRequest) {
     const capturedAmount = parseFloat(
       captureUnit?.payments?.captures?.[0]?.amount?.value ?? '0'
     )
+    const customId = String(captureUnit?.custom_id ?? '')
     const status: string = capture.status ?? ''
+
+    const [customUid, customPlanId, customBillingCycle] = customId.split('|')
+    if (customUid !== tokenUid || customPlanId !== planId || customBillingCycle !== billingCycle) {
+      return NextResponse.json(
+        { error: 'Order metadata does not match the authenticated user or selected plan' },
+        { status: 403 },
+      )
+    }
 
     if (status !== 'COMPLETED') {
       return NextResponse.json(
@@ -85,13 +107,34 @@ export async function POST(req: NextRequest) {
       Date.now() + daysToAdd * 24 * 60 * 60 * 1000
     ).toISOString()
 
-    const transactionId: string =
-      captureUnit?.payments?.captures?.[0]?.id ?? orderId
-
-    // Extract payer details
+    const transactionId: string = captureUnit?.payments?.captures?.[0]?.id ?? orderId
     const payerName = capture.payer?.name?.given_name || capture.payer?.name?.full_name || 'Unknown'
     const payerEmail = capture.payer?.email_address || ''
     const currency = captureUnit?.amount?.currency_code || 'USD'
+
+    await adminDb().ref(`users/${tokenUid}`).update({
+      planId,
+      billingCycle,
+      planExpiresAt,
+      planCancelledAt: null,
+      updatedAt: new Date().toISOString(),
+      updatedBy: 'paypal-capture-order',
+    })
+
+    await adminDb().ref(`users/${tokenUid}/transactions/${orderId}`).set({
+      orderId,
+      transactionId,
+      planId,
+      billingCycle,
+      amount: capturedAmount,
+      currency,
+      payerName,
+      payerEmail,
+      status: 'completed',
+      paymentMode: 'PayPal',
+      capturedAt: new Date().toISOString(),
+      planExpiresAt,
+    })
 
     return NextResponse.json({
       success: true,
@@ -99,15 +142,6 @@ export async function POST(req: NextRequest) {
       billingCycle,
       planExpiresAt,
       transactionId,
-      // Full transaction details for logging
-      orderId,
-      amount: capturedAmount,
-      currency,
-      payerName,
-      payerEmail,
-      status: 'completed',
-      capturedAt: new Date().toISOString(),
-      paymentMode: 'PayPal',
     })
   } catch (err: any) {
     console.error('[paypal/capture-order]', err)

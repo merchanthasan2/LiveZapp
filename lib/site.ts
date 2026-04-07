@@ -1,4 +1,4 @@
-const FALLBACK_SITE_URL = 'https://www.live-zapp.com'
+const FALLBACK_SITE_URL = 'https://live-zapp.com'
 
 function normalizeSiteUrl(raw: string): string {
   const trimmed = raw.replace(/\/$/, '').trim()

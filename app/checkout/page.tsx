@@ -11,8 +11,8 @@ import {
   ArrowLeft, Check, Shield, AlertTriangle, Loader2,
   CheckCircle, RefreshCw, Info, ChevronDown, ChevronUp,
 } from 'lucide-react'
-import { ref, update, get, set } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { ref, update, get } from 'firebase/database'
+import { auth, rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
 import { AdminConfigService } from '@/lib/services/AdminConfigService'
@@ -192,9 +192,17 @@ function CheckoutContent() {
 
   // ── PayPal callbacks ──────────────────────────────────────────────────────
   const createOrder = useCallback(async () => {
+    const idToken = await auth.currentUser?.getIdToken()
+    if (!idToken) {
+      throw new Error('Your session expired. Please sign in again.')
+    }
+
     const res = await fetch('/api/paypal/create-order', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
       body: JSON.stringify({ planId, billingCycle: billing }),
     })
     const data = await res.json()
@@ -205,38 +213,21 @@ function CheckoutContent() {
   const onApprove = useCallback(async (data: { orderID: string }) => {
     setPayStatus('processing')
     try {
+      const idToken = await auth.currentUser?.getIdToken()
+      if (!idToken) {
+        throw new Error('Your session expired. Please sign in again.')
+      }
+
       const res = await fetch('/api/paypal/capture-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ orderId: data.orderID, planId, billingCycle: billing }),
       })
       const result = await res.json()
       if (!res.ok || !result.success) throw new Error(result.error || 'Payment verification failed')
-
-      // Save plan to user's root RTDB record
-      await update(ref(rtdb, `users/${user!.id}`), {
-        planId: result.planId,
-        planExpiresAt: result.planExpiresAt,
-        billingCycle: result.billingCycle,
-        planCancelledAt: null,
-      })
-
-      // Store full transaction details for admin dashboard + receipt generation
-      const transactionKey = `${result.orderId}-${Date.now()}`
-      await set(ref(rtdb, `users/${user!.id}/transactions/${transactionKey}`), {
-        orderId: result.orderId,
-        transactionId: result.transactionId,
-        planId: result.planId,
-        billingCycle: result.billingCycle,
-        amount: result.amount,
-        currency: result.currency,
-        payerName: result.payerName,
-        payerEmail: result.payerEmail,
-        status: result.status,
-        paymentMode: result.paymentMode,
-        capturedAt: result.capturedAt,
-        planExpiresAt: result.planExpiresAt,
-      })
 
       setPayStatus('success')
       setTimeout(() => router.push('/app/dashboard'), 3000)
@@ -244,7 +235,7 @@ function CheckoutContent() {
       setPayError(err.message || 'Payment failed. Please contact support.')
       setPayStatus('error')
     }
-  }, [planId, billing, user, router])
+  }, [planId, billing, router])
 
   const onPayPalError = useCallback((err: Record<string, unknown>) => {
     console.error('[PayPal]', err)

@@ -8,13 +8,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Zap, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
-import { ref, set } from 'firebase/database'
-import { auth, rtdb } from '@/lib/firebase'
+import { auth } from '@/lib/firebase'
 import BrandLockup from '@/components/BrandLockup'
-import { ADMIN_EMAILS, SUPERADMIN_EMAILS } from '@/lib/auth/allowlist'
-import type { Role } from '@/types/auth'
-import { isAdminRole } from '@/types/auth'
-import type { PlanId } from '@/types/plans'
 
 const schema = z
   .object({
@@ -95,19 +90,24 @@ function RegisterContent() {
         data.password,
       )
       await updateProfile(firebaseUser, { displayName: data.name })
-      const emailLower = data.email.toLowerCase()
-      const role: Role = SUPERADMIN_EMAILS.has(emailLower)
-        ? 'superadmin'
-        : ADMIN_EMAILS.has(emailLower)
-          ? 'admin'
-          : 'user'
+      const idToken = await firebaseUser.getIdToken()
 
-      let planId: PlanId = isAdminRole(role) ? 'pro' : 'free'
-      let planExpiresAt: string | undefined
+      const bootstrapResponse = await fetch('/api/auth/bootstrap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ name: data.name }),
+      })
+
+      const bootstrapData = await bootstrapResponse.json().catch(() => ({}))
+      if (!bootstrapResponse.ok || !bootstrapData?.success) {
+        throw new Error(bootstrapData?.error || 'Failed to initialize your account')
+      }
 
       if (promoCode) {
         try {
-          const idToken = await firebaseUser.getIdToken()
           const redeemResponse = await fetch('/api/promo/redeem', {
             method: 'POST',
             headers: {
@@ -121,41 +121,12 @@ function RegisterContent() {
           })
 
           if (redeemResponse.ok) {
-            const redeemData = await redeemResponse.json()
-            if (redeemData.promo?.targetPlanId) {
-              planId = redeemData.promo.targetPlanId
-              if (redeemData.promo.durationMonths) {
-                const expiryDate = new Date()
-                expiryDate.setMonth(expiryDate.getMonth() + redeemData.promo.durationMonths)
-                planExpiresAt = expiryDate.toISOString()
-              }
-            }
+            await redeemResponse.json().catch(() => null)
           }
         } catch (err) {
           console.error('Failed to redeem promo code:', err)
         }
       }
-
-      const userPayload: {
-        id: string
-        email: string
-        name: string
-        role: Role
-        planId: PlanId
-        planExpiresAt?: string
-      } = {
-        id: firebaseUser.uid,
-        email: data.email,
-        name: data.name,
-        role,
-        planId,
-      }
-
-      if (planExpiresAt) {
-        userPayload.planExpiresAt = planExpiresAt
-      }
-
-      await set(ref(rtdb, `users/${firebaseUser.uid}`), userPayload)
       setDone(true)
       setTimeout(() => router.push('/app/dashboard'), 1500)
     } catch (err: any) {

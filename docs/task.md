@@ -84,6 +84,7 @@
 - [x] PayPal billing and plan enforcement in services
 - [x] `/privacy` and `/terms` — static legal pages
 - [x] SEO — `app/sitemap.ts` and `app/robots.txt/route.ts` (fallback in `lib/site.ts`)
+- [x] Firebase RTDB rules deployed to `livezappbackend`
 - [ ] Production deploy and environment configuration on target host
 
 ---
@@ -99,6 +100,8 @@
 
 ### Security and dependencies
 - [ ] Periodically run `npm audit` and upgrade Next.js patch versions
+- [x] Move promo create/deactivate behind authenticated admin API
+- [x] Extract auth allowlist and share role enforcement between register + auth bootstrap
 
 ---
 

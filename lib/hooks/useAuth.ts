@@ -23,8 +23,7 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from 'firebase/auth'
-import { ref, get, set } from 'firebase/database'
-import { ADMIN_EMAILS, SUPERADMIN_EMAILS } from '@/lib/auth/allowlist'
+import { ref, get } from 'firebase/database'
 
 export interface AuthState {
   user: User | null
@@ -52,8 +51,22 @@ export function useAuth(): AuthState {
         return
       }
 
-      // Fetch user doc from Realtime Database to get `role` and `planId`
       try {
+        const idToken = await firebaseUser.getIdToken()
+        const bootstrapResponse = await fetch('/api/auth/bootstrap', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({ name: firebaseUser.displayName || undefined }),
+        })
+
+        if (!bootstrapResponse.ok) {
+          const bootstrapData = await bootstrapResponse.json().catch(() => ({}))
+          throw new Error(String(bootstrapData?.error ?? 'Failed to synchronize account profile'))
+        }
+
         const userRef = ref(rtdb, `users/${firebaseUser.uid}`)
         const snapshot = await get(userRef)
         
@@ -61,39 +74,20 @@ export function useAuth(): AuthState {
         
         if (snapshot.exists()) {
           const stored = snapshot.val() as User
-          const emailLower = firebaseUser.email?.toLowerCase() || ''
-          const isSuperAdminEmail = SUPERADMIN_EMAILS.has(emailLower)
-          const isAdminEmail      = ADMIN_EMAILS.has(emailLower)
-          const enforcedRole: Role = isSuperAdminEmail ? 'superadmin'
-                                    : isAdminEmail      ? 'admin'
-                                    : stored.role
-
-          // Write back if role has changed (e.g. first login after email was added to allowlist)
-          if (enforcedRole !== stored.role) {
-            await set(ref(rtdb, `users/${firebaseUser.uid}/role`), enforcedRole)
+          userData = {
+            ...stored,
+            id: firebaseUser.uid,
+            role: stored.role as Role,
+            planId: (stored.planId ?? 'free') as PlanId,
           }
-          // Superadmins and admins always get pro plan
-          const enforcedPlan: PlanId = isAdminRole(enforcedRole) ? 'pro' : stored.planId
-          if (isAdminRole(enforcedRole) && stored.planId !== 'pro') {
-            await set(ref(rtdb, `users/${firebaseUser.uid}/planId`), 'pro')
-          }
-
-          userData = { ...stored, id: firebaseUser.uid, role: enforcedRole, planId: enforcedPlan }
         } else {
-          // New user — create RTDB profile
-          const emailLower = firebaseUser.email?.toLowerCase() || ''
-          const isSuperAdminEmail = SUPERADMIN_EMAILS.has(emailLower)
-          const isAdminEmail      = ADMIN_EMAILS.has(emailLower)
-          const role: Role = isSuperAdminEmail ? 'superadmin' : isAdminEmail ? 'admin' : 'user'
-
           userData = {
             id: firebaseUser.uid,
             email: firebaseUser.email || '',
             name: firebaseUser.displayName || 'New User',
-            role,
-            planId: isAdminRole(role) ? 'pro' : 'free',
+            role: 'user',
+            planId: 'free',
           }
-          await set(userRef, userData)
         }
         
         setUser(userData)

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ref, get, set, update } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import { ref, get } from 'firebase/database'
+import { auth, rtdb } from '@/lib/firebase'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { SITE_URL } from '@/lib/site'
 import { PLANS } from '@/types/plans'
@@ -39,9 +39,32 @@ function fmtDate(d: string | null) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+function normalizePromoValidUntil(value: string | null) {
+  if (!value) return null
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return null
+
+  const isMidnightUtc = /T00:00:00(?:\.000)?Z$/.test(value)
+  if (!isMidnightUtc) return parsed
+
+  const endOfDay = new Date(parsed)
+  endOfDay.setUTCHours(23, 59, 59, 999)
+  return endOfDay
+}
+
 function isExpired(promo: PromoCode): boolean {
   if (!promo.validUntil) return false
-  return new Date(promo.validUntil) < new Date()
+  const validUntil = normalizePromoValidUntil(promo.validUntil)
+  if (!validUntil) return false
+  return validUntil < new Date()
+}
+
+function dateInputToPromoExpiry(value: string): string | null {
+  if (!value) return null
+  const endOfDay = new Date(`${value}T23:59:59.999`)
+  if (Number.isNaN(endOfDay.getTime())) return null
+  return endOfDay.toISOString()
 }
 
 function generateCode(): string {
@@ -84,7 +107,7 @@ function CreateModal({ onClose, onCreate }: {
         discountValue:     val,
         maxRedemptions:    maxRedemptions ? parseInt(maxRedemptions) : null,
         validFrom:         new Date().toISOString(),
-        validUntil:        validUntil ? new Date(validUntil).toISOString() : null,
+        validUntil:        dateInputToPromoExpiry(validUntil),
         applicablePlanIds: applicablePlans,
         isActive:          true,
         durationMonths:    durationMonths ? parseInt(durationMonths) : null,
@@ -348,23 +371,47 @@ export default function AdminPromosPage() {
   }
 
   async function handleCreate(promo: Omit<PromoCode, 'currentRedemptions' | 'createdAt' | 'createdBy'>) {
-    const existing = await get(ref(rtdb, `promoCodes/${promo.code}`))
-    if (existing.exists()) throw new Error(`Code "${promo.code}" already exists`)
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('You must be signed in to create promo codes')
+    const token = await currentUser.getIdToken()
 
-    const full: PromoCode = {
-      ...promo,
-      currentRedemptions: 0,
-      createdAt: new Date().toISOString(),
-      createdBy: user?.id ?? 'admin',
+    const response = await fetch('/api/promo/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(promo),
+    })
+
+    const data = await response.json() as { success?: boolean; error?: string; promo?: PromoCode }
+    if (!response.ok || !data.success || !data.promo) {
+      throw new Error(data.error || 'Failed to create promo code')
     }
-    await set(ref(rtdb, `promoCodes/${promo.code}`), full)
-    setPromos(prev => [full, ...prev])
+
+    setPromos(prev => [data.promo!, ...prev])
     setShowCreate(false)
     showToast(`Promo code ${promo.code} created`)
   }
 
   async function handleDeactivate(code: string) {
-    await update(ref(rtdb, `promoCodes/${code}`), { isActive: false })
+    const currentUser = auth.currentUser
+    if (!currentUser) throw new Error('You must be signed in to deactivate promo codes')
+    const token = await currentUser.getIdToken()
+
+    const response = await fetch('/api/promo/create', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ code, isActive: false }),
+    })
+    const data = await response.json() as { success?: boolean; error?: string }
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Failed to deactivate promo code')
+    }
+
     setPromos(prev => prev.map(p => p.code === code ? { ...p, isActive: false } : p))
     showToast(`${code} deactivated`)
   }
@@ -555,7 +602,12 @@ export default function AdminPromosPage() {
                       <td className="px-5 py-3.5">
                         {statusOk && (
                           <button
-                            onClick={() => handleDeactivate(p.code)}
+                            onClick={() => {
+                              void handleDeactivate(p.code).catch((error: unknown) => {
+                                const message = error instanceof Error ? error.message : 'Failed to deactivate promo code'
+                                showToast(message, false)
+                              })
+                            }}
                             className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all"
                             style={{ background: 'rgba(239,68,68,0.08)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.15)' }}
                             onMouseEnter={e => (e.currentTarget.style.background = 'rgba(239,68,68,0.15)')}

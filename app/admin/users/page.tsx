@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ref, get, update } from 'firebase/database'
+import { ref, get } from 'firebase/database'
 import { auth, rtdb } from '@/lib/firebase'
+import { useAuth } from '@/lib/hooks/useAuth'
 import { PLANS } from '@/types/plans'
 import {
   Users, Search, ChevronUp, ChevronDown, RefreshCw,
@@ -300,7 +301,7 @@ function UserDrawer({
                   { icon: Mail,     label: 'Email',    val: user.email },
                   { icon: Calendar, label: 'Joined',   val: fmtDate(user.createdAt) },
                   { icon: Calendar, label: 'Last login',val: fmtDate(user.lastLoginAt) },
-                  { icon: FileText, label: 'Zapps',    val: `${user.presentations} active · ${user.lifetimePresentationsCreated} this month` },
+                  { icon: FileText, label: 'Zapps',    val: `${user.presentations} active · ${user.lifetimePresentationsCreated} lifetime created` },
                   ...(user.country ? [{ icon: Shield, label: 'Country', val: [user.city, user.country].filter(Boolean).join(', ') }] : []),
                 ].map(({ icon: Icon, label, val }) => (
                   <div key={label} className="flex items-start gap-3">
@@ -330,7 +331,7 @@ function UserDrawer({
                   {planInfo.limits.maxPresentations !== 'unlimited' && (
                     <div>
                       <div className="flex justify-between text-xs mb-1">
-                        <span style={{ color: '#6B7280' }}>Monthly sessions</span>
+                        <span style={{ color: '#6B7280' }}>Tracked creations</span>
                         <span className="font-semibold" style={{ color: '#1A1A2E' }}>
                           {user.lifetimePresentationsCreated} / {planInfo.limits.maxPresentations}
                         </span>
@@ -479,6 +480,14 @@ function UserDrawer({
                     {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Shield className="w-3.5 h-3.5" />}
                     {isSaving ? 'Saving…' : selectedRole === user.role ? 'Same role selected' : `Set as ${ROLE_BADGE[selectedRole].label}`}
                   </button>
+                </div>
+              )}
+              {!canManageRoles && (
+                <div className="rounded-xl p-4" style={{ background: 'rgba(143,99,255,0.08)', border: '1px solid rgba(143,99,255,0.18)' }}>
+                  <p className="text-xs font-semibold mb-1" style={{ color: '#6d28d9' }}>Role changes require superadmin access</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>
+                    This admin can still handle user support tasks, but cannot promote, demote, or reassign roles.
+                  </p>
                 </div>
               )}
 
@@ -651,6 +660,7 @@ function UserDrawer({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function AdminUsersPage() {
+  const { isSuperAdmin } = useAuth()
   const [users, setUsers]           = useState<UserRow[]>([])
   const [isLoading, setIsLoading]   = useState(true)
   const [search, setSearch]         = useState('')
@@ -734,16 +744,12 @@ export default function AdminUsersPage() {
   async function handleSuspend(uid: string, reason: string) {
     setIsSaving(true)
     try {
-      await update(ref(rtdb, `users/${uid}`), {
-        suspended: true,
-        suspendedReason: reason,
-        suspendedAt: new Date().toISOString(),
-      })
+      await runAdminAction({ action: 'suspend_account', targetUid: uid, reason })
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, suspended: true, suspendedReason: reason } : u))
       if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, suspended: true, suspendedReason: reason } : null)
       showToast('Account suspended')
-    } catch {
-      showToast('Failed to suspend', false)
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to suspend', false)
     } finally {
       setIsSaving(false)
     }
@@ -752,16 +758,12 @@ export default function AdminUsersPage() {
   async function handleRestore(uid: string) {
     setIsSaving(true)
     try {
-      await update(ref(rtdb, `users/${uid}`), {
-        suspended: false,
-        suspendedReason: null,
-        suspendedAt: null,
-      })
+      await runAdminAction({ action: 'restore_account', targetUid: uid })
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, suspended: false, suspendedReason: null } : u))
       if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, suspended: false, suspendedReason: null } : null)
       showToast('Account restored')
-    } catch {
-      showToast('Failed to restore', false)
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to restore', false)
     } finally {
       setIsSaving(false)
     }
@@ -774,8 +776,8 @@ export default function AdminUsersPage() {
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, planId } : u))
       if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, planId } : null)
       showToast(`Plan changed to ${planId}`)
-    } catch {
-      showToast('Failed to change plan', false)
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to change plan', false)
     } finally {
       setIsSaving(false)
     }
@@ -788,8 +790,8 @@ export default function AdminUsersPage() {
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role } : u))
       if (selectedUser?.uid === uid) setSelectedUser(prev => prev ? { ...prev, role } : null)
       showToast(`Role changed to ${role}`)
-    } catch {
-      showToast('Failed to change role', false)
+    } catch (error: any) {
+      showToast(error?.message ?? 'Failed to change role', false)
     } finally {
       setIsSaving(false)
     }
@@ -798,7 +800,11 @@ export default function AdminUsersPage() {
   async function handleToggleAddressConfirmationRequirement(uid: string, required: boolean) {
     setIsSaving(true)
     try {
-      await update(ref(rtdb, `users/${uid}`), { requireAddressConfirmationOnPurchase: required })
+      await runAdminAction({
+        action: 'set_address_confirmation_requirement',
+        targetUid: uid,
+        required,
+      })
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, requireAddressConfirmationOnPurchase: required } : u))
       if (selectedUser?.uid === uid) {
         setSelectedUser(prev => prev ? { ...prev, requireAddressConfirmationOnPurchase: required } : null)
@@ -814,13 +820,8 @@ export default function AdminUsersPage() {
   async function handleGeneratePasswordReset(uid: string) {
     setIsSaving(true)
     try {
-      const result = await runAdminAction({ action: 'send_password_reset', targetUid: uid })
-      if (result.link) {
-        await navigator.clipboard.writeText(String(result.link))
-        showToast('Password reset link generated and copied')
-      } else {
-        showToast('Password reset link generated')
-      }
+      await runAdminAction({ action: 'send_password_reset', targetUid: uid })
+      showToast('Password reset email sent')
     } catch (error: any) {
       showToast(error?.message ?? 'Failed to generate password reset link', false)
     } finally {
@@ -831,13 +832,8 @@ export default function AdminUsersPage() {
   async function handleGenerateVerificationLink(uid: string) {
     setIsSaving(true)
     try {
-      const result = await runAdminAction({ action: 'resend_verification', targetUid: uid })
-      if (result.link) {
-        await navigator.clipboard.writeText(String(result.link))
-        showToast('Verification link generated and copied')
-      } else {
-        showToast('Verification link generated')
-      }
+      await runAdminAction({ action: 'resend_verification', targetUid: uid })
+      showToast('Verification email sent')
     } catch (error: any) {
       showToast(error?.message ?? 'Failed to generate verification link', false)
     } finally {
@@ -923,7 +919,7 @@ export default function AdminUsersPage() {
   const totalPaid    = users.filter(u => u.planId !== 'free').length
   const totalSuspended = users.filter(u => u.suspended).length
   const totalActive  = users.filter(u => userStatus(u) === 'active').length
-  const canManageRoles = true
+  const canManageRoles = isSuperAdmin
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl relative">

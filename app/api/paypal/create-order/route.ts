@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PLANS } from '@/types/plans'
+import { verifyBearerUid } from '@/lib/server/verifyBearerUid'
 
 const PAYPAL_BASE =
   process.env.PAYPAL_MODE === 'live'
@@ -28,6 +29,17 @@ async function getAccessToken(): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
+    let tokenUid: string | null
+    try {
+      tokenUid = await verifyBearerUid(req)
+    } catch {
+      return NextResponse.json({ error: 'Server authentication is not configured.' }, { status: 503 })
+    }
+
+    if (!tokenUid) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const { planId, billingCycle = 'monthly' } = await req.json()
 
     const plan = PLANS.find(p => p.id === planId)
@@ -59,7 +71,7 @@ export async function POST(req: NextRequest) {
               value: amount.toFixed(2),
             },
             description,
-            custom_id: `${planId}|${billingCycle}`,
+            custom_id: `${tokenUid}|${planId}|${billingCycle}`,
           },
         ],
         application_context: {

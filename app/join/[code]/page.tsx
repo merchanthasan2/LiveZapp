@@ -101,6 +101,13 @@ function buildParticipantTheme(accent?: string | null): ParticipantTheme {
   }
 }
 
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 const WAITING_MESSAGES = [
   'We are excited you joined us. Settle in while the room fills up.',
   'Have a sip of your favorite drink while other participants join in.',
@@ -111,35 +118,88 @@ const WAITING_MESSAGES = [
 
 // â”€â”€â”€ Response components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function QuizView({ question, onSubmit, submitted, theme }: {
-  question: QuizQuestion; onSubmit: (a: string) => void; submitted: boolean; theme: ParticipantTheme
+function QuizView({ question, onSubmit, submitted, submittedAnswer, locked, revealCorrectAnswer, timeRemainingMs, theme, errorMessage }: {
+  question: QuizQuestion
+  onSubmit: (a: string) => void
+  submitted: boolean
+  submittedAnswer?: string | null
+  locked: boolean
+  revealCorrectAnswer: boolean
+  timeRemainingMs?: number
+  theme: ParticipantTheme
+  errorMessage?: string
 }) {
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(submittedAnswer ?? null)
+
+  useEffect(() => {
+    setSelected(submittedAnswer ?? null)
+  }, [submittedAnswer, question.id])
+
+  const canInteract = !submitted && !locked && !revealCorrectAnswer
+  const isCorrect = typeof submittedAnswer === 'string' && submittedAnswer === question.correctOptionId
+
   return (
     <div className="space-y-3">
+      <div className="rounded-2xl px-4 py-3" style={{ background: revealCorrectAnswer ? 'rgba(34,197,94,0.10)' : locked ? 'rgba(251,191,36,0.14)' : theme.accentSoft, border: `1px solid ${revealCorrectAnswer ? 'rgba(34,197,94,0.24)' : locked ? 'rgba(251,191,36,0.24)' : theme.accentBorder}` }}>
+        <p className="text-sm font-bold" style={{ color: revealCorrectAnswer ? '#166534' : locked ? '#92400e' : theme.accentStrong }}>
+          {revealCorrectAnswer
+            ? submitted
+              ? isCorrect
+                ? 'Correct answer revealed. Nice one.'
+                : 'Correct answer revealed. See the winning option below.'
+              : 'Time is up. The correct answer is now shown below.'
+            : submitted
+              ? 'Answer locked in. Results will appear when the timer ends.'
+              : locked
+                ? 'Answering has closed for this quiz question.'
+                : `Time remaining: ${formatCountdown(timeRemainingMs ?? 0)}`}
+        </p>
+      </div>
       {question.options.map((opt, i) => (
         <button
           key={opt.id}
-          disabled={submitted}
-          onClick={() => !submitted && setSelected(opt.id)}
+          disabled={!canInteract}
+          onClick={() => canInteract && setSelected(opt.id)}
           className="w-full flex items-center gap-4 px-4 py-4 rounded-2xl text-left transition-all active:scale-[0.98]"
           style={{
-            background: selected === opt.id ? theme.accentSoft : '#FFFFFF',
-            border: `2px solid ${selected === opt.id ? theme.accent : '#E5E7EB'}`,
-            boxShadow: selected === opt.id ? `0 0 0 3px ${theme.accentRing}` : 'none',
-            opacity: submitted ? 0.65 : 1,
+            background:
+              revealCorrectAnswer && question.correctOptionId === opt.id
+                ? 'rgba(34,197,94,0.12)'
+                : revealCorrectAnswer && submittedAnswer === opt.id && submittedAnswer !== question.correctOptionId
+                  ? 'rgba(239,68,68,0.10)'
+                  : selected === opt.id
+                    ? theme.accentSoft
+                    : '#FFFFFF',
+            border:
+              revealCorrectAnswer && question.correctOptionId === opt.id
+                ? '2px solid rgba(34,197,94,0.45)'
+                : revealCorrectAnswer && submittedAnswer === opt.id && submittedAnswer !== question.correctOptionId
+                  ? '2px solid rgba(239,68,68,0.30)'
+                  : `2px solid ${selected === opt.id ? theme.accent : '#E5E7EB'}`,
+            boxShadow: selected === opt.id && canInteract ? `0 0 0 3px ${theme.accentRing}` : 'none',
+            opacity: canInteract ? 1 : 0.95,
           }}
         >
-          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id ? theme.accent : theme.accentSurface, color: selected === opt.id ? theme.accentText : theme.accentStrong }}>
+          <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id && canInteract ? theme.accent : theme.accentSurface, color: selected === opt.id && canInteract ? theme.accentText : theme.accentStrong }}>
             {String.fromCharCode(65 + i)}
           </span>
-          <span className="text-base font-medium" style={{ color: '#1A1A2E' }}>{opt.label}</span>
+          <span className="text-base font-medium flex-1" style={{ color: '#1A1A2E' }}>{opt.label}</span>
+          {revealCorrectAnswer && question.correctOptionId === opt.id && (
+            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(34,197,94,0.14)', color: '#15803d' }}>
+              Correct
+            </span>
+          )}
         </button>
       ))}
-      {!submitted && (
+      {!submitted && !locked && !revealCorrectAnswer && (
         <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-3 transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
           Submit answer <Send className="w-4 h-4" />
         </button>
+      )}
+      {errorMessage && (
+        <div className="rounded-2xl px-4 py-3 text-sm font-semibold" style={{ background: 'rgba(239,68,68,0.10)', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.18)' }}>
+          {errorMessage}
+        </div>
       )}
     </div>
   )
@@ -599,8 +659,11 @@ export default function ParticipantPage() {
   const [isLoading,        setIsLoading]         = useState(true)
   const [error,            setError]             = useState('')
   const [answered,         setAnswered]          = useState<Record<string, boolean>>({})
+  const [submittedAnswers, setSubmittedAnswers]  = useState<Record<string, string | string[] | number>>({})
+  const [submissionError,  setSubmissionError]   = useState('')
   const [participantCount, setParticipantCount]  = useState(0)
   const [presentationAccentColor, setPresentationAccentColor] = useState<string | null>(null)
+  const [timerNow, setTimerNow] = useState(() => Date.now())
 
   // Name / join state
   const [participantName, setParticipantName] = useState<string | null>(null)
@@ -622,6 +685,7 @@ export default function ParticipantPage() {
       if (!data) { setError('Session not found.'); setIsLoading(false); return }
       if (data.currentQuestionIndex !== prevIndexRef.current) {
         prevIndexRef.current = data.currentQuestionIndex
+        setSubmissionError('')
       }
       setSession(data)
       setIsLoading(false)
@@ -663,10 +727,52 @@ export default function ParticipantPage() {
     }
   }
 
-  const handleSubmit = async (questionId: string, answer: string | string[] | number) => {
+  const questions: Question[] = session?.questions ?? []
+  const currentQ = session ? questions[session.currentQuestionIndex] : undefined
+  const isAnswered = currentQ ? !!answered[currentQ.id] : false
+  const KindIcon = currentQ ? (KIND_ICON[currentQ.kind] ?? Sparkles) : Sparkles
+  const theme = buildParticipantTheme(session?.brandAccentColor || presentationAccentColor)
+  const submittedAnswer = currentQ ? submittedAnswers[currentQ.id] : undefined
+  const quizPhaseMatchesCurrent = currentQ?.kind === 'quiz' ? (!session?.activeQuestionId || session.activeQuestionId === currentQ.id) : false
+  const quizAnswerDeadlineAt = currentQ?.kind === 'quiz' && quizPhaseMatchesCurrent ? session?.answerDeadlineAt ?? null : null
+  const quizRevealCorrectAnswer = currentQ?.kind === 'quiz' && quizPhaseMatchesCurrent ? !!session?.quizRevealCorrectAnswer : false
+  const quizAnswersOpen = currentQ?.kind === 'quiz' && quizPhaseMatchesCurrent ? (session?.quizAnswersOpen ?? !quizRevealCorrectAnswer) : false
+  const quizTimeRemainingMs = quizAnswerDeadlineAt ? Math.max(0, new Date(quizAnswerDeadlineAt).getTime() - timerNow) : 0
+  const quizAnswerLocked = currentQ?.kind === 'quiz'
+    ? quizRevealCorrectAnswer || !quizAnswersOpen || (quizAnswerDeadlineAt ? quizTimeRemainingMs <= 0 : false)
+    : false
+
+  useEffect(() => {
+    if (currentQ?.kind !== 'quiz' || !quizAnswersOpen || !quizAnswerDeadlineAt) {
+      setTimerNow(Date.now())
+      return
+    }
+
+    const tick = () => setTimerNow(Date.now())
+    tick()
+    const interval = window.setInterval(tick, 250)
+    return () => window.clearInterval(interval)
+  }, [currentQ?.kind, quizAnswersOpen, quizAnswerDeadlineAt])
+
+  const handleSubmit = async (question: Question, answer: string | string[] | number) => {
+    if (!session) return
+
+    setSubmissionError('')
+
+    if (question.kind === 'quiz' && quizAnswerLocked) {
+      setSubmissionError('The answer window has already closed for this quiz question.')
+      return
+    }
+
     const response: ParticipantResponse = { answer, submittedAt: new Date().toISOString() }
-    await LiveSessionService.submitResponse(code, questionId, participantId.current, response)
-    setAnswered(prev => ({ ...prev, [questionId]: true }))
+
+    try {
+      await LiveSessionService.submitResponse(code, question.id, participantId.current, response)
+      setAnswered(prev => ({ ...prev, [question.id]: true }))
+      setSubmittedAnswers(prev => ({ ...prev, [question.id]: answer }))
+    } catch (err: any) {
+      setSubmissionError(err?.message ?? 'Failed to submit your response. Please try again.')
+    }
   }
 
   // â”€â”€ Loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -798,12 +904,6 @@ export default function ParticipantPage() {
     )
   }
 
-  const questions: Question[] = session.questions ?? []
-  const currentQ   = questions[session.currentQuestionIndex]
-  const isAnswered = currentQ ? !!answered[currentQ.id] : false
-  const KindIcon   = currentQ ? (KIND_ICON[currentQ.kind] ?? Sparkles) : Sparkles
-  const theme = buildParticipantTheme(session.brandAccentColor || presentationAccentColor)
-
   // â”€â”€ Name entry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!participantName || !hasJoined) {
     return (
@@ -841,6 +941,17 @@ export default function ParticipantPage() {
     )
   }
 
+  if (!currentQ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6" style={{ background: mix(theme.accent, '#FFFFFF', 0.965) }}>
+        <div className="text-center space-y-3">
+          <div className="w-12 h-12 rounded-full border-2 animate-spin mx-auto" style={{ borderColor: theme.accentRing, borderTopColor: theme.accent }} />
+          <p className="text-sm font-semibold" style={{ color: '#6B7280' }}>Loading the next question...</p>
+        </div>
+      </div>
+    )
+  }
+
   // â”€â”€ Active session â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <div className="min-h-screen flex flex-col" style={{ background: mix(theme.accent, '#FFFFFF', 0.965) }}>
@@ -865,6 +976,13 @@ export default function ParticipantPage() {
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: theme.accentText }}>Live</span>
             </div>
+            {currentQ?.kind === 'quiz' && (
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: quizRevealCorrectAnswer ? 'rgba(34,197,94,0.14)' : quizAnswerLocked ? 'rgba(251,191,36,0.16)' : theme.accentSoft, color: quizRevealCorrectAnswer ? '#15803d' : quizAnswerLocked ? '#92400e' : theme.accentStrong }}>
+                <span className="text-[9px] font-black uppercase tracking-widest">
+                  {quizRevealCorrectAnswer ? 'Answer revealed' : quizAnswerLocked ? 'Closed' : formatCountdown(quizTimeRemainingMs)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -913,7 +1031,7 @@ export default function ParticipantPage() {
 
             {/* Response area */}
             <div className="flex-1 overflow-y-auto px-5 pt-6 pb-8">
-              {isAnswered ? (
+              {isAnswered && currentQ.kind !== 'quiz' ? (
                 <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center gap-4 py-14 text-center">
                   <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: 'rgba(34,197,94,0.12)', border: '1.5px solid rgba(34,197,94,0.25)' }}>
                     <CheckCircle2 className="w-10 h-10" style={{ color: '#16A34A' }} />
@@ -923,11 +1041,16 @@ export default function ParticipantPage() {
                 </motion.div>
               ) : (
                 <>
-                  {currentQ.kind === 'quiz'       && <QuizView      question={currentQ as QuizQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
-                  {currentQ.kind === 'poll'       && <PollView      question={currentQ as PollQuestion}      onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
-                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
-                  {currentQ.kind === 'qa'         && <QAView        question={currentQ as QAQuestion}        onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
-                  {currentQ.kind === 'feedback'   && <FeedbackView  question={currentQ as FeedbackQuestion}  onSubmit={a => handleSubmit(currentQ.id, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'quiz'       && <QuizView      question={currentQ as QuizQuestion}      onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} submittedAnswer={typeof submittedAnswer === 'string' ? submittedAnswer : null} locked={quizAnswerLocked} revealCorrectAnswer={quizRevealCorrectAnswer} timeRemainingMs={quizTimeRemainingMs} theme={theme} errorMessage={submissionError} />}
+                  {currentQ.kind === 'poll'       && <PollView      question={currentQ as PollQuestion}      onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'qa'         && <QAView        question={currentQ as QAQuestion}        onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'feedback'   && <FeedbackView  question={currentQ as FeedbackQuestion}  onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind !== 'quiz' && submissionError && (
+                    <div className="rounded-2xl px-4 py-3 text-sm font-semibold mt-4" style={{ background: 'rgba(239,68,68,0.10)', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.18)' }}>
+                      {submissionError}
+                    </div>
+                  )}
                 </>
               )}
             </div>

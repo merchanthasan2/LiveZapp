@@ -54,13 +54,22 @@ const KIND_ICON: Record<string, React.ComponentType<{ className?: string; style?
   feedback:   Star,
 }
 
+function formatCountdown(ms: number): string {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+}
+
 // â”€â”€â”€ Dashboard-mode BarChart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function BarChart({ options, responses, kindColor, dark = false }: {
+function BarChart({ options, responses, kindColor, dark = false, revealCorrectAnswer = false, correctOptionId }: {
   options: { id: string; label: string }[]
   responses: Record<string, ParticipantResponse>
   kindColor?: string
   dark?: boolean
+  revealCorrectAnswer?: boolean
+  correctOptionId?: string
 }) {
   const barColor = kindColor ?? '#53d8d1'
   const counts: Record<string, number> = {}
@@ -81,14 +90,21 @@ function BarChart({ options, responses, kindColor, dark = false }: {
         const count = counts[opt.id] ?? 0
         const pct = total > 0 ? Math.round((count / total) * 100) : 0
         const barPct = Math.round((count / max) * 100)
+        const isCorrect = revealCorrectAnswer && correctOptionId === opt.id
+        const activeBarColor = isCorrect ? '#22C55E' : barColor
         return (
           <div key={opt.id} className="space-y-1.5">
             <div className="flex justify-between items-baseline">
               <span className="font-semibold" style={{ color: dark ? 'rgba(255,255,255,0.88)' : '#1A1A2E', fontSize: '0.95rem' }}>
                 <span className="mr-2 font-black" style={{ color: dark ? 'rgba(255,255,255,0.38)' : '#9CA3AF', fontSize: '0.8rem' }}>{String.fromCharCode(65 + i)}</span>
                 {opt.label}
+                {isCorrect && (
+                  <span className="ml-2 inline-flex px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest" style={{ background: 'rgba(34,197,94,0.12)', color: '#16A34A' }}>
+                    Correct
+                  </span>
+                )}
               </span>
-              <span className="font-black tabular-nums" style={{ color: barColor, fontSize: '1.1rem' }}>
+              <span className="font-black tabular-nums" style={{ color: activeBarColor, fontSize: '1.1rem' }}>
                 {count}<span className="font-medium ml-1" style={{ color: dark ? 'rgba(255,255,255,0.38)' : '#9CA3AF', fontSize: '0.75rem' }}>({pct}%)</span>
               </span>
             </div>
@@ -98,7 +114,7 @@ function BarChart({ options, responses, kindColor, dark = false }: {
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(barPct, count > 0 ? 6 : 0)}%` }}
                 transition={{ duration: 0.7, ease: 'easeOut' }}
-                style={{ background: barColor }}
+                style={{ background: activeBarColor }}
               >
                 {barPct > 18 && <span className="font-black text-white text-sm">{pct}%</span>}
               </motion.div>
@@ -202,16 +218,36 @@ function RatingDisplay({ responses, max, dark = false }: { responses: Record<str
   )
 }
 
-function ResponsePanel({ question, responses, dark = false }: { question: Question; responses: Record<string, ParticipantResponse>; dark?: boolean }) {
+function ResponsePanel({
+  question,
+  responses,
+  dark = false,
+  quizAnswersOpen = false,
+  quizRevealCorrectAnswer = false,
+  quizTimeRemainingMs = 0,
+}: {
+  question: Question
+  responses: Record<string, ParticipantResponse>
+  dark?: boolean
+  quizAnswersOpen?: boolean
+  quizRevealCorrectAnswer?: boolean
+  quizTimeRemainingMs?: number
+}) {
   const total = Object.keys(responses).length
   const kindColor = KIND_COLOR[question.kind] ?? '#53d8d1'
+  const isQuiz = question.kind === 'quiz'
   return (
     <div className="rounded-[1.75rem] p-5" style={{ background: dark ? '#15151d' : '#FFFFFF', border: `1px solid ${dark ? 'rgba(191,168,255,0.16)' : 'rgba(0,0,0,0.07)'}`, boxShadow: dark ? '0 18px 40px rgba(0,0,0,0.24)' : '0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.06)' }}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-black uppercase tracking-widest" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#9CA3AF' }}>Live responses</p>
         <span className="text-base font-black px-2.5 py-0.5 rounded-lg" style={{ color: dark ? '#17111f' : '#FFFFFF', background: kindColor }}>{total}</span>
       </div>
-      {question.kind === 'quiz' && <BarChart options={(question as QuizQuestion).options} responses={responses} kindColor={kindColor} dark={dark} />}
+      {isQuiz && (
+        <div className="mb-3 rounded-xl px-3 py-2 text-xs font-semibold" style={{ background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(34,197,94,0.08)', color: dark ? 'rgba(255,255,255,0.82)' : '#166534', border: `1px solid ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(34,197,94,0.14)'}` }}>
+          {quizRevealCorrectAnswer ? 'Answer window closed. Correct answer revealed.' : quizAnswersOpen ? `Answer window live: ${formatCountdown(quizTimeRemainingMs)} remaining.` : 'Waiting for the presenter to start the quiz timer.'}
+        </div>
+      )}
+      {question.kind === 'quiz' && <BarChart options={(question as QuizQuestion).options} responses={responses} kindColor={kindColor} dark={dark} revealCorrectAnswer={quizRevealCorrectAnswer} correctOptionId={(question as QuizQuestion).correctOptionId} />}
       {question.kind === 'poll' && <BarChart options={(question as PollQuestion).options} responses={responses} kindColor={kindColor} dark={dark} />}
       {question.kind === 'word_cloud' && <WordCloudDisplay responses={responses} dark={dark} />}
       {question.kind === 'qa' && <QADisplay responses={responses} dark={dark} />}
@@ -364,18 +400,22 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
 // â”€â”€â”€ Fullscreen: Question slide â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function QuestionSlide({
-  question, responses, slideNum, total,
+  question, responses, slideNum, total, quizAnswersOpen = false, quizRevealCorrectAnswer = false, quizTimeRemainingMs = 0,
 }: {
   question: Question
   responses: Record<string, ParticipantResponse>
   slideNum: number
   total: number
+  quizAnswersOpen?: boolean
+  quizRevealCorrectAnswer?: boolean
+  quizTimeRemainingMs?: number
 }) {
   const hasResponses = Object.keys(responses).length > 0
   const kindColor = KIND_COLOR[question.kind] ?? '#53d8d1'
   const kindTextColor = KIND_TEXT_COLOR[question.kind] ?? '#FFFFFF'
   const KindIcon = KIND_ICON[question.kind] ?? Sparkles
   const responseCount = Object.keys(responses).length
+  const isQuiz = question.kind === 'quiz'
 
   return (
     <AnimatePresence mode="wait">
@@ -399,6 +439,11 @@ function QuestionSlide({
             <span className="text-sm font-bold" style={{ color: 'rgba(255,255,255,0.35)' }}>
               {slideNum} / {total}
             </span>
+            {isQuiz && (
+              <span className="text-sm font-black px-4 py-2 rounded-2xl" style={{ background: quizRevealCorrectAnswer ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.08)', color: quizRevealCorrectAnswer ? '#86efac' : '#FFFFFF' }}>
+                {quizRevealCorrectAnswer ? 'Correct answer revealed' : quizAnswersOpen ? `Time left ${formatCountdown(quizTimeRemainingMs)}` : 'Quiz ready'}
+              </span>
+            )}
           </div>
 
           <h2
@@ -421,12 +466,18 @@ function QuestionSlide({
                 <div
                   key={opt.id}
                   className="flex items-center gap-4 px-6 py-4 rounded-2xl"
-                  style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
+                  style={{
+                    background: isQuiz && quizRevealCorrectAnswer && (question as QuizQuestion).correctOptionId === opt.id ? 'rgba(34,197,94,0.18)' : 'rgba(255,255,255,0.07)',
+                    border: isQuiz && quizRevealCorrectAnswer && (question as QuizQuestion).correctOptionId === opt.id ? '1px solid rgba(34,197,94,0.45)' : '1px solid rgba(255,255,255,0.10)',
+                  }}
                 >
                   <span className="text-sm font-black w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.60)' }}>
                     {String.fromCharCode(65 + i)}
                   </span>
                   <span className="text-lg font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>{opt.label}</span>
+                  {isQuiz && quizRevealCorrectAnswer && (question as QuizQuestion).correctOptionId === opt.id && (
+                    <span className="ml-auto text-xs font-black uppercase tracking-widest" style={{ color: '#86efac' }}>Correct</span>
+                  )}
                 </div>
               ))}
             </div>
@@ -486,6 +537,11 @@ function QuestionSlide({
               </div>
               <div className="flex items-center gap-4 shrink-0">
                 <span style={{ color: 'rgba(255,255,255,0.40)', fontSize: '0.9rem' }}>{slideNum} / {total}</span>
+                {isQuiz && (
+                  <span className="font-black text-sm px-3 py-1 rounded-xl" style={{ color: '#FFFFFF', background: quizRevealCorrectAnswer ? '#16A34A' : quizAnswersOpen ? '#650cd9' : 'rgba(255,255,255,0.18)' }}>
+                    {quizRevealCorrectAnswer ? 'Correct answer revealed' : quizAnswersOpen ? formatCountdown(quizTimeRemainingMs) : 'Quiz ready'}
+                  </span>
+                )}
                 <span className="font-black text-xl px-3 py-1 rounded-xl" style={{ color: '#FFFFFF', background: kindColor }}>
                   {responseCount}
                 </span>
@@ -501,7 +557,7 @@ function QuestionSlide({
             className="flex-1 px-10 py-8 overflow-y-auto scrollbar-hide"
           >
             {question.kind === 'quiz' && (
-              <ProjectorBarChart options={(question as QuizQuestion).options} responses={responses} kindColor={kindColor} />
+              <ProjectorBarChart options={(question as QuizQuestion).options} responses={responses} kindColor={kindColor} revealCorrectAnswer={quizRevealCorrectAnswer} correctOptionId={(question as QuizQuestion).correctOptionId} />
             )}
             {question.kind === 'poll' && (
               <ProjectorBarChart options={(question as PollQuestion).options} responses={responses} kindColor={kindColor} />
@@ -524,10 +580,12 @@ function QuestionSlide({
 
 // â”€â”€â”€ Projector-scale bar chart (fullscreen only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function ProjectorBarChart({ options, responses, kindColor }: {
+function ProjectorBarChart({ options, responses, kindColor, revealCorrectAnswer = false, correctOptionId }: {
   options: { id: string; label: string }[]
   responses: Record<string, ParticipantResponse>
   kindColor: string
+  revealCorrectAnswer?: boolean
+  correctOptionId?: string
 }) {
   const counts: Record<string, number> = {}
   options.forEach(o => { counts[o.id] = 0 })
@@ -545,6 +603,8 @@ function ProjectorBarChart({ options, responses, kindColor }: {
         const count = counts[opt.id] ?? 0
         const pct = total > 0 ? Math.round((count / total) * 100) : 0
         const barPct = Math.round((count / max) * 100)
+        const isCorrect = revealCorrectAnswer && correctOptionId === opt.id
+        const activeBarColor = isCorrect ? '#22C55E' : kindColor
         return (
           <div key={opt.id} className="space-y-2">
             <div className="flex justify-between items-baseline">
@@ -553,8 +613,13 @@ function ProjectorBarChart({ options, responses, kindColor }: {
                   {String.fromCharCode(65 + i)}
                 </span>
                 {opt.label}
+                {isCorrect && (
+                  <span className="ml-3 inline-flex px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'rgba(34,197,94,0.18)', color: '#86efac' }}>
+                    Correct
+                  </span>
+                )}
               </span>
-              <span className="font-black tabular-nums" style={{ color: kindColor, fontSize: '2rem' }}>
+              <span className="font-black tabular-nums" style={{ color: activeBarColor, fontSize: '2rem' }}>
                 {count}
                 <span className="font-medium ml-2" style={{ color: 'rgba(255,255,255,0.35)', fontSize: '1rem' }}>({pct}%)</span>
               </span>
@@ -565,7 +630,7 @@ function ProjectorBarChart({ options, responses, kindColor }: {
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(barPct, count > 0 ? 4 : 0)}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
-                style={{ background: kindColor }}
+                style={{ background: activeBarColor }}
               >
                 {barPct > 15 && (
                   <span className="font-black text-white text-xl">{pct}%</span>
@@ -614,9 +679,14 @@ export default function PresentPage() {
   const [hasAutoLaunchAttempted, setHasAutoLaunchAttempted] = useState(false)
   const [joinOrigin, setJoinOrigin] = useState<string | null>(null)
   const presenterRef = useRef<HTMLDivElement>(null)
+  const quizCloseInFlightRef = useRef<string | null>(null)
+  const [timerNow, setTimerNow] = useState(() => Date.now())
   const themeIconLabel = isDark ? 'Use light mode' : 'Use dark mode'
   const shareSiteUrl = joinOrigin ?? undefined
   const joinUrl = session ? `${joinOrigin ?? (typeof window !== 'undefined' ? window.location.origin : SITE_URL)}/join/${session.joinCode}` : ''
+  const liveQuestions = session?.questions?.length ? session.questions : questions
+  const liveQuestionCount = liveQuestions.length
+  const sessionJoinCode = session?.joinCode
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -659,14 +729,16 @@ export default function PresentPage() {
   }, [id, router])
 
   const navigateTo = useCallback(async (index: number) => {
-    if (!session || index < 0 || index >= questions.length) return
+    if (!session || index < 0 || index >= liveQuestionCount) return
+    const nextQuestion = liveQuestions[index]
     setCurrentIndex(index)
     setResponses({})
     if (!session.hasStarted) {
-      await LiveSessionService.startPresentation(session.joinCode)
+      await LiveSessionService.startPresentation(session.joinCode, index, nextQuestion)
+      return
     }
-    await LiveSessionService.setCurrentQuestion(session.joinCode, index)
-  }, [session, questions.length])
+    await LiveSessionService.setCurrentQuestion(session.joinCode, index, nextQuestion)
+  }, [session, liveQuestionCount, liveQuestions])
 
   const handleGoLive = useCallback(async () => {
     if (!presentation || !user || questions.length === 0) return
@@ -706,7 +778,7 @@ export default function PresentPage() {
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault()
         if (showJoinSlide) { setShowJoinSlide(false); return }
-        if (currentIndex < questions.length - 1) navigateTo(currentIndex + 1)
+        if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
       }
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
@@ -719,7 +791,7 @@ export default function PresentPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isFullscreen, session, showJoinSlide, currentIndex, questions.length, navigateTo])
+  }, [isFullscreen, session, showJoinSlide, currentIndex, liveQuestionCount, navigateTo])
 
   // Load presentation + questions
   useEffect(() => {
@@ -749,33 +821,72 @@ export default function PresentPage() {
 
   // Subscribe to session
   useEffect(() => {
-    if (!session) return
-    const unsub = LiveSessionService.subscribeToSession(session.joinCode, data => {
+    if (!sessionJoinCode) return
+    const unsub = LiveSessionService.subscribeToSession(sessionJoinCode, data => {
       if (data) {
         setSession(data)
         setCurrentIndex(data.currentQuestionIndex)
         setIsPaused(data.isPaused ?? false)
       }
     })
-    const unsubP = LiveSessionService.subscribeToParticipants(session.joinCode, setParticipantCount)
+    const unsubP = LiveSessionService.subscribeToParticipants(sessionJoinCode, setParticipantCount)
     return () => { unsub(); unsubP() }
-  }, [session])
+  }, [sessionJoinCode])
 
-  const currentQuestionId = questions[currentIndex]?.id
+  const currentQuestion = liveQuestions[currentIndex]
+  const currentQuestionId = currentQuestion?.id
+  const quizPhaseMatchesCurrent = !!session && !!currentQuestionId && (!session.activeQuestionId || session.activeQuestionId === currentQuestionId)
+  const quizAnswerDeadlineAt = currentQuestion?.kind === 'quiz' && quizPhaseMatchesCurrent ? session?.answerDeadlineAt ?? null : null
+  const quizAnswersOpen = currentQuestion?.kind === 'quiz' && quizPhaseMatchesCurrent ? (session?.quizAnswersOpen ?? false) : false
+  const quizRevealCorrectAnswer = currentQuestion?.kind === 'quiz' && quizPhaseMatchesCurrent ? !!session?.quizRevealCorrectAnswer : false
+  const quizTimeRemainingMs = quizAnswerDeadlineAt ? Math.max(0, new Date(quizAnswerDeadlineAt).getTime() - timerNow) : 0
+
+  useEffect(() => {
+    if (currentQuestion?.kind !== 'quiz' || !quizAnswersOpen || !quizAnswerDeadlineAt) {
+      setTimerNow(Date.now())
+      return
+    }
+
+    const tick = () => setTimerNow(Date.now())
+    tick()
+    const interval = window.setInterval(tick, 250)
+    return () => window.clearInterval(interval)
+  }, [currentQuestion?.kind, quizAnswersOpen, quizAnswerDeadlineAt])
+
+  useEffect(() => {
+    if (!sessionJoinCode || currentQuestion?.kind !== 'quiz' || !currentQuestionId) {
+      quizCloseInFlightRef.current = null
+      return
+    }
+
+    if (!quizAnswersOpen || quizRevealCorrectAnswer || !quizAnswerDeadlineAt) {
+      quizCloseInFlightRef.current = null
+      return
+    }
+
+    if (quizTimeRemainingMs > 0 || quizCloseInFlightRef.current === currentQuestionId) {
+      return
+    }
+
+    quizCloseInFlightRef.current = currentQuestionId
+    LiveSessionService.closeQuizAnswerWindow(sessionJoinCode, currentQuestionId).catch(() => {
+      quizCloseInFlightRef.current = null
+    })
+  }, [sessionJoinCode, currentQuestion?.kind, currentQuestionId, quizAnswersOpen, quizRevealCorrectAnswer, quizAnswerDeadlineAt, quizTimeRemainingMs])
 
   // Subscribe to current question responses
   useEffect(() => {
-    if (!session || !currentQuestionId) return
+    if (!sessionJoinCode || !currentQuestionId) return
     setResponses({})
-    const unsub = LiveSessionService.subscribeToResponses(session.joinCode, currentQuestionId, setResponses)
+    const unsub = LiveSessionService.subscribeToResponses(sessionJoinCode, currentQuestionId, setResponses)
     return unsub
-  }, [session, currentQuestionId])
+  }, [sessionJoinCode, currentQuestionId])
 
   const handleStartZapp = async () => {
     if (!session) return
     setIsStarting(true)
     try {
-      await LiveSessionService.startPresentation(session.joinCode)
+      await LiveSessionService.startPresentation(session.joinCode, currentIndex, currentQuestion)
       setShowJoinSlide(false)
     } catch (e: any) {
       setError(e.message || 'Failed to start Zapp')
@@ -802,7 +913,7 @@ export default function PresentPage() {
 
       // Compute quiz leaderboard (if the Zapp contains quiz questions).
       setIsComputingLeaderboard(true)
-      const quizQuestions = questions.filter((q): q is QuizQuestion => q.kind === 'quiz')
+      const quizQuestions = liveQuestions.filter((q): q is QuizQuestion => q.kind === 'quiz')
 
       const participants = await LiveSessionService.getParticipants(joinCode)
       const scores: Record<string, number> = {}
@@ -868,7 +979,7 @@ export default function PresentPage() {
     const isRightHalf = clickX > rect.width / 2
     if (isRightHalf) {
       if (showJoinSlide) { setShowJoinSlide(false); return }
-      if (currentIndex < questions.length - 1) navigateTo(currentIndex + 1)
+      if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
     } else {
       if (!showJoinSlide && currentIndex > 0) navigateTo(currentIndex - 1)
       else if (!showJoinSlide) setShowJoinSlide(true)
@@ -895,7 +1006,6 @@ export default function PresentPage() {
     )
   }
 
-  const currentQuestion = questions[currentIndex]
   const kindColor = currentQuestion ? (KIND_COLOR[currentQuestion.kind] ?? '#53d8d1') : '#53d8d1'
   const kindTextColor = currentQuestion ? (KIND_TEXT_COLOR[currentQuestion.kind] ?? '#FFFFFF') : '#FFFFFF'
   const KindIcon = currentQuestion ? (KIND_ICON[currentQuestion.kind] ?? Sparkles) : Sparkles
@@ -1226,7 +1336,10 @@ export default function PresentPage() {
                   question={currentQuestion}
                   responses={responses}
                   slideNum={currentIndex + 1}
-                  total={questions.length}
+                  total={liveQuestionCount}
+                  quizAnswersOpen={quizAnswersOpen}
+                  quizRevealCorrectAnswer={quizRevealCorrectAnswer}
+                  quizTimeRemainingMs={quizTimeRemainingMs}
                 />
               </motion.div>
             ) : null}
@@ -1239,7 +1352,7 @@ export default function PresentPage() {
                 {currentIndex > 0 && <ChevronLeft className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
               </div>
               <div className="absolute right-0 top-0 bottom-0 w-1/2 flex items-center justify-end pr-6 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                {currentIndex < questions.length - 1 && <ChevronRight className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
+                {currentIndex < liveQuestionCount - 1 && <ChevronRight className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
               </div>
             </>
           )}
@@ -1298,7 +1411,7 @@ export default function PresentPage() {
               style={{ background: showJoinSlide ? '#8f63ff' : 'rgba(255,255,255,0.20)', transform: showJoinSlide ? 'scale(1.4)' : 'scale(1)' }}
               title="Join slide"
             />
-            {questions.map((_, i) => (
+            {liveQuestions.map((_, i) => (
               <button
                 key={i}
                 onClick={() => { setShowJoinSlide(false); navigateTo(i) }}
@@ -1315,9 +1428,9 @@ export default function PresentPage() {
           <button
             onClick={() => {
               if (showJoinSlide) { setShowJoinSlide(false); return }
-              if (currentIndex < questions.length - 1) navigateTo(currentIndex + 1)
+                if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
             }}
-            disabled={!showJoinSlide && currentIndex >= questions.length - 1}
+            disabled={!showJoinSlide && currentIndex >= liveQuestionCount - 1}
             className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm disabled:opacity-30 transition-all"
             style={{ color: 'rgba(255,255,255,0.60)', background: 'rgba(255,255,255,0.06)' }}
           >
@@ -1459,7 +1572,7 @@ export default function PresentPage() {
 
                 <div className="grid gap-3 sm:grid-cols-3 w-full">
                   {[
-                    { label: 'Prompts', value: `${questions.length} ready` },
+                    { label: 'Prompts', value: `${liveQuestionCount} ready` },
                     { label: 'Brand', value: session.brandName || 'LiveZapp' },
                     { label: 'Lobby', value: 'Open for participants' },
                   ].map(item => (
@@ -1471,7 +1584,7 @@ export default function PresentPage() {
                 </div>
 
                 <div className="flex flex-wrap justify-center xl:justify-start gap-3 pt-2 w-full">
-                  <button onClick={handleStartZapp} disabled={isStarting || questions.length === 0} className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 md:px-8 py-4 text-base md:text-lg font-black text-white disabled:opacity-40 disabled:cursor-not-allowed min-w-[180px]" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 20px 40px rgba(101,12,217,0.35)' }}>
+                  <button onClick={handleStartZapp} disabled={isStarting || liveQuestionCount === 0} className="inline-flex items-center justify-center gap-2 rounded-2xl px-6 md:px-8 py-4 text-base md:text-lg font-black text-white disabled:opacity-40 disabled:cursor-not-allowed min-w-[180px]" style={{ background: 'linear-gradient(135deg,#650cd9,#7a3af0)', boxShadow: '0 20px 40px rgba(101,12,217,0.35)' }}>
                     <Play className="w-5 h-5" fill="currentColor" />
                     {isStarting ? 'Starting...' : 'Start Zapp'}
                   </button>
@@ -1594,7 +1707,7 @@ export default function PresentPage() {
 
             <div className="relative z-10 h-full flex flex-col justify-center items-center text-center">
               <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-5" style={{ background: isDark ? 'rgba(255,181,156,0.18)' : 'rgba(145,47,3,0.12)', color: isDark ? '#ffb59c' : '#912f03' }}>
-                Question {currentIndex + 1} of {questions.length}
+                Question {currentIndex + 1} of {liveQuestionCount}
               </span>
               <h1 className="text-3xl md:text-5xl font-black leading-tight tracking-tight max-w-4xl" style={{ color: textStrong }}>
                 {currentQuestion?.prompt || 'No prompt set for this slide yet.'}
@@ -1663,7 +1776,7 @@ export default function PresentPage() {
             })}
           </section>
         ) : (
-          currentQuestion && <ResponsePanel question={currentQuestion} responses={responses} dark={isDark} />
+          currentQuestion && <ResponsePanel question={currentQuestion} responses={responses} dark={isDark} quizAnswersOpen={quizAnswersOpen} quizRevealCorrectAnswer={quizRevealCorrectAnswer} quizTimeRemainingMs={quizTimeRemainingMs} />
         )}
 
         {showInsights && currentQuestion && (
@@ -1674,7 +1787,7 @@ export default function PresentPage() {
                 {totalResponses} response{totalResponses !== 1 ? 's' : ''}
               </span>
             </div>
-            <ResponsePanel question={currentQuestion} responses={responses} dark={isDark} />
+            <ResponsePanel question={currentQuestion} responses={responses} dark={isDark} quizAnswersOpen={quizAnswersOpen} quizRevealCorrectAnswer={quizRevealCorrectAnswer} quizTimeRemainingMs={quizTimeRemainingMs} />
           </section>
         )}
       </main>
@@ -1698,7 +1811,7 @@ export default function PresentPage() {
             </button>
             <button
               onClick={() => {
-                if (currentIndex < questions.length - 1) {
+                if (currentIndex < liveQuestionCount - 1) {
                   navigateTo(currentIndex + 1)
                   return
                 }
@@ -1708,7 +1821,7 @@ export default function PresentPage() {
               className="px-8 md:px-12 py-3 rounded-full font-black text-sm text-white disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #650cd9 0%, #7e3af2 100%)' }}
             >
-              {currentIndex < questions.length - 1 ? 'Next Question' : 'Finish Session'}
+              {currentIndex < liveQuestionCount - 1 ? 'Next Question' : 'Finish Session'}
             </button>
           </div>
 

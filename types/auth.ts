@@ -19,6 +19,18 @@ export interface BaseUser {
   planId: PlanId
   /** ISO 8601 — when the current paid plan expires. Absent = free (never expires). */
   planExpiresAt?: string
+  /** One-time campaign code used to grant a signup promotion. */
+  onboardingOfferCode?: string
+  /** Target plan granted by the onboarding offer. */
+  onboardingOfferPlanId?: PlanId
+  /** Duration of the onboarding offer in months. */
+  onboardingOfferDurationMonths?: number
+  /** Campaign cutoff for the onboarding offer. */
+  onboardingOfferCampaignEndsAt?: string
+  /** When the onboarding offer was granted. */
+  onboardingOfferGrantedAt?: string
+  /** When the welcome message was dismissed by the user. */
+  onboardingOfferSeenAt?: string
   /** 'monthly' | 'annual' — billing cycle of the active paid plan. */
   billingCycle?: 'monthly' | 'annual'
   /**

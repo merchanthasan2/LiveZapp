@@ -10,7 +10,6 @@ const ALLOWED_MIME: Record<string, string> = {
   'image/png':     '.png',
   'image/jpeg':    '.jpg',
   'image/webp':    '.webp',
-  'image/svg+xml': '.svg',
 }
 
 function ensureDir() {
@@ -81,7 +80,7 @@ export async function POST(request: NextRequest) {
   const ext = ALLOWED_MIME[file.type]
   if (!ext) {
     return NextResponse.json(
-      { error: 'Unsupported file type. Use PNG, JPG, WebP, or SVG.' },
+      { error: 'Unsupported file type. Use PNG, JPG, or WebP.' },
       { status: 415 },
     )
   }

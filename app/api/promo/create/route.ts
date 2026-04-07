@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { adminDb } from '@/lib/server/firebaseAdmin'
+import { resolveTrustedRoleForUser } from '@/lib/server/trustedRoles'
+import { verifyBearerToken } from '@/lib/server/verifyBearerUid'
 
-// Note: Auth verification happens client-side by passing the ID token
-// The token is verified by Firebase rules on the database side
-
-interface PromoCreateRequest {
+type PromoCreateRequest = {
   code: string
   discountType: 'percent' | 'fixed'
   discountValue: number
@@ -17,56 +17,148 @@ interface PromoCreateRequest {
   targetPlanId: string | null
 }
 
-interface PromoCreateResponse {
+type PromoCodeRecord = PromoCreateRequest & {
+  currentRedemptions: number
+  createdAt: string
+  createdBy: string
+}
+
+type PromoActionResponse = {
   success: boolean
   error?: string
   code?: string
+  promo?: PromoCodeRecord
 }
 
-/**
- * POST /api/promo/create
- * This is a request validation endpoint.
- * Actual creation still happens client-side through Firebase, but this validates the input.
- */
-export async function POST(request: NextRequest): Promise<NextResponse<PromoCreateResponse>> {
+async function ensureAdmin(request: NextRequest): Promise<string> {
+  let decoded
   try {
-    const body = await request.json() as PromoCreateRequest
+    decoded = await verifyBearerToken(request)
+  } catch {
+    throw new Error('Server authentication is not configured.')
+  }
 
-    // Validate input before sending to Firebase
-    if (!body.code || typeof body.code !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'Code is required' },
-        { status: 400 }
-      )
+  if (!decoded) {
+    throw new Error('Unauthorized')
+  }
+
+  const role = await resolveTrustedRoleForUser({
+    uid: decoded.uid,
+    email: decoded.email,
+    tokenRole: decoded.role,
+  })
+
+  if (role !== 'admin' && role !== 'superadmin') {
+    throw new Error('Admin privileges required')
+  }
+
+  return decoded.uid
+}
+
+function normalizePayload(body: PromoCreateRequest): PromoCreateRequest {
+  return {
+    code: body.code.trim().toUpperCase(),
+    discountType: body.discountType,
+    discountValue: Number(body.discountValue),
+    maxRedemptions: body.maxRedemptions == null ? null : Number(body.maxRedemptions),
+    validFrom: body.validFrom,
+    validUntil: body.validUntil ?? null,
+    applicablePlanIds: Array.isArray(body.applicablePlanIds) ? body.applicablePlanIds : [],
+    isActive: Boolean(body.isActive),
+    durationMonths: body.durationMonths == null ? null : Number(body.durationMonths),
+    postExpiryPlanId: body.postExpiryPlanId ?? null,
+    targetPlanId: body.targetPlanId ?? null,
+  }
+}
+
+function validatePayload(body: PromoCreateRequest): string | null {
+  if (!body.code) return 'Code is required'
+  if (!/^[A-Z0-9_-]{3,32}$/.test(body.code)) return 'Code must be 3-32 characters using A-Z, 0-9, underscore, or hyphen'
+  if (body.discountType !== 'percent' && body.discountType !== 'fixed') return 'Discount type is invalid'
+  if (!Number.isFinite(body.discountValue) || body.discountValue <= 0) return 'Discount value must be greater than 0'
+  if (body.discountType === 'percent' && body.discountValue > 100) return 'Percent discount cannot exceed 100%'
+  if (body.maxRedemptions != null && (!Number.isInteger(body.maxRedemptions) || body.maxRedemptions < 1)) {
+    return 'Max redemptions must be a positive integer'
+  }
+  if (!body.validFrom || Number.isNaN(Date.parse(body.validFrom))) return 'Valid from date is invalid'
+  if (body.validUntil && Number.isNaN(Date.parse(body.validUntil))) return 'Valid until date is invalid'
+  if (body.durationMonths != null && (!Number.isInteger(body.durationMonths) || body.durationMonths < 1 || body.durationMonths > 24)) {
+    return 'Duration months must be between 1 and 24'
+  }
+  return null
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse<PromoActionResponse>> {
+  try {
+    const adminUid = await ensureAdmin(request)
+    const payload = normalizePayload(await request.json() as PromoCreateRequest)
+    const validationError = validatePayload(payload)
+    if (validationError) {
+      return NextResponse.json({ success: false, error: validationError }, { status: 400 })
     }
 
-    if (!body.discountValue || body.discountValue <= 0) {
-      return NextResponse.json(
-        { success: false, error: 'Discount value must be greater than 0' },
-        { status: 400 }
-      )
+    const existing = await adminDb().ref(`promoCodes/${payload.code}`).get()
+    if (existing.exists()) {
+      return NextResponse.json({ success: false, error: `Code "${payload.code}" already exists` }, { status: 409 })
     }
 
-    if (body.discountType === 'percent' && body.discountValue > 100) {
-      return NextResponse.json(
-        { success: false, error: 'Percent discount cannot exceed 100%' },
-        { status: 400 }
-      )
+    const promo: PromoCodeRecord = {
+      ...payload,
+      currentRedemptions: 0,
+      createdAt: new Date().toISOString(),
+      createdBy: adminUid,
     }
 
-    const codeUpper = body.code.trim().toUpperCase()
+    await adminDb().ref(`promoCodes/${payload.code}`).set(promo)
 
-    // Validation passed - return success
-    // The actual Firebase write will happen client-side with proper auth
     return NextResponse.json({
       success: true,
-      code: codeUpper,
+      code: payload.code,
+      promo,
     })
-  } catch (error) {
+  } catch (error: any) {
+    const message = String(error?.message ?? 'Failed to create promo code')
+    const status = message === 'Unauthorized' ? 401
+      : message === 'Admin privileges required' ? 403
+      : message === 'Server authentication is not configured.' ? 503
+      : 500
     console.error('[api/promo/create] error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to validate promo code data' },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: message }, { status })
+  }
+}
+
+export async function PATCH(request: NextRequest): Promise<NextResponse<PromoActionResponse>> {
+  try {
+    await ensureAdmin(request)
+    const body = await request.json() as { code?: string; isActive?: boolean }
+    const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : ''
+    if (!code) {
+      return NextResponse.json({ success: false, error: 'Code is required' }, { status: 400 })
+    }
+
+    if (typeof body.isActive !== 'boolean') {
+      return NextResponse.json({ success: false, error: 'isActive must be a boolean' }, { status: 400 })
+    }
+
+    const promoRef = adminDb().ref(`promoCodes/${code}`)
+    const existing = await promoRef.get()
+    if (!existing.exists()) {
+      return NextResponse.json({ success: false, error: `Code "${code}" not found` }, { status: 404 })
+    }
+
+    await promoRef.update({
+      isActive: body.isActive,
+      updatedAt: new Date().toISOString(),
+    })
+
+    return NextResponse.json({ success: true, code })
+  } catch (error: any) {
+    const message = String(error?.message ?? 'Failed to update promo code')
+    const status = message === 'Unauthorized' ? 401
+      : message === 'Admin privileges required' ? 403
+      : message === 'Server authentication is not configured.' ? 503
+      : 500
+    console.error('[api/promo/create] patch error:', error)
+    return NextResponse.json({ success: false, error: message }, { status })
   }
 }

@@ -17,6 +17,11 @@ export interface LiveSessionData {
   currentQuestionIndex: number
   title: string
   questions: Question[]
+  activeQuestionId?: string | null
+  questionStartedAt?: string | null
+  answerDeadlineAt?: string | null
+  quizAnswersOpen?: boolean
+  quizRevealCorrectAnswer?: boolean
   brandLogoUrl?: string  // Firebase Storage download URL for host's logo
   brandName?: string     // Host's display / brand name
   brandAccentColor?: string
@@ -25,6 +30,29 @@ export interface LiveSessionData {
 export interface ParticipantResponse {
   answer: string | string[] | number
   submittedAt: string
+}
+
+function buildQuestionPhase(index: number, question?: Question) {
+  const startedAt = new Date().toISOString()
+  const base = {
+    currentQuestionIndex: index,
+    activeQuestionId: question?.id ?? null,
+    questionStartedAt: question ? startedAt : null,
+    answerDeadlineAt: null,
+    quizAnswersOpen: false,
+    quizRevealCorrectAnswer: false,
+  }
+
+  if (question?.kind !== 'quiz') {
+    return base
+  }
+
+  const deadline = new Date(Date.now() + Math.max(1, question.timerSeconds) * 1000).toISOString()
+  return {
+    ...base,
+    answerDeadlineAt: deadline,
+    quizAnswersOpen: true,
+  }
 }
 
 // ─── Service ──────────────────────────────────────────────────────────────
@@ -57,6 +85,11 @@ export const LiveSessionService = {
       currentQuestionIndex: 0,
       title,
       questions,
+      activeQuestionId: null,
+      questionStartedAt: null,
+      answerDeadlineAt: null,
+      quizAnswersOpen: false,
+      quizRevealCorrectAnswer: false,
       ...(brandLogoUrl ? { brandLogoUrl } : {}),
       ...(brandName    ? { brandName    } : {}),
       ...(brandAccentColor ? { brandAccentColor } : {}),
@@ -94,8 +127,8 @@ export const LiveSessionService = {
   /**
    * Navigate to a specific question (presenter only).
    */
-  async setCurrentQuestion(joinCode: string, index: number): Promise<void> {
-    await update(ref(rtdb, `live_sessions/${joinCode}`), { currentQuestionIndex: index })
+  async setCurrentQuestion(joinCode: string, index: number, question?: Question): Promise<void> {
+    await update(ref(rtdb, `live_sessions/${joinCode}`), buildQuestionPhase(index, question))
   },
 
   /**
@@ -126,8 +159,11 @@ export const LiveSessionService = {
   },
 
   /** Mark session as started — participants transition from wait screen to questions. */
-  async startPresentation(joinCode: string): Promise<void> {
-    await update(ref(rtdb, `live_sessions/${joinCode}`), { hasStarted: true })
+  async startPresentation(joinCode: string, index = 0, question?: Question): Promise<void> {
+    await update(ref(rtdb, `live_sessions/${joinCode}`), {
+      hasStarted: true,
+      ...buildQuestionPhase(index, question),
+    })
   },
 
   /** Pause a session — participants see a holding screen. */
@@ -138,6 +174,22 @@ export const LiveSessionService = {
   /** Resume a paused session. */
   async resumeSession(joinCode: string): Promise<void> {
     await update(ref(rtdb, `live_sessions/${joinCode}`), { isPaused: false })
+  },
+
+  /** Close the quiz answer window and reveal the correct option. */
+  async closeQuizAnswerWindow(joinCode: string, questionId: string): Promise<void> {
+    const sessionRef = ref(rtdb, `live_sessions/${joinCode}`)
+    const snap = await get(sessionRef)
+    if (!snap.exists()) return
+
+    const session = snap.val() as LiveSessionData
+    if (session.activeQuestionId !== questionId) return
+
+    await update(sessionRef, {
+      quizAnswersOpen: false,
+      quizRevealCorrectAnswer: true,
+      answerDeadlineAt: new Date().toISOString(),
+    })
   },
 
   /**

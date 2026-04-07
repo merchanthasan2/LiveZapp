@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { adminDb } from '@/lib/server/firebaseAdmin'
+import { getRequestIp, hitRateLimit } from '@/lib/server/rateLimit'
 
 function parseUA(ua: string): { device: 'mobile' | 'tablet' | 'desktop'; os: string; browser: string } {
   // Device
@@ -73,6 +74,15 @@ function parseUA(ua: string): { device: 'mobile' | 'tablet' | 'desktop'; os: str
 }
 
 const LOCALHOST_IPS = ['127.0.0.1', '::1', 'localhost', '::ffff:127.0.0.1']
+const TRACK_WINDOW_MS = 60 * 1000
+const TRACK_MAX_PER_WINDOW = 120
+
+function sanitizeText(value: unknown, maxLength: number) {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  return trimmed.slice(0, maxLength)
+}
 
 async function getGeo(ip: string): Promise<{
   country: string
@@ -113,14 +123,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { path, referrer, sessionId, userId, screenW, screenH } = body
 
-    // Extract IP
-    const forwarded = req.headers.get('x-forwarded-for')
-    const realIp = req.headers.get('x-real-ip')
-    let ip = 'unknown'
-    if (forwarded) {
-      ip = forwarded.split(',')[0].trim()
-    } else if (realIp) {
-      ip = realIp.trim()
+    const ip = getRequestIp(req.headers)
+    if (hitRateLimit(`track:${ip}`, TRACK_MAX_PER_WINDOW, TRACK_WINDOW_MS)) {
+      return NextResponse.json({ ok: false, error: 'Too many tracking requests.' }, { status: 429 })
+    }
+
+    const normalizedPath = sanitizeText(path, 300)
+    if (normalizedPath && !normalizedPath.startsWith('/')) {
+      return NextResponse.json({ ok: false, error: 'Invalid path.' }, { status: 400 })
     }
 
     // Parse UA
@@ -133,8 +143,8 @@ export async function POST(req: NextRequest) {
     // Write to RTDB
     const record = {
       ts: Date.now(),
-      path: path ?? null,
-      referrer: referrer ?? null,
+      path: normalizedPath,
+      referrer: sanitizeText(referrer, 500),
       ip,
       country: geo.country,
       countryCode: geo.countryCode,
@@ -146,11 +156,11 @@ export async function POST(req: NextRequest) {
       device,
       os,
       browser,
-      screenW: screenW ?? null,
-      screenH: screenH ?? null,
-      userId: userId ?? null,
-      isRegistered: userId != null && userId !== '',
-      sessionId: sessionId ?? null,
+      screenW: Number.isFinite(screenW) ? Math.max(0, Number(screenW)) : null,
+      screenH: Number.isFinite(screenH) ? Math.max(0, Number(screenH)) : null,
+      userId: sanitizeText(userId, 128),
+      isRegistered: typeof userId === 'string' && userId.trim() !== '',
+      sessionId: sanitizeText(sessionId, 128),
     }
 
     await adminDb().ref('analytics/pageviews').push(record)
