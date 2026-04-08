@@ -3,6 +3,7 @@ import { adminAuth, adminDb } from '@/lib/server/firebaseAdmin'
 import { writeAdminAuditLog } from '@/lib/server/adminAuditLog'
 import { isPrivilegedRole, resolveTrustedRoleForUser } from '@/lib/server/trustedRoles'
 import { verifyBearerToken } from '@/lib/server/verifyBearerUid'
+import { toAbsoluteUrl } from '@/lib/site'
 
 type ManageAction =
   | 'set_role'
@@ -64,6 +65,11 @@ async function sendFirebaseEmailAction(email: string, requestType: 'PASSWORD_RES
     throw new Error('Firebase email actions are not configured')
   }
 
+  // Keep Firebase OOB flows on the canonical LiveZapp auth route.
+  const continueUrl =
+    process.env.AUTH_EMAIL_CONTINUE_URL?.trim() ||
+    toAbsoluteUrl('/login')
+
   const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${apiKey}`, {
     method: 'POST',
     headers: {
@@ -72,6 +78,7 @@ async function sendFirebaseEmailAction(email: string, requestType: 'PASSWORD_RES
     body: JSON.stringify({
       requestType,
       email,
+      continueUrl,
     }),
   })
 

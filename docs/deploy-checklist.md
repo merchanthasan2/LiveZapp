@@ -61,5 +61,6 @@ Alternatively on GCP: **`GOOGLE_APPLICATION_CREDENTIALS`** pointing to a service
 
 - [ ] Re-run `npm audit` before major releases
 - [ ] Rotate keys if leaked; never commit `.env.local`
+- [ ] Configure email sender + deliverability (SPF/DKIM/DMARC, Firebase auth templates) per `docs/email-operations-checklist.md`
 
 See also [launch-tracker.md](./launch-tracker.md).
