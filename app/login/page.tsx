@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
@@ -17,7 +17,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export default function LoginPage() {
+function LoginPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -176,6 +176,20 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen surface-page flex items-center justify-center px-4 py-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-4" style={{ borderColor: 'rgba(101,12,217,0.15)', borderTopColor: '#650cd9' }} />
+        </div>
+      }
+    >
+      <LoginPageContent />
+    </Suspense>
   )
 }
 

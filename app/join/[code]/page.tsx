@@ -736,7 +736,7 @@ export default function ParticipantPage() {
   const quizAnswerLocked = currentQ?.kind === 'quiz'
     ? quizRevealCorrectAnswer || !quizAnswersOpen || (quizAnswerDeadlineAt ? quizTimeRemainingMs <= 0 : false)
     : false
-  const isThankYouStage = session.stage === 'thank_you'
+  const isThankYouStage = session?.stage === 'thank_you'
 
   useEffect(() => {
     if (currentQ?.kind !== 'quiz' || !quizAnswersOpen || !quizAnswerDeadlineAt) {

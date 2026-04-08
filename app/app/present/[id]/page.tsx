@@ -814,27 +814,6 @@ export default function PresentPage() {
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
-  // Keyboard navigation in fullscreen
-  useEffect(() => {
-    if (!isFullscreen || !session) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
-        e.preventDefault()
-        void handleAdvance()
-      }
-      if (e.key === 'ArrowLeft') {
-        e.preventDefault()
-        if (!showJoinSlide && currentIndex > 0) navigateTo(currentIndex - 1)
-        else if (!showJoinSlide) setShowJoinSlide(true)
-      }
-      if (e.key === 'Escape') {
-        document.exitFullscreen().catch(() => {})
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [isFullscreen, session, showJoinSlide, currentIndex, liveQuestionCount, navigateTo, handleAdvance])
-
   // Load presentation + questions
   useEffect(() => {
     if (!id || !user) return
@@ -1039,6 +1018,27 @@ export default function PresentPage() {
     }
     await LiveSessionService.showThankYou(session.joinCode)
   }, [session, showJoinSlide, isThankYouStage, currentIndex, liveQuestionCount, navigateTo, handleEndSession])
+
+  // Keyboard navigation in fullscreen
+  useEffect(() => {
+    if (!isFullscreen || !session) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        e.preventDefault()
+        void handleAdvance()
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        if (!showJoinSlide && currentIndex > 0) navigateTo(currentIndex - 1)
+        else if (!showJoinSlide) setShowJoinSlide(true)
+      }
+      if (e.key === 'Escape') {
+        document.exitFullscreen().catch(() => {})
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isFullscreen, session, showJoinSlide, currentIndex, navigateTo, handleAdvance])
 
   const handleSlideClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!session) return
