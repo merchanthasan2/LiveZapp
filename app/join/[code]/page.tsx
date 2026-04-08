@@ -265,7 +265,7 @@ function WordCloudView({ question, onSubmit, submittedCount, theme }: {
 
       <div
         className="sticky bottom-0 z-10 rounded-2xl p-2.5"
-        style={{ background: '#FFFFFF', border: `1px solid ${theme.accentBorder}`, boxShadow: '0 10px 24px rgba(0,0,0,0.08)' }}
+        style={{ background: '#FFFFFF', border: `1px solid ${theme.accentBorder}`, boxShadow: '0 10px 24px rgba(0,0,0,0.08)', paddingBottom: 'calc(0.625rem + env(safe-area-inset-bottom, 0px))' }}
       >
         {atMax ? (
           <p className="text-sm font-semibold text-center py-1" style={{ color: '#6B7280' }}>
@@ -279,6 +279,7 @@ function WordCloudView({ question, onSubmit, submittedCount, theme }: {
               maxLength={30}
               placeholder="Type a word or phrase..."
               value={current}
+              aria-label="Word or phrase to add"
               autoFocus
               onChange={e => setCurrent(e.target.value)}
               onKeyDown={e => {
@@ -296,6 +297,7 @@ function WordCloudView({ question, onSubmit, submittedCount, theme }: {
               type="button"
               disabled={!canSubmit}
               onClick={submitCurrent}
+              aria-label="Add word"
               className="shrink-0 h-[42px] px-4 rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
               style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText }}
             >
@@ -470,6 +472,7 @@ function NameEntryScreen({
               placeholder="Enter your name..."
               maxLength={40}
               autoComplete="given-name"
+              aria-label="Your name"
               className="w-full outline-none transition-all"
               style={{
                 padding: '1rem 1.25rem',
@@ -489,6 +492,7 @@ function NameEntryScreen({
           <button
             disabled={!nameInput.trim() || isJoining}
             onClick={onJoin}
+            aria-label="Join session"
             className="w-full flex items-center justify-center gap-3 rounded-2xl font-black text-lg transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
               background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`,
@@ -890,6 +894,7 @@ export default function ParticipantPage() {
                   setCampaignVoteSaving(false)
                 }
               }}
+              aria-label="Liked it"
               className="rounded-2xl px-4 py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: campaignVote === 'up' ? 'rgba(34,197,94,0.14)' : 'rgba(34,197,94,0.08)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}
             >
@@ -907,6 +912,7 @@ export default function ParticipantPage() {
                   setCampaignVoteSaving(false)
                 }
               }}
+              aria-label="Needs work"
               className="rounded-2xl px-4 py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
               style={{ background: campaignVote === 'down' ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.22)' }}
             >
@@ -1072,11 +1078,11 @@ export default function ParticipantPage() {
             )}
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: theme.accent }}>
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-[9px] font-black uppercase tracking-widest" style={{ color: theme.accentText }}>Live</span>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: theme.accentText }}>Live</span>
             </div>
             {currentQ?.kind === 'quiz' && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: quizRevealCorrectAnswer ? 'rgba(34,197,94,0.14)' : quizAnswerLocked ? 'rgba(251,191,36,0.16)' : theme.accentSoft, color: quizRevealCorrectAnswer ? '#15803d' : quizAnswerLocked ? '#92400e' : theme.accentStrong }}>
-                <span className="text-[9px] font-black uppercase tracking-widest">
+                <span className="text-[10px] font-black uppercase tracking-widest">
                   {quizRevealCorrectAnswer ? 'Answer revealed' : quizAnswerLocked ? 'Closed' : formatCountdown(quizTimeRemainingMs)}
                 </span>
               </div>

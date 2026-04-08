@@ -203,7 +203,7 @@ function EditZappPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isQuiz = type === 'quiz'
@@ -526,7 +526,7 @@ function EditZappPage() {
                 {brandLogoUrl ? (
                   <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: panelAlt, border: `1px solid ${border}` }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={brandLogoUrl} alt="Brand logo" className="h-12 w-auto max-w-[120px] object-contain rounded" />
+                    <img src={brandLogoUrl} alt="Brand logo" className="h-12 w-auto max-w-[120px] object-contain" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold" style={{ color: textStrong }}>Logo ready</p>
                       <p className="text-xs" style={{ color: textSoft }}>Used on presenter and participant screens.</p>
@@ -555,7 +555,7 @@ function EditZappPage() {
                   Remove white background from uploaded logo
                 </label>
                 {uploadError && <p className="text-xs mt-2 text-red-500">{uploadError}</p>}
-                {uploadSuccess && <p className="text-xs mt-2" style={{ color: '#16A34A' }}>Logo uploaded successfully.</p>}
+                {uploadSuccess && <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: '#16A34A' }}><CheckCircle2 className="w-3.5 h-3.5" /> Logo uploaded successfully.</p>}
               </div>
 
               <div>
@@ -672,6 +672,7 @@ function EditZappPage() {
                       <button onClick={() => removeSection(sec.id)} className="p-1 rounded transition-colors" style={{ color: '#D1D5DB' }}
                         onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
                         onMouseLeave={e => (e.currentTarget.style.color = '#D1D5DB')}
+                        aria-label="Remove section"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -875,6 +876,7 @@ function EditZappPage() {
                       className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 rounded-lg transition-all flex-shrink-0 self-start"
                       style={{ color: textSoft, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(122,58,240,0.06)' }}
                       title="Delete question"
+                      aria-label="Delete question"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -1129,7 +1131,7 @@ function EditZappPage() {
                   )}
                 </div>
               </div>
-              <button onClick={() => setStep('name')} className="p-2 rounded-lg transition-colors" style={{ color: '#9CA3AF' }}>
+              <button onClick={() => setStep('name')} className="p-2 rounded-lg transition-colors" style={{ color: '#9CA3AF' }} aria-label="Edit name">
                 <Edit2 className="w-4 h-4" />
               </button>
             </div>

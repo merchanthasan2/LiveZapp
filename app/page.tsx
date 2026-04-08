@@ -37,6 +37,7 @@ import BrandLockup from '@/components/BrandLockup'
 
 function TopNav() {
   const [activeSection, setActiveSection] = useState<'features' | 'pricing' | 'contact'>('features')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const updateActiveSection = () => {
@@ -59,10 +60,25 @@ function TopNav() {
     return () => window.removeEventListener('scroll', updateActiveSection)
   }, [])
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileMenuOpen])
+
   const navLinkStyle = (section: 'features' | 'pricing' | 'contact') => ({
     color: activeSection === section ? '#650cd9' : '#4a4455',
     borderColor: activeSection === section ? '#650cd9' : 'transparent',
   })
+
+  const mobileNavLinks: Array<{ id: 'features' | 'pricing' | 'contact'; label: string }> = [
+    { id: 'features', label: 'Features' },
+    { id: 'pricing', label: 'Pricing' },
+    { id: 'contact', label: 'Help' },
+  ]
 
   return (
     <nav
@@ -112,6 +128,20 @@ function TopNav() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(v => !v)}
+            className="touch-target inline-flex items-center justify-center rounded-xl p-2 md:hidden"
+            style={{ color: '#4a4455' }}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+            )}
+          </button>
           <Link href="/login" className="touch-target inline-flex items-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold leading-none transition-all sm:px-4 sm:text-sm" style={{ color: '#4a4455' }}>
             Log In
           </Link>
@@ -120,6 +150,30 @@ function TopNav() {
           </Link>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div
+          className="md:hidden border-t"
+          style={{ background: 'rgba(252, 249, 248, 0.98)', borderColor: 'rgba(123, 116, 135, 0.12)' }}
+        >
+          <div className="flex flex-col px-6 py-4 space-y-1">
+            {mobileNavLinks.map(link => (
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center rounded-xl px-4 py-3 text-base font-bold transition-colors"
+                style={{
+                  color: activeSection === link.id ? '#650cd9' : '#4a4455',
+                  background: activeSection === link.id ? 'rgba(101,12,217,0.08)' : 'transparent',
+                }}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

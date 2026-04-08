@@ -158,7 +158,7 @@ function ParticipantPreview({ branding, isDark = false }: { branding: BrandingCo
       <div className="px-4 py-3 flex items-center justify-between" style={{ background: panelBg, borderBottom: `1px solid ${panelBorder}` }}>
         <div className="flex items-center gap-2.5">
           {hasLogo ? (
-            <img src={branding.logoUrl} alt="Brand logo" className="h-7 w-auto object-contain rounded" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
+            <img src={branding.logoUrl} alt="Brand logo" className="h-7 w-auto object-contain" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none' }} />
           ) : (
             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: accent + '22', border: `1px solid ${accent}44` }}>
               <Zap className="w-3.5 h-3.5" style={{ color: accent }} />
@@ -338,7 +338,7 @@ function SettingsContent() {
   const [uploading,     setUploading]     = useState(false)
   const [uploadError,   setUploadError]   = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(true)
 
   useEffect(() => {
     if (!user) return
@@ -835,7 +835,7 @@ function SettingsContent() {
                 {/* Logo upload */}
                 {branding.logoUrl ? (
                   <div className="flex items-center gap-4 px-4 py-3 rounded-xl" style={{ background: subtleSurface, border: `1px solid ${tabBorder}` }}>
-                    <img src={branding.logoUrl} alt="Logo" className="h-9 max-w-[80px] object-contain rounded" />
+                    <img src={branding.logoUrl} alt="Logo" className="h-9 max-w-[80px] object-contain" />
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold truncate" style={{ color: isDark ? 'rgba(255,255,255,0.75)' : '#554d65' }}>{branding.logoUrl.split('/').pop()}</p>
                     </div>
@@ -868,7 +868,7 @@ function SettingsContent() {
                   Remove white background from uploaded logo
                 </label>
                 {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
-                {uploadSuccess && <p className="text-xs" style={{ color: '#16A34A' }}>Logo uploaded!</p>}
+                {uploadSuccess && <p className="text-xs inline-flex items-center gap-1.5" style={{ color: '#16A34A' }}><CheckCircle2 className="w-3.5 h-3.5" /> Logo uploaded!</p>}
               </div>
 
               {/* Accent colour */}

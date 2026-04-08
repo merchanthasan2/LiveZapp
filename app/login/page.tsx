@@ -111,7 +111,7 @@ function LoginPageContent() {
                 autoComplete="email"
                 placeholder="you@example.com"
                 {...register('email')}
-                className="w-full rounded-xl border px-4 py-3 text-sm outline-none"
+                className="w-full rounded-xl border px-4 py-3 text-base outline-none"
                 style={{
                   background: '#f0edec',
                   borderColor: errors.email ? '#f04438' : 'rgba(123,116,135,0.20)',
@@ -137,7 +137,7 @@ function LoginPageContent() {
                   autoComplete="current-password"
                   placeholder="Your password"
                   {...register('password')}
-                  className="w-full rounded-xl border px-4 py-3 pr-11 text-sm outline-none"
+                  className="w-full rounded-xl border px-4 py-3 pr-11 text-base outline-none"
                   style={{
                     background: '#f0edec',
                     borderColor: errors.password ? '#f04438' : 'rgba(123,116,135,0.20)',

@@ -30,7 +30,7 @@ const schema = z
 type FormValues = z.infer<typeof schema>
 
 const inputClass = (hasError: boolean) =>
-  `w-full px-4 py-3 rounded-2xl text-sm text-[#1f1830] placeholder:text-[#9d93b1] outline-none transition-all ${
+  `w-full px-4 py-3 rounded-2xl text-base text-[#1f1830] placeholder:text-[#9d93b1] outline-none transition-all ${
     hasError
       ? 'border-2 border-rose-300 bg-rose-50/90 focus:border-rose-400 focus:ring-4 focus:ring-rose-100'
       : 'border border-[#eadff7] bg-white/95 focus:border-[#650cd9] focus:ring-4 focus:ring-violet-100'

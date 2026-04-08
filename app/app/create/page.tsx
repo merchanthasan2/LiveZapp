@@ -201,7 +201,7 @@ export default function CreatePage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(true)
 
   const canBrand    = !!planLimits.plan?.features.canUseBranding && !planLimits.isPlanExpired
   const canCreate   = planLimits.canCreatePresentation
@@ -520,7 +520,7 @@ export default function CreatePage() {
 
                   {brandLogoUrl ? (
                     <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f6f1fa', border: `1px solid ${border}` }}>
-                      <img src={brandLogoUrl} alt="Zapp logo" className="h-12 w-auto max-w-[110px] rounded object-contain" />
+                      <img src={brandLogoUrl} alt="Zapp logo" className="h-12 w-auto max-w-[110px] object-contain" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate" style={{ color: textStrong }}>Custom logo added</p>
                         <p className="text-xs mt-1" style={{ color: textSoft }}>This will appear on the presenter join screen and participant entry view.</p>
@@ -558,7 +558,7 @@ export default function CreatePage() {
                   </label>
 
                   {uploadError && <p className="text-xs mt-2 text-red-500">{uploadError}</p>}
-                  {uploadSuccess && <p className="text-xs mt-2" style={{ color: '#16A34A' }}>Logo uploaded successfully.</p>}
+                  {uploadSuccess && <p className="text-xs mt-2 inline-flex items-center gap-1.5" style={{ color: '#16A34A' }}><CheckCircle2 className="w-3.5 h-3.5" /> Logo uploaded successfully.</p>}
                 </div>
 
                 <div>
@@ -609,7 +609,7 @@ export default function CreatePage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                       {brandLogoUrl ? (
-                        <img src={brandLogoUrl} alt="Brand logo preview" className="h-10 max-w-[96px] rounded object-contain" />
+                        <img src={brandLogoUrl} alt="Brand logo preview" className="h-10 max-w-[96px] object-contain" />
                       ) : (
                         <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${COLOR_PALETTES[selectedPalette].primary}22` }}>
                           <Sparkles className="w-4 h-4" style={{ color: COLOR_PALETTES[selectedPalette].primary }} />

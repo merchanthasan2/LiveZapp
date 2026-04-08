@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Edit, List, Play, Radio, Search, Sparkles, Trash2, Users, X } from 'lucide-react'
+import { AlertTriangle, Download, Edit, List, Play, Radio, Search, Sparkles, Trash2, Users, X } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import { useTheme } from '@/lib/contexts/ThemeContext'
@@ -38,6 +38,41 @@ export default function DashboardPage() {
   const [confirmDelete, setConfirmDelete] = useState<Presentation | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
+  const [exportingId, setExportingId] = useState<string | null>(null)
+
+  const handleExportCsv = async (p: Presentation) => {
+    if (!user || !p.joinCode) return
+    setExportingId(p.id)
+    try {
+      const { auth: firebaseAuth } = await import('@/lib/firebase')
+      const idToken = await firebaseAuth.currentUser?.getIdToken()
+      if (!idToken) return
+
+      const res = await fetch('/api/session/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({ joinCode: p.joinCode }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ error: 'Export failed' }))
+        alert(data.error || 'Export failed')
+        return
+      }
+
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `livezapp-${p.joinCode}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Failed to export results')
+    } finally {
+      setExportingId(null)
+    }
+  }
 
   useEffect(() => {
     if (!user) return
@@ -351,6 +386,19 @@ export default function DashboardPage() {
                     <Link href={`/app/create/${p.id}`} className="p-2.5 rounded-full" style={{ background: actionBg, color: isDark ? '#d6cff0' : '#6941c6' }} title="Edit Zapp">
                       <Edit className="w-4 h-4" />
                     </Link>
+                    {p.status === 'completed' && p.joinCode && planLimits.plan.features.canExportResults && (
+                      <button
+                        type="button"
+                        onClick={() => handleExportCsv(p)}
+                        disabled={exportingId === p.id}
+                        className="p-2.5 rounded-full disabled:opacity-50"
+                        style={{ background: isDark ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.12)', color: isDark ? '#6ee7b7' : '#059669' }}
+                        title="Export results (CSV)"
+                        aria-label="Export results"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    )}
                     <button type="button" onClick={() => setConfirmDelete(p)} className="p-2.5 rounded-full" style={{ background: '#311d28', color: '#ffb1cb' }} title="Delete">
                       <Trash2 className="w-4 h-4" />
                     </button>

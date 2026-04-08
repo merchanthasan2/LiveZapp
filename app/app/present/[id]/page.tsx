@@ -229,7 +229,7 @@ function RatingDisplay({ responses, max, dark = false }: { responses: Record<str
     <div className="mt-4 space-y-3">
       <div className="text-center">
         <p className="font-black" style={{ fontSize: dark ? '6rem' : '3rem', color: '#c7b5ff', lineHeight: 1 }}>{avg}</p>
-        <p className="text-xs mt-1" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#9CA3AF' }}>avg / {max} Â· {values.length} response{values.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs mt-1" style={{ color: dark ? 'rgba(255,255,255,0.40)' : '#9CA3AF' }}>avg / {max} · {values.length} response{values.length !== 1 ? 's' : ''}</p>
       </div>
       <div className="flex gap-1 items-end h-16">
         {counts.map((c, i) => {
@@ -1676,7 +1676,7 @@ export default function PresentPage() {
                 <div className="flex flex-col items-center xl:items-start justify-center gap-4 md:gap-5 w-full">
                   {session.brandLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-24 sm:h-28 max-w-[240px] rounded-2xl object-contain shrink-0" />
+                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-24 sm:h-28 max-w-[240px] object-contain shrink-0 drop-shadow-[0_8px_24px_rgba(0,0,0,0.30)]" />
                   ) : (
                     <div className="w-24 h-24 rounded-[1.75rem] flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.14)' }}>
                       <Sparkles className="w-10 h-10" style={{ color: '#650cd9' }} />
