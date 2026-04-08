@@ -448,7 +448,7 @@ function CheckoutContent() {
                         value={profile.addressLine2}
                         onChange={e => setProfileField('addressLine2', e.target.value)}
                       />
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <InputField
                           label="City" id="city" required
                           placeholder="Mumbai"
@@ -462,7 +462,7 @@ function CheckoutContent() {
                           onChange={e => setProfileField('state', e.target.value)}
                         />
                       </div>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <InputField
                           label="Postal Code" id="postal"
                           placeholder="400001"

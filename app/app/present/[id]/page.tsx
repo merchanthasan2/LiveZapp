@@ -1656,6 +1656,25 @@ export default function PresentPage() {
             </div>
           </div>
 
+          <div className="md:hidden flex items-center gap-2 px-3 py-2 rounded-2xl border"
+            style={{ background: isDark ? '#7e3af2' : '#efe3ff', borderColor: borderSoft }}
+          >
+            <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: isDark ? 'rgba(255,255,255,0.80)' : '#5a00c6' }}>
+              PIN
+            </span>
+            <button
+              type="button"
+              onClick={copyCode}
+              className="text-lg font-black tracking-[0.18em]"
+              style={{ color: isDark ? '#ffffff' : '#25005a' }}
+              aria-label="Copy game pin"
+              title="Tap to copy"
+            >
+              {session.joinCode}
+            </button>
+            {codeCopied && <CheckCircle2 className="w-4 h-4" style={{ color: isDark ? '#71f8e4' : '#006b5f' }} />}
+          </div>
+
           <div className="hidden md:flex items-center px-5 py-2.5 rounded-2xl shadow-lg" style={{ background: isDark ? '#7e3af2' : '#efe3ff' }}>
             <span className="text-[11px] uppercase tracking-[0.16em] font-bold mr-2" style={{ color: isDark ? '#efe3ff' : '#5a00c6' }}>
               Game PIN:

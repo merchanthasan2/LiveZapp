@@ -354,8 +354,17 @@ function NavbarContent({ pathname }: { pathname: string }) {
             </div>
 
             {/* Mobile hamburger */}
+            {!user && !isLoading && (
+              <Link
+                href="/login"
+                className="md:hidden inline-flex items-center justify-center min-w-11 h-11 px-3 rounded-xl text-sm font-semibold"
+                style={{ color: '#FFFFFF', background: 'rgba(255,255,255,0.10)', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                Login
+              </Link>
+            )}
             <button
-              className="md:hidden p-2 rounded-xl transition-all"
+              className="md:hidden min-w-11 h-11 inline-flex items-center justify-center rounded-xl transition-all"
               style={{ color: 'rgba(255,255,255,0.75)', background: 'rgba(255,255,255,0.07)' }}
               onClick={() => setMobileOpen(o => !o)}
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -401,7 +410,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 <div className="flex items-center gap-2.5">
                   <BrandLockup href="/" size="md" theme="dark" />
                 </div>
-                <button onClick={() => setMobileOpen(false)} className="p-1.5 rounded-lg transition-all" style={{ color: 'rgba(255,255,255,0.50)', background: 'rgba(255,255,255,0.07)' }} aria-label="Close menu">
+                <button onClick={() => setMobileOpen(false)} className="min-w-11 h-11 inline-flex items-center justify-center rounded-lg transition-all" style={{ color: 'rgba(255,255,255,0.50)', background: 'rgba(255,255,255,0.07)' }} aria-label="Close menu">
                   <X className="w-5 h-5" />
                 </button>
               </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Activity,
   BarChart3,
@@ -20,6 +20,8 @@ import {
   Moon,
   LogOut,
   Home,
+  Menu,
+  X,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import BrandLockup from '@/components/BrandLockup'
@@ -41,6 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const { user, isLoading, isAdmin, logout } = useAuth()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (isLoading) return
@@ -52,6 +55,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       router.replace('/app/dashboard')
     }
   }, [isLoading, user, isAdmin, router])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   if (isLoading || !user || !isAdmin) {
     return (
@@ -144,6 +151,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 lg:ml-[280px]">
         <header className="sticky top-0 z-20 border-b" style={{ background: headerBg, borderBottomColor: headerBorder, backdropFilter: 'blur(10px)' }}>
           <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4 sm:gap-5">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-xl border shrink-0"
+              style={{ color: navText, background: '#ffffff', borderColor: '#e4dbf1' }}
+              aria-label="Open admin menu"
+              aria-expanded={mobileMenuOpen}
+              aria-controls="admin-mobile-menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <Link
               href="/"
               className="inline-flex items-center gap-2 shrink-0 rounded-full px-3.5 py-2 text-sm font-bold lg:hidden"
@@ -156,12 +174,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <input
                 type="text"
                 placeholder="Search platform data..."
-                className="w-full rounded-full pl-10 pr-4 py-2.5 text-sm outline-none"
+                className="w-full rounded-full pl-10 pr-4 py-3 text-sm outline-none"
                 style={{ background: searchBg, color: searchText, border: searchBorder }}
               />
             </div>
-            <Bell className="w-5 h-5 shrink-0" style={{ color: iconTone }} />
-            <Moon className="w-5 h-5 shrink-0" style={{ color: iconTone }} />
+            <button
+              type="button"
+              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ color: iconTone, background: '#ffffff' }}
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" />
+            </button>
+            <button
+              type="button"
+              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              style={{ color: iconTone, background: '#ffffff' }}
+              aria-label="Toggle theme"
+            >
+              <Moon className="w-5 h-5" />
+            </button>
             <div className="flex items-center gap-3 pl-4 sm:pl-5 shrink-0" style={{ borderLeft: '1px solid #ece7f5' }}>
               <div className="text-right leading-tight hidden sm:block">
                 <p className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>Admin Profile</p>
@@ -176,6 +208,88 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6 md:py-8">{children}</main>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <button
+            type="button"
+            className="absolute inset-0"
+            style={{ background: 'rgba(21, 12, 37, 0.45)' }}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close admin menu backdrop"
+          />
+          <aside
+            id="admin-mobile-menu"
+            className="absolute inset-y-0 left-0 w-[86%] max-w-[340px] p-4 flex flex-col"
+            style={{ background: sidebarBg, borderRight: sidebarBorder }}
+          >
+            <div className="mb-4 flex items-center justify-between px-1 py-2">
+              <BrandLockup href="/" size="sm" theme="light" subtitle="Admin Control" />
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-11 h-11 rounded-full flex items-center justify-center"
+                style={{ color: iconTone, background: '#f7f3fc' }}
+                aria-label="Close admin menu"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <nav className="flex-1 space-y-1 pt-2 overflow-y-auto" aria-label="Mobile admin navigation">
+              {adminLinks.map((item) => {
+                const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all"
+                    style={active
+                      ? { background: navActiveBg, color: navActiveText, border: navActiveBorder }
+                      : { color: navText }}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <span>{item.label}</span>
+                  </Link>
+                )
+              })}
+            </nav>
+
+            <div className="pt-4 mt-4 space-y-2" style={{ borderTop: '1px solid #ece8f4' }}>
+              <button
+                type="button"
+                className="w-full rounded-xl py-3 text-sm font-bold"
+                style={{ background: 'linear-gradient(135deg, #7a3af0, #5b21b6)', color: '#ffffff' }}
+                onClick={() => router.push('/admin/promos')}
+              >
+                Create New Campaign
+              </button>
+              <Link
+                href="/admin/settings"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                style={{ color: navText, background: '#f8f5fc', border: '1px solid #ece7f5' }}
+              >
+                <Settings className="w-4 h-4" /> Settings
+              </Link>
+              <Link
+                href="/"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                style={{ color: navActiveText, background: 'rgba(122,58,240,0.08)', border: '1px solid rgba(122,58,240,0.18)' }}
+              >
+                <Home className="w-4 h-4" /> Back to website
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                style={{ color: '#4f465f', background: '#f8f5fc', border: '1px solid #ece7f5' }}
+              >
+                <LogOut className="w-4 h-4" style={{ color: '#ba1a1a' }} /> Sign out
+              </button>
+            </div>
+          </aside>
+        </div>
+      )}
     </div>
   )
 }

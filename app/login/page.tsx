@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import BrandLockup from '@/components/BrandLockup'
@@ -19,15 +19,18 @@ type FormValues = z.infer<typeof schema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
   const { user, isLoading, error: authError, login, loginWithGoogle } = useAuth()
+  const redirectPath = searchParams.get('redirect')
+  const safeRedirect = redirectPath && redirectPath.startsWith('/') ? redirectPath : '/app/dashboard'
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.push('/app/dashboard')
+      router.push(safeRedirect)
     }
-  }, [user, isLoading, router])
+  }, [user, isLoading, router, safeRedirect])
 
   const {
     register,
@@ -123,8 +126,8 @@ export default function LoginPage() {
                 <label htmlFor="login-password" className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted-light)' }}>
                   Password
                 </label>
-                <Link href="#" className="text-xs font-semibold" style={{ color: 'var(--brand-primary-light)' }}>
-                  Forgot?
+                <Link href="/contact" className="text-xs font-semibold" style={{ color: 'var(--brand-primary-light)' }}>
+                  Need help?
                 </Link>
               </div>
               <div className="relative">
@@ -144,7 +147,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 inline-flex items-center justify-center rounded-lg"
                   style={{ color: '#7b7487' }}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >

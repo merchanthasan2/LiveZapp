@@ -182,6 +182,7 @@ function EditZappPage() {
   const [error, setError] = useState<string | null>(null)
   const [showTypePicker, setShowTypePicker] = useState(false)
   const [typePickerPurpose, setTypePickerPurpose] = useState<'add' | 'change'>('add')
+  const [mobileQuestionsView, setMobileQuestionsView] = useState<'list' | 'editor'>('list')
 
   const isQuiz = type === 'quiz'
 
@@ -289,6 +290,7 @@ function EditZappPage() {
     const q = makeQuestion(kind, questions.length, sectionId)
     setQuestions(prev => [...prev, q])
     setSelectedQId(q.id)
+    setMobileQuestionsView('editor')
     setShowTypePicker(false)
   }
 
@@ -306,7 +308,13 @@ function EditZappPage() {
   function deleteQuestion(qid: string) {
     const updated = questions.filter(q => q.id !== qid).map((q, i) => ({ ...q, orderIndex: i }))
     setQuestions(updated as Question[])
-    if (selectedQId === qid) setSelectedQId(updated[0]?.id ?? null)
+    if (selectedQId === qid) {
+      const fallbackId = updated[0]?.id ?? null
+      setSelectedQId(fallbackId)
+      if (!fallbackId) {
+        setMobileQuestionsView('list')
+      }
+    }
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -580,11 +588,29 @@ function EditZappPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 justify-end">
+            <div className="md:hidden inline-flex items-center rounded-full p-1" style={{ background: panelAlt, border: `1px solid ${border}` }}>
+              <button
+                type="button"
+                onClick={() => setMobileQuestionsView('list')}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+                style={mobileQuestionsView === 'list' ? { background: accentSoft, color: accent } : { color: textMuted }}
+              >
+                Questions
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileQuestionsView('editor')}
+                className="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
+                style={mobileQuestionsView === 'editor' ? { background: accentSoft, color: accent } : { color: textMuted }}
+              >
+                Editor
+              </button>
+            </div>
             <button
               type="button"
               onClick={() => void saveToDashboard()}
               disabled={isSaving}
-              className="px-5 py-2.5 rounded-full text-sm font-bold border transition-all disabled:opacity-50"
+              className="px-4 sm:px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold border transition-all disabled:opacity-50"
               style={{ borderColor: border, color: textStrong, background: panelBg }}
             >
               {isSaving ? 'Saving…' : 'Save'}
@@ -593,7 +619,7 @@ function EditZappPage() {
               type="button"
               onClick={() => void saveAndPresent()}
               disabled={isSaving}
-              className="px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-50"
+              className="hidden sm:inline-flex px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-50"
               style={primaryBtn}
             >
               Save &amp; present
@@ -602,7 +628,7 @@ function EditZappPage() {
               type="button"
               onClick={nextStep}
               disabled={questions.length === 0}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm text-white disabled:opacity-50 transition-all"
+              className="inline-flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-full font-bold text-xs sm:text-sm text-white disabled:opacity-50 transition-all"
               style={primaryBtn}
             >
               Next <ArrowRight className="w-4 h-4" />
@@ -613,7 +639,7 @@ function EditZappPage() {
         <div className="flex flex-1 overflow-hidden min-h-0">
           {/* Left sidebar */}
           <div
-            className="w-[min(100%,20rem)] sm:w-[22rem] lg:w-[26rem] xl:w-[28rem] flex flex-col overflow-hidden flex-shrink-0 border-r"
+            className={`${mobileQuestionsView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-[22rem] lg:w-[26rem] xl:w-[28rem] flex-col overflow-hidden flex-shrink-0 border-r`}
             style={{ background: panelBg, borderColor: border, boxShadow: isDark ? 'none' : '4px 0 24px rgba(80, 50, 120, 0.04)' }}
           >
 
@@ -656,7 +682,10 @@ function EditZappPage() {
                   <div key={q.id} className="flex items-stretch gap-1.5 group">
                     <button
                       type="button"
-                      onClick={() => setSelectedQId(q.id)}
+                      onClick={() => {
+                        setSelectedQId(q.id)
+                        setMobileQuestionsView('editor')
+                      }}
                       className="flex-1 min-w-0 text-left px-3 py-2.5 rounded-xl text-xs transition-all"
                       style={{
                         background: active ? accentSoft : 'transparent',
@@ -686,7 +715,7 @@ function EditZappPage() {
                     <button
                       type="button"
                       onClick={() => deleteQuestion(q.id)}
-                      className="opacity-0 group-hover:opacity-100 p-2 rounded-lg transition-all flex-shrink-0 self-start"
+                      className="opacity-100 md:opacity-0 md:group-hover:opacity-100 p-2 rounded-lg transition-all flex-shrink-0 self-start"
                       style={{ color: textSoft, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(122,58,240,0.06)' }}
                       title="Delete question"
                     >
@@ -714,7 +743,7 @@ function EditZappPage() {
           </div>
 
           {/* Main editor area */}
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden" style={{ background: pageBg }}>
+          <div className={`${mobileQuestionsView === 'editor' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-h-0 overflow-hidden`} style={{ background: pageBg }}>
             {!selectedQuestion ? (
               <div className="flex flex-col items-center justify-center flex-1 gap-5 text-center p-8">
                 <div

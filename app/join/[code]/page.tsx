@@ -183,7 +183,7 @@ function QuizView({ question, onSubmit, submitted, submittedAnswer, locked, reve
           <span className="w-9 h-9 rounded-xl text-sm font-black flex items-center justify-center shrink-0" style={{ background: selected === opt.id && canInteract ? theme.accent : theme.accentSurface, color: selected === opt.id && canInteract ? theme.accentText : theme.accentStrong }}>
             {String.fromCharCode(65 + i)}
           </span>
-          <span className="text-base font-medium flex-1" style={{ color: '#1A1A2E' }}>{opt.label}</span>
+          <span className="text-base font-medium flex-1 min-w-0 break-words" style={{ color: '#1A1A2E' }}>{opt.label}</span>
           {revealCorrectAnswer && question.correctOptionId === opt.id && (
             <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full" style={{ background: 'rgba(34,197,94,0.14)', color: '#15803d' }}>
               Correct
@@ -225,7 +225,7 @@ function PollView({ question, onSubmit, submitted, theme }: {
             <span className="w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all" style={{ borderColor: isSelected ? theme.accent : '#D1D5DB', background: isSelected ? theme.accent : 'transparent' }}>
               {isSelected && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
             </span>
-            <span className="text-base font-medium" style={{ color: isSelected ? theme.accentStrong : '#1A1A2E' }}>{opt.label}</span>
+            <span className="text-base font-medium flex-1 min-w-0 break-words" style={{ color: isSelected ? theme.accentStrong : '#1A1A2E' }}>{opt.label}</span>
           </button>
         )
       })}
@@ -319,7 +319,7 @@ function FeedbackView({ question, onSubmit, submitted, theme }: { question: Feed
       <div className="space-y-3">
         {question.options.map(opt => (
           <button key={opt.id} disabled={submitted} onClick={() => setSelected(opt.id)} className="w-full px-4 py-4 rounded-2xl text-base font-medium text-left transition-all active:scale-[0.98]" style={{ background: selected === opt.id ? theme.accentSoft : '#FFFFFF', border: `2px solid ${selected === opt.id ? theme.accent : '#E5E7EB'}`, color: selected === opt.id ? theme.accentStrong : '#1A1A2E' }}>
-            {opt.label}
+            <span className="block break-words">{opt.label}</span>
           </button>
         ))}
         {!submitted && <button disabled={!selected} onClick={() => selected && onSubmit(selected)} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base mt-2 transition-all disabled:opacity-40" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>Submit <Send className="w-4 h-4" /></button>}

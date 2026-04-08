@@ -128,6 +128,15 @@ body {
 
 /* ── Utility Layer ──────────────────────────────────────────────────── */
 @layer utilities {
+  .touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
   .surface-page {
     background: var(--surface-page);
     color: var(--text-strong);

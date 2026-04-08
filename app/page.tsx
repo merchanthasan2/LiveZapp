@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   ArrowRight,
   BarChart2,
@@ -105,10 +105,10 @@ function TopNav() {
         </div>
 
         <div className="flex items-center space-x-4">
-          <Link href="/login" className="rounded-full px-4 py-2 text-sm font-bold transition-all" style={{ color: '#4a4455' }}>
+          <Link href="/login" className="touch-target inline-flex items-center rounded-full px-4 py-2 text-sm font-bold transition-all" style={{ color: '#4a4455' }}>
             Log In
           </Link>
-          <Link href="/join" className="rounded-full px-6 py-2 text-sm font-bold text-white shadow-md transition-all" style={{ background: '#650cd9' }}>
+          <Link href="/join" className="touch-target inline-flex items-center rounded-full px-6 py-2 text-sm font-bold text-white shadow-md transition-all" style={{ background: '#650cd9' }}>
             Join Now
           </Link>
         </div>
@@ -166,10 +166,12 @@ function HeroSection() {
                 <button
                   type="button"
                   onClick={handleJoin}
-                  className="flex items-center justify-center rounded-xl px-6 text-white transition-opacity hover:opacity-90"
+                  className="flex items-center gap-2 justify-center rounded-xl px-5 min-w-[110px] text-white transition-opacity hover:opacity-90"
                   style={{ background: '#650cd9' }}
+                  aria-label="Join session with code"
                 >
                   <Play className="h-5 w-5" />
+                  <span className="text-sm font-semibold">Join</span>
                 </button>
               </div>
             </div>
@@ -513,7 +515,7 @@ function ContactSection() {
 
           <div className="rounded-3xl bg-white p-10 shadow-xl">
             <form className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-sm font-bold" style={{ color: '#4a4455' }}>First Name</label>
                   <input type="text" className="w-full rounded-xl border-none px-4 py-3 outline-none" style={{ background: '#f0edec' }} />
@@ -546,29 +548,32 @@ function ContactSection() {
 }
 
 function MobileBottomNav() {
+  const pathname = usePathname()
   const items = [
-    { label: 'Home', href: '#', icon: Sparkles, active: true },
-    { label: 'Library', href: '#', icon: HelpCircle },
-    { label: 'Reports', href: '#', icon: BarChart3 },
-    { label: 'Settings', href: '#', icon: Settings },
+    { label: 'Home', href: '/', icon: Sparkles },
+    { label: 'Join', href: '/join', icon: HelpCircle },
+    { label: 'Plans', href: '/plans', icon: BarChart3 },
+    { label: 'Login', href: '/login', icon: Settings },
   ]
 
   return (
     <nav
-      className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-6 pb-6 pt-2 md:hidden"
+      className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2 md:hidden"
       style={{ background: 'rgba(255,255,255,0.92)', borderColor: 'rgba(123,116,135,0.15)', backdropFilter: 'blur(12px)' }}
     >
-      {items.map(item => (
-        <a
+      {items.map(item => {
+        const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
+        return (
+        <Link
           key={item.label}
           href={item.href}
-          className={`flex flex-col items-center justify-center ${item.active ? 'mb-4 h-12 w-12 rounded-full text-white' : 'text-[#7b7487]'}`}
-          style={item.active ? { background: '#650cd9', boxShadow: '0 12px 24px rgba(101,12,217,0.35)' } : undefined}
+          className={`touch-target flex flex-col items-center justify-center ${isActive ? 'mb-4 h-12 w-12 rounded-full text-white' : 'text-[#7b7487]'}`}
+          style={isActive ? { background: '#650cd9', boxShadow: '0 12px 24px rgba(101,12,217,0.35)' } : undefined}
         >
           <item.icon className="h-5 w-5" />
-          {!item.active && <span className="text-[10px] font-semibold">{item.label}</span>}
-        </a>
-      ))}
+          {!isActive && <span className="text-[10px] font-semibold">{item.label}</span>}
+        </Link>
+      )})}
     </nav>
   )
 }

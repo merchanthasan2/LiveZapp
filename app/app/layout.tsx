@@ -138,7 +138,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center w-full px-4 sm:px-6 md:px-8 lg:px-10 py-4 max-w-[1520px] mx-auto">
             <div className="flex items-center gap-8">
               <button
-                className="md:hidden w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                className="md:hidden w-11 h-11 rounded-full flex items-center justify-center transition-colors"
                 style={{ color: iconMuted, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(101,12,217,0.06)' }}
                 aria-label="Open side menu"
                 title="Open side menu"
@@ -159,12 +159,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="w-10 h-10 rounded-full flex items-center justify-center transition-colors" style={{ color: iconMuted }} aria-label="Notifications">
+              <button className="w-11 h-11 rounded-full flex items-center justify-center transition-colors" style={{ color: iconMuted }} aria-label="Notifications">
                 <Bell className="w-5 h-5" />
               </button>
               <button
                 onClick={toggleTheme}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                className="w-11 h-11 rounded-full flex items-center justify-center transition-colors"
                 style={{ color: iconMuted, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(101,12,217,0.06)' }}
                 aria-label={isDark ? 'Use light mode' : 'Use dark mode'}
                 title={isDark ? 'Use light mode' : 'Use dark mode'}
@@ -205,7 +205,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="mb-4 flex items-center justify-between px-1 py-2">
               <BrandLockup href="/" size="sm" theme={isDark ? 'dark' : 'light'} />
               <button
-                className="w-9 h-9 rounded-full flex items-center justify-center"
+                className="w-11 h-11 rounded-full flex items-center justify-center"
                 style={{ color: iconMuted, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(101,12,217,0.06)' }}
                 onClick={() => setMobileMenuOpen(false)}
                 aria-label="Close side menu"
