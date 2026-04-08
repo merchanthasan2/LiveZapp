@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import Link from 'next/link'
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Zap, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
@@ -51,25 +51,30 @@ function RegisterContent() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({ resolver: zodResolver(schema) })
 
-  useEffect(() => {
-    const code = searchParams.get('promo')
-    if (code) {
-      validatePromo(code)
-    }
-  }, [searchParams])
+  /** Stable primitive — `searchParams` object identity can change every render and re-fire effects. */
+  const promoFromUrl = (searchParams.get('promo') ?? '').trim()
 
-  const validatePromo = async (code: string) => {
+  const validatePromo = useCallback(async (code: string) => {
+    const trimmed = code.trim()
+    if (!trimmed) return
     try {
       const response = await fetch('/api/promo/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: trimmed }),
       })
 
-      const data = await response.json()
+      let data: { success?: boolean; error?: string } = {}
+      try {
+        data = (await response.json()) as typeof data
+      } catch {
+        setPromoError('Invalid response from server')
+        setPromoCode(null)
+        return
+      }
 
       if (response.ok) {
-        setPromoCode(code.trim().toUpperCase())
+        setPromoCode(trimmed.toUpperCase())
         setPromoError(null)
       } else {
         setPromoError(data.error || 'Invalid promo code')
@@ -79,7 +84,12 @@ function RegisterContent() {
       setPromoError('Failed to validate promo code')
       setPromoCode(null)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (!promoFromUrl) return
+    void validatePromo(promoFromUrl)
+  }, [promoFromUrl, validatePromo])
 
   const onSubmit = async (data: FormValues) => {
     setServerError('')

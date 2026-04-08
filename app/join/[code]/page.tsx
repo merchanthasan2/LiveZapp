@@ -38,6 +38,7 @@ const DEFAULT_ACCENT = '#650cd9'
 type ParticipantTheme = {
   accent: string
   accentStrong: string
+  accentHarmony: string
   accentSoft: string
   accentSoftStrong: string
   accentBorder: string
@@ -91,6 +92,7 @@ function buildParticipantTheme(accent?: string | null): ParticipantTheme {
   return {
     accent: base,
     accentStrong: mix(base, '#12081F', 0.3),
+    accentHarmony: mix(base, '#53D8D1', 0.34),
     accentSoft: rgba(base, 0.10),
     accentSoftStrong: rgba(base, 0.16),
     accentBorder: rgba(base, 0.28),
@@ -246,30 +248,66 @@ function WordCloudView({ question, onSubmit, submittedCount, theme }: {
   const inputRef = useRef<HTMLInputElement>(null)
   const atMax = submittedCount >= max
   const canSubmit = current.trim().length > 0 && !atMax
+
+  const submitCurrent = () => {
+    if (!canSubmit) return
+    onSubmit([current.trim()])
+    setCurrent('')
+    inputRef.current?.focus()
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.accentStrong }}>Submit up to {max} word{max > 1 ? 's' : ''}</p>
+        <p className="text-[11px] font-bold uppercase tracking-widest" style={{ color: theme.accentStrong }}>Add up to {max} word{max > 1 ? 's' : ''}</p>
         <span className="text-sm font-bold" style={{ color: submittedCount >= max ? theme.accent : '#9CA3AF' }}>{submittedCount}/{max}</span>
       </div>
-      {!atMax && (
-        <div className="flex gap-2 items-center">
-          <input ref={inputRef} type="text" maxLength={30} placeholder="Type a word or phrase..." value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (canSubmit) { onSubmit([current.trim()]); setCurrent('') } } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-        </div>
-      )}
-      <button
-        disabled={!canSubmit}
-        onClick={() => {
-          if (!canSubmit) return
-          onSubmit([current.trim()])
-          setCurrent('')
-          inputRef.current?.focus()
-        }}
-        className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        style={{ background: atMax ? '#9CA3AF' : `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: atMax ? 'none' : `0 10px 24px ${theme.accentRing}` }}
+
+      <div
+        className="sticky bottom-0 z-10 rounded-2xl p-2.5"
+        style={{ background: '#FFFFFF', border: `1px solid ${theme.accentBorder}`, boxShadow: '0 10px 24px rgba(0,0,0,0.08)' }}
       >
-        Submit ({submittedCount}/{max}) <Send className="w-4 h-4" />
-      </button>
+        {atMax ? (
+          <p className="text-sm font-semibold text-center py-1" style={{ color: '#6B7280' }}>
+            Max words reached for this question.
+          </p>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              maxLength={30}
+              placeholder="Type a word or phrase..."
+              value={current}
+              autoFocus
+              onChange={e => setCurrent(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  submitCurrent()
+                }
+              }}
+              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-[15px] outline-none transition-all"
+              style={{ background: '#FFFFFF', border: '1.5px solid #D1D5DB', color: '#1A1A2E' }}
+              onFocus={e => { e.currentTarget.style.borderColor = theme.accent }}
+              onBlur={e => { e.currentTarget.style.borderColor = '#D1D5DB' }}
+            />
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={submitCurrent}
+              className="shrink-0 h-[42px] px-4 rounded-xl font-bold text-sm disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+              style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText }}
+            >
+              Add <Send className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] text-center" style={{ color: '#6B7280' }}>
+        Each tap on <strong>Add</strong> submits one word.
+      </p>
     </div>
   )
 }
@@ -386,7 +424,7 @@ function NameEntryScreen({
             <img
               src={brandLogoUrl}
               alt={brandName || 'Brand'}
-              className="h-16 w-auto object-contain max-w-[200px] mb-6"
+              className="h-20 sm:h-24 w-auto object-contain max-w-[260px] mb-6 drop-shadow-[0_10px_24px_rgba(0,0,0,0.28)]"
             />
           ) : (
             <div
@@ -478,7 +516,7 @@ function NameEntryScreen({
         className="flex items-center justify-center gap-2 py-4 shrink-0"
         style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
       >
-        <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: '#650cd9' }}>
+        <div className="w-4 h-4 rounded-md flex items-center justify-center" style={{ background: theme.accent }}>
           <Zap className="w-2.5 h-2.5 text-white" />
         </div>
         <span className="text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.25)' }}>
@@ -537,7 +575,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
           <img
             src={brandLogoUrl}
             alt={brandName || sessionTitle}
-            className="h-20 w-20 rounded-[1.6rem] object-contain z-10 shadow-2xl"
+            className="max-h-24 md:max-h-28 w-auto max-w-[260px] object-contain z-10 drop-shadow-[0_16px_34px_rgba(0,0,0,0.34)]"
           />
         ) : (
           <div

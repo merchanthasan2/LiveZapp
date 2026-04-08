@@ -61,6 +61,35 @@ function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+function normalizeHexColor(value?: string | null): string {
+  if (!value) return '#650cd9'
+  const trimmed = value.trim()
+  if (!/^#?[0-9A-Fa-f]{6}$/.test(trimmed)) return '#650cd9'
+  return trimmed.startsWith('#') ? trimmed.toUpperCase() : `#${trimmed.toUpperCase()}`
+}
+
+function hexToRgb(hex: string) {
+  const clean = normalizeHexColor(hex).slice(1)
+  return {
+    r: parseInt(clean.slice(0, 2), 16),
+    g: parseInt(clean.slice(2, 4), 16),
+    b: parseInt(clean.slice(4, 6), 16),
+  }
+}
+
+function rgba(hex: string, alpha: number): string {
+  const { r, g, b } = hexToRgb(hex)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+function mix(hex: string, otherHex: string, weight: number): string {
+  const a = hexToRgb(hex)
+  const b = hexToRgb(otherHex)
+  const clamp = Math.max(0, Math.min(1, weight))
+  const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0')
+  return `#${toHex(a.r + (b.r - a.r) * clamp)}${toHex(a.g + (b.g - a.g) * clamp)}${toHex(a.b + (b.b - a.b) * clamp)}`.toUpperCase()
+}
+
 // â”€â”€â”€ Dashboard-mode BarChart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function BarChart({ options, responses, kindColor, dark = false, revealCorrectAnswer = false, correctOptionId }: {
@@ -297,8 +326,12 @@ function QRPanel({ joinCode }: { joinCode: string }) {
 
 // â”€â”€â”€ Fullscreen: Join/QR slide â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: string; onStart: () => void; brandLogoUrl?: string; brandName?: string }) {
+function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName, accentColor }: { joinCode: string; onStart: () => void; brandLogoUrl?: string; brandName?: string; accentColor?: string }) {
   const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? SITE_URL
+  const accent = normalizeHexColor(accentColor)
+  const accentDeep = mix(accent, '#12081F', 0.38)
+  const accentSoft = rgba(accent, 0.18)
+  const accentBorder = rgba(accent, 0.34)
   const [lanIp, setLanIp] = useState<string | null>(null)
   const isLocalhost = typeof window !== 'undefined' && window.location.hostname === 'localhost'
   const port = typeof window !== 'undefined' ? window.location.port : ''
@@ -328,14 +361,14 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
       transition={{ duration: 0.4 }}
       className="h-full flex items-center justify-center px-3 sm:px-5 md:px-8 py-4 md:py-6"
     >
-      <div className="w-full max-w-[min(96vw,1480px)] rounded-[2rem] md:rounded-[2.75rem] border overflow-hidden relative mx-auto" style={{ background: '#15151d', borderColor: 'rgba(191,168,255,0.16)', boxShadow: '0 28px 80px rgba(0,0,0,0.40)' }}>
-        <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.26), transparent 30%), radial-gradient(circle at bottom right, rgba(83,216,209,0.12), transparent 24%)' }} />
+      <div className="w-full max-w-[min(96vw,1480px)] rounded-[2rem] md:rounded-[2.75rem] border overflow-hidden relative mx-auto" style={{ background: '#15151d', borderColor: accentBorder, boxShadow: `0 28px 80px ${rgba(accent, 0.26)}` }}>
+        <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: `radial-gradient(circle at top left, ${rgba(accent, 0.34)}, transparent 30%), radial-gradient(circle at bottom right, ${rgba(mix(accent, '#53D8D1', 0.45), 0.18)}, transparent 24%)` }} />
         <div className="relative z-10 p-5 sm:p-7 md:p-10 xl:p-14">
           <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 md:gap-8 mb-8 md:mb-10">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-5 min-w-0 text-center sm:text-left">
               {brandLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={brandLogoUrl} alt={brandName || 'Brand logo'} className="h-16 sm:h-20 max-w-[180px] rounded-2xl object-contain shrink-0" />
+                <img src={brandLogoUrl} alt={brandName || 'Brand logo'} className="h-20 sm:h-24 max-w-[240px] object-contain shrink-0 drop-shadow-[0_8px_24px_rgba(0,0,0,0.30)]" />
               ) : (
                 <BrandLockup href="/" size="lg" theme="dark" />
               )}
@@ -346,7 +379,7 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
               </div>
             </div>
 
-            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-[1.35rem] px-5 sm:px-6 py-4 self-center xl:self-start min-w-[200px]" style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', boxShadow: '0 16px 34px rgba(101,12,217,0.28)' }}>
+            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-[1.35rem] px-5 sm:px-6 py-4 self-center xl:self-start min-w-[200px]" style={{ background: `linear-gradient(135deg, ${accent}, ${accentDeep})`, boxShadow: `0 16px 34px ${rgba(accent, 0.34)}` }}>
               <span className="text-[11px] uppercase tracking-[0.18em] font-black" style={{ color: 'rgba(255,255,255,0.76)' }}>Game PIN</span>
               <span className="text-3xl md:text-4xl font-black tracking-[0.22em]" style={{ color: '#ffffff' }}>{joinCode}</span>
             </div>
@@ -365,26 +398,26 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName }: { joinCode: s
 
             <div className="space-y-4 md:space-y-5 flex flex-col justify-center w-full max-w-[28rem] mx-auto">
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.5rem] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
+                <div className="rounded-[1.5rem] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${accentBorder}` }}>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>Presenter brand</p>
                   <p className="text-sm font-semibold mt-2" style={{ color: '#f4efff' }}>{brandName || 'LiveZapp'}</p>
                 </div>
-                <div className="rounded-[1.5rem] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
+                <div className="rounded-[1.5rem] p-4" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${accentBorder}` }}>
                   <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>Stage flow</p>
                   <p className="text-sm font-semibold mt-2" style={{ color: '#f4efff' }}>Lobby first, prompts after Start Zapp</p>
                 </div>
               </div>
 
-              <div className="rounded-[1.8rem] p-6" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
+              <div className="rounded-[1.8rem] p-6" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${accentBorder}` }}>
                 <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#9CA3AF' }}>Join route</p>
-                <p className="text-base md:text-lg font-bold mt-3" style={{ color: '#53d8d1' }}>{displayUrl}</p>
+                <p className="text-base md:text-lg font-bold mt-3" style={{ color: mix(accent, '#9CF8EF', 0.45) }}>{displayUrl}</p>
                 <p className="text-sm mt-3" style={{ color: 'rgba(255,255,255,0.55)' }}>Use this if anyone in the room prefers typing the code instead of scanning the QR.</p>
               </div>
 
               <button
                 onClick={onStart}
                 className="flex items-center justify-center gap-3 px-6 sm:px-8 py-4 sm:py-5 rounded-[1.6rem] font-black text-lg sm:text-xl transition-all w-full"
-                style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', color: '#FFFFFF', boxShadow: '0 18px 38px rgba(101,12,217,0.32)' }}
+                style={{ background: `linear-gradient(135deg, ${accent}, ${accentDeep})`, color: '#FFFFFF', boxShadow: `0 18px 38px ${rgba(accent, 0.36)}` }}
               >
                 <Play className="w-5 h-5" fill="currentColor" />
                 Start Zapp
@@ -1187,7 +1220,9 @@ export default function PresentPage() {
 
   // â”€â”€ Pre-live setup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!session) {
-    const launchAccent = presentation.brandAccentColor || '#650cd9'
+    const launchAccent = normalizeHexColor(presentation.brandAccentColor || '#650cd9')
+    const launchAccentDeep = mix(launchAccent, '#12081F', 0.38)
+    const launchAccentBorder = rgba(launchAccent, 0.30)
     return (
       <div className="max-w-6xl mx-auto pb-16 space-y-6">
         <nav className="flex flex-wrap items-center gap-2 sm:gap-3" aria-label="Presenter navigation">
@@ -1215,13 +1250,13 @@ export default function PresentPage() {
         </nav>
         <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="rounded-[2rem] border p-7 md:p-9 overflow-hidden relative" style={{ background: '#15151d', borderColor: 'rgba(191,168,255,0.16)' }}>
-            <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.12), transparent 24%)' }} />
+            <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: `radial-gradient(circle at top left, ${rgba(launchAccent, 0.28)}, transparent 32%), radial-gradient(circle at bottom right, ${rgba(mix(launchAccent, '#53D8D1', 0.45), 0.18)}, transparent 24%)` }} />
             <div className="relative z-10">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: '#9CA3AF' }}>Presenter view</p>
               <div className="flex flex-col items-start gap-4">
                 {presentation.brandLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-24 md:h-28 w-auto max-w-[220px] rounded-xl object-contain" />
+                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-24 md:h-28 w-auto max-w-[240px] object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.30)]" />
                 ) : (
                   <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: `${launchAccent}22` }}>
                     <Sparkles className="w-8 h-8" style={{ color: launchAccent }} />
@@ -1243,7 +1278,7 @@ export default function PresentPage() {
                   { label: 'Theme', value: presentation.brandAccentColor ? 'Custom accent applied' : 'Purple signature theme' },
                   { label: 'Launch', value: 'QR lobby before questions begin' },
                 ].map(item => (
-                  <div key={item.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.12)' }}>
+                  <div key={item.label} className="rounded-2xl p-4" style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${launchAccentBorder}` }}>
                     <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: '#8f85a6' }}>{item.label}</p>
                     <p className="text-sm font-semibold mt-2" style={{ color: '#f4efff' }}>{item.value}</p>
                   </div>
@@ -1276,9 +1311,9 @@ export default function PresentPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border p-7 md:p-8 flex flex-col justify-between" style={{ background: '#181821', borderColor: 'rgba(191,168,255,0.16)' }}>
+          <div className="rounded-[2rem] border p-7 md:p-8 flex flex-col justify-between" style={{ background: '#181821', borderColor: launchAccentBorder }}>
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em]" style={{ background: 'rgba(101,12,217,0.14)', color: '#cdb8ff' }}>
+              <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em]" style={{ background: rgba(launchAccent, 0.16), color: mix(launchAccent, '#F3EAFF', 0.58) }}>
                 Lobby first
               </div>
               <h2 className="text-2xl font-black mt-5" style={{ color: '#f4efff' }}>Go live into a polished branded lobby</h2>
@@ -1295,7 +1330,7 @@ export default function PresentPage() {
             ) : null}
 
             <div className="mt-8 flex justify-stretch sm:justify-end">
-              <button onClick={handleGoLive} disabled={isStarting || questions.length === 0} className="btn-primary text-base px-6 sm:px-8 py-3.5 font-bold disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto justify-center">
+              <button onClick={handleGoLive} disabled={isStarting || questions.length === 0} className="btn-primary text-base px-6 sm:px-8 py-3.5 font-bold disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto justify-center" style={{ background: `linear-gradient(135deg, ${launchAccent}, ${launchAccentDeep})`, boxShadow: `0 14px 32px ${rgba(launchAccent, 0.34)}` }}>
                 {isStarting ? (
                   <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />Starting…</span>
                 ) : (
@@ -1412,6 +1447,7 @@ export default function PresentPage() {
                   joinCode={session.joinCode}
                   brandLogoUrl={session.brandLogoUrl}
                   brandName={session.brandName}
+                  accentColor={session.brandAccentColor || presentation.brandAccentColor}
                   onStart={handleStartZapp}
                 />
               </motion.div>
