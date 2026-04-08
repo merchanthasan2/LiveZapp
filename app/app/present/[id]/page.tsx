@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertCircle, Sparkles, BarChart3, Cloud,
   MessageSquare, Star, ChevronLeft, ChevronRight, Radio,
   Maximize2, Minimize2, Pause, Moon, Sun,
-  LayoutDashboard, List, X,
+  LayoutDashboard, List, X, ThumbsUp, ThumbsDown, Gift,
 } from 'lucide-react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
@@ -427,7 +427,7 @@ function QuestionSlide({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -16 }}
           transition={{ duration: 0.4 }}
-          className="h-full flex flex-col items-center justify-center px-16 text-center"
+          className="h-full flex flex-col items-center justify-center px-[max(1.5rem,4vw)] text-center"
         >
           <div className="flex items-center gap-3 mb-10">
             <div className="flex items-center gap-2 px-4 py-2 rounded-2xl" style={{ background: kindColor }}>
@@ -447,12 +447,12 @@ function QuestionSlide({
           </div>
 
           <h2
-            className="max-w-5xl"
+            className="max-w-[min(94vw,1800px)]"
             style={{
-              fontSize: 'clamp(2.4rem, 5vw, 5rem)',
+              fontSize: 'clamp(2.5rem, 6.6vw, 7rem)',
               fontWeight: 800,
               color: '#FFFFFF',
-              lineHeight: 1.2,
+              lineHeight: 1.16,
               letterSpacing: '-0.02em',
             }}
           >
@@ -461,7 +461,7 @@ function QuestionSlide({
 
           {/* Options preview for quiz/poll */}
           {(question.kind === 'quiz' || question.kind === 'poll') && (
-            <div className="grid grid-cols-2 gap-4 mt-12 max-w-4xl w-full">
+            <div className="grid grid-cols-2 gap-5 mt-12 max-w-[min(94vw,1400px)] w-full">
               {(question as QuizQuestion | PollQuestion).options.map((opt, i) => (
                 <div
                   key={opt.id}
@@ -474,7 +474,7 @@ function QuestionSlide({
                   <span className="text-sm font-black w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.60)' }}>
                     {String.fromCharCode(65 + i)}
                   </span>
-                  <span className="text-lg font-semibold" style={{ color: 'rgba(255,255,255,0.85)' }}>{opt.label}</span>
+                  <span className="text-[clamp(1rem,1.6vw,1.8rem)] font-semibold leading-tight" style={{ color: 'rgba(255,255,255,0.85)' }}>{opt.label}</span>
                   {isQuiz && quizRevealCorrectAnswer && (question as QuizQuestion).correctOptionId === opt.id && (
                     <span className="ml-auto text-xs font-black uppercase tracking-widest" style={{ color: '#86efac' }}>Correct</span>
                   )}
@@ -578,6 +578,48 @@ function QuestionSlide({
   )
 }
 
+function ThankYouSlide({
+  title,
+  thumbsUpCount,
+  thumbsDownCount,
+}: {
+  title: string
+  thumbsUpCount: number
+  thumbsDownCount: number
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.35 }}
+      className="h-full flex items-center justify-center px-6 text-center"
+    >
+      <div className="w-full max-w-5xl rounded-[2.25rem] p-8 md:p-12" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(191,168,255,0.14)' }}>
+        <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: '#9CA3AF' }}>Session complete</p>
+        <h2 className="text-4xl md:text-6xl font-black mt-4 leading-[1.1]" style={{ color: '#FFFFFF' }}>
+          Thank you.
+          <br />
+          We loved your participation.
+        </h2>
+        <p className="text-lg md:text-2xl mt-5" style={{ color: 'rgba(255,255,255,0.70)' }}>
+          Ask participants to rate this interaction on their screens.
+        </p>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 max-w-xl mx-auto">
+          <div className="rounded-2xl px-5 py-4 flex items-center justify-between" style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.30)' }}>
+            <span className="inline-flex items-center gap-2 text-base font-bold" style={{ color: '#86efac' }}><ThumbsUp className="w-5 h-5" /> Liked</span>
+            <span className="text-2xl font-black" style={{ color: '#dcfce7' }}>{thumbsUpCount}</span>
+          </div>
+          <div className="rounded-2xl px-5 py-4 flex items-center justify-between" style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
+            <span className="inline-flex items-center gap-2 text-base font-bold" style={{ color: '#fca5a5' }}><ThumbsDown className="w-5 h-5" /> Improve</span>
+            <span className="text-2xl font-black" style={{ color: '#fee2e2' }}>{thumbsDownCount}</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
 // â”€â”€â”€ Projector-scale bar chart (fullscreen only) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ProjectorBarChart({ options, responses, kindColor, revealCorrectAnswer = false, correctOptionId }: {
@@ -676,6 +718,7 @@ export default function PresentPage() {
   const [showJoinSlide, setShowJoinSlide] = useState(true)
   const [isPaused, setIsPaused] = useState(false)
   const [showInsights, setShowInsights] = useState(true)
+  const [campaignFeedback, setCampaignFeedback] = useState<Record<string, { vote: 'up' | 'down'; participantName?: string; submittedAt: string }>>({})
   const [hasAutoLaunchAttempted, setHasAutoLaunchAttempted] = useState(false)
   const [joinOrigin, setJoinOrigin] = useState<string | null>(null)
   const presenterRef = useRef<HTMLDivElement>(null)
@@ -777,8 +820,7 @@ export default function PresentPage() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight' || e.key === ' ') {
         e.preventDefault()
-        if (showJoinSlide) { setShowJoinSlide(false); return }
-        if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
+        void handleAdvance()
       }
       if (e.key === 'ArrowLeft') {
         e.preventDefault()
@@ -791,7 +833,7 @@ export default function PresentPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [isFullscreen, session, showJoinSlide, currentIndex, liveQuestionCount, navigateTo])
+  }, [isFullscreen, session, showJoinSlide, currentIndex, liveQuestionCount, navigateTo, handleAdvance])
 
   // Load presentation + questions
   useEffect(() => {
@@ -833,7 +875,16 @@ export default function PresentPage() {
     return () => { unsub(); unsubP() }
   }, [sessionJoinCode])
 
+  useEffect(() => {
+    if (!sessionJoinCode) return
+    const unsub = LiveSessionService.subscribeToCampaignFeedback(sessionJoinCode, setCampaignFeedback)
+    return unsub
+  }, [sessionJoinCode])
+
   const currentQuestion = liveQuestions[currentIndex]
+  const isThankYouStage = session?.stage === 'thank_you'
+  const thumbsUpCount = Object.values(campaignFeedback).filter((v) => v.vote === 'up').length
+  const thumbsDownCount = Object.values(campaignFeedback).filter((v) => v.vote === 'down').length
   const currentQuestionId = currentQuestion?.id
   const quizPhaseMatchesCurrent = !!session && !!currentQuestionId && (!session.activeQuestionId || session.activeQuestionId === currentQuestionId)
   const quizAnswerDeadlineAt = currentQuestion?.kind === 'quiz' && quizPhaseMatchesCurrent ? session?.answerDeadlineAt ?? null : null
@@ -903,7 +954,7 @@ export default function PresentPage() {
     void handleGoLive()
   }, [searchParams, hasAutoLaunchAttempted, session, presentation, user, questions.length, handleGoLive])
 
-  const handleEndSession = async () => {
+  const handleEndSession = useCallback(async () => {
     if (!session || !presentation) return
     if (!confirm('End this session? Participants will be disconnected.')) return
     setIsEnding(true)
@@ -951,7 +1002,7 @@ export default function PresentPage() {
       setIsEnding(false)
       setIsComputingLeaderboard(false)
     }
-  }
+  }, [session, presentation, id, liveQuestions])
 
   const handlePause = async () => {
     if (!session) return
@@ -972,14 +1023,30 @@ export default function PresentPage() {
     setTimeout(() => setCodeCopied(false), 2000)
   }
 
+  const handleAdvance = useCallback(async () => {
+    if (!session) return
+    if (showJoinSlide) {
+      setShowJoinSlide(false)
+      return
+    }
+    if (isThankYouStage) {
+      await handleEndSession()
+      return
+    }
+    if (currentIndex < liveQuestionCount - 1) {
+      await navigateTo(currentIndex + 1)
+      return
+    }
+    await LiveSessionService.showThankYou(session.joinCode)
+  }, [session, showJoinSlide, isThankYouStage, currentIndex, liveQuestionCount, navigateTo, handleEndSession])
+
   const handleSlideClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!session) return
     const rect = e.currentTarget.getBoundingClientRect()
     const clickX = e.clientX - rect.left
     const isRightHalf = clickX > rect.width / 2
     if (isRightHalf) {
-      if (showJoinSlide) { setShowJoinSlide(false); return }
-      if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
+      void handleAdvance()
     } else {
       if (!showJoinSlide && currentIndex > 0) navigateTo(currentIndex - 1)
       else if (!showJoinSlide) setShowJoinSlide(true)
@@ -1029,9 +1096,9 @@ export default function PresentPage() {
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="text-xl font-black" style={{ color: '#1A1A2E' }}>Quiz leaderboard</h3>
+            <h3 className="text-xl font-black" style={{ color: '#1A1A2E' }}>This campaign is complete</h3>
             <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-              Top scores from this Zapp
+              Share the follow-up offer and review engagement below.
             </p>
           </div>
           <button
@@ -1043,6 +1110,24 @@ export default function PresentPage() {
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        <div className="mb-5 rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, #0D1117, #1A1033)' }}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.22)' }}>
+              <Gift className="w-5 h-5" style={{ color: '#c7b5ff' }} />
+            </div>
+            <p className="text-sm font-black" style={{ color: '#ffffff' }}>Offer 3 months free on LiveZapp</p>
+          </div>
+          <a
+            href="https://live-zapp.com/register?promo=8PNJX48R"
+            className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-black"
+            style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', color: '#ffffff', textDecoration: 'none' }}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Campaign Link
+          </a>
         </div>
 
         {isComputingLeaderboard ? (
@@ -1133,13 +1218,13 @@ export default function PresentPage() {
             <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.12), transparent 24%)' }} />
             <div className="relative z-10">
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] mb-3" style={{ color: '#9CA3AF' }}>Presenter view</p>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-start gap-4">
                 {presentation.brandLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-14 w-auto max-w-[124px] rounded-xl object-contain" />
+                  <img src={presentation.brandLogoUrl} alt={presentation.brandName || presentation.title} className="h-24 md:h-28 w-auto max-w-[220px] rounded-xl object-contain" />
                 ) : (
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: `${launchAccent}22` }}>
-                    <Sparkles className="w-6 h-6" style={{ color: launchAccent }} />
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: `${launchAccent}22` }}>
+                    <Sparkles className="w-8 h-8" style={{ color: launchAccent }} />
                   </div>
                 )}
                 <div>
@@ -1209,8 +1294,8 @@ export default function PresentPage() {
               </div>
             ) : null}
 
-            <div className="mt-8 flex justify-end">
-              <button onClick={handleGoLive} disabled={isStarting || questions.length === 0} className="btn-primary text-base px-8 py-3.5 font-bold disabled:opacity-40 disabled:cursor-not-allowed">
+            <div className="mt-8 flex justify-stretch sm:justify-end">
+              <button onClick={handleGoLive} disabled={isStarting || questions.length === 0} className="btn-primary text-base px-6 sm:px-8 py-3.5 font-bold disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto justify-center">
                 {isStarting ? (
                   <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />Starting…</span>
                 ) : (
@@ -1238,9 +1323,9 @@ export default function PresentPage() {
           className="px-3 sm:px-4 md:px-6 py-3 shrink-0 z-10"
           style={{ background: 'rgba(0,0,0,0.55)', borderBottom: '1px solid rgba(255,255,255,0.06)', backdropFilter: 'blur(12px)' }}
         >
-          <div className="max-w-[1800px] mx-auto w-full flex flex-wrap items-center justify-between gap-3">
+          <div className="max-w-[1800px] mx-auto w-full flex flex-wrap items-center justify-between gap-2 sm:gap-3">
           {/* Left: back + brand */}
-          <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
             <button
               onClick={handleBackToBuilder}
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl font-bold text-sm transition-all"
@@ -1249,7 +1334,7 @@ export default function PresentPage() {
               <ArrowLeft className="w-4 h-4" />
               Back
             </button>
-            <span className="text-2xl md:text-3xl font-black tracking-tight" style={{ color: '#d2bbff' }}>
+            <span className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight truncate" style={{ color: '#d2bbff' }}>
               LiveZapp
             </span>
           </div>
@@ -1330,6 +1415,10 @@ export default function PresentPage() {
                   onStart={handleStartZapp}
                 />
               </motion.div>
+            ) : isThankYouStage ? (
+              <motion.div key="thank-you" className="absolute inset-0">
+                <ThankYouSlide title={presentation.title} thumbsUpCount={thumbsUpCount} thumbsDownCount={thumbsDownCount} />
+              </motion.div>
             ) : currentQuestion ? (
               <motion.div key={`q-${currentIndex}`} className="absolute inset-0">
                 <QuestionSlide
@@ -1346,7 +1435,7 @@ export default function PresentPage() {
           </AnimatePresence>
 
           {/* Click zone hints (subtle arrows on hover) */}
-          {!showJoinSlide && (
+          {!showJoinSlide && !isThankYouStage && (
             <>
               <div className="absolute left-0 top-0 bottom-0 w-1/2 flex items-center justify-start pl-6 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
                 {currentIndex > 0 && <ChevronLeft className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
@@ -1387,7 +1476,7 @@ export default function PresentPage() {
 
         {/* â”€â”€ Bottom navigation bar â”€â”€ */}
         <div
-          className="shrink-0 flex items-center justify-between px-8 py-3"
+          className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 md:px-8 py-3"
           style={{ background: 'rgba(0,0,0,0.40)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
         >
           <button
@@ -1396,14 +1485,14 @@ export default function PresentPage() {
               else if (!showJoinSlide) setShowJoinSlide(true)
             }}
             disabled={showJoinSlide}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm disabled:opacity-30 transition-all"
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm disabled:opacity-30 transition-all whitespace-nowrap"
             style={{ color: 'rgba(255,255,255,0.60)', background: 'rgba(255,255,255,0.06)' }}
           >
             <ChevronLeft className="w-4 h-4" /> Previous
           </button>
 
           {/* Slide dots */}
-          <div className="flex items-center gap-2">
+          <div className="order-last sm:order-none w-full sm:w-auto flex items-center justify-center sm:justify-start gap-2">
             {/* Join slide dot */}
             <button
               onClick={() => setShowJoinSlide(true)}
@@ -1426,15 +1515,12 @@ export default function PresentPage() {
           </div>
 
           <button
-            onClick={() => {
-              if (showJoinSlide) { setShowJoinSlide(false); return }
-                if (currentIndex < liveQuestionCount - 1) navigateTo(currentIndex + 1)
-            }}
-            disabled={!showJoinSlide && currentIndex >= liveQuestionCount - 1}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm disabled:opacity-30 transition-all"
+            onClick={() => { void handleAdvance() }}
+            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm disabled:opacity-30 transition-all whitespace-nowrap"
             style={{ color: 'rgba(255,255,255,0.60)', background: 'rgba(255,255,255,0.06)' }}
           >
-            Next <ChevronRight className="w-4 h-4" />
+            {isThankYouStage ? 'End Session' : 'Next'}
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -1551,13 +1637,13 @@ export default function PresentPage() {
             <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.10), transparent 24%)' }} />
             <div className="relative z-10 p-5 sm:p-6 md:p-10 xl:p-12 grid gap-8 xl:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)] items-center min-h-[76vh] max-w-[1440px] mx-auto">
               <div className="space-y-6 flex flex-col justify-center items-center xl:items-start text-center xl:text-left w-full max-w-[42rem] mx-auto xl:mx-0">
-                <div className="flex flex-col sm:flex-row items-center justify-center xl:justify-start gap-4 md:gap-5 w-full">
+                <div className="flex flex-col items-center xl:items-start justify-center gap-4 md:gap-5 w-full">
                   {session.brandLogoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-16 sm:h-20 max-w-[170px] rounded-2xl object-contain shrink-0" />
+                    <img src={session.brandLogoUrl} alt={session.brandName || presentation.title} className="h-24 sm:h-28 max-w-[240px] rounded-2xl object-contain shrink-0" />
                   ) : (
-                    <div className="w-20 h-20 rounded-[1.75rem] flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.14)' }}>
-                      <Sparkles className="w-9 h-9" style={{ color: '#650cd9' }} />
+                    <div className="w-24 h-24 rounded-[1.75rem] flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.14)' }}>
+                      <Sparkles className="w-10 h-10" style={{ color: '#650cd9' }} />
                     </div>
                   )}
                   <div className="min-w-0">
@@ -1714,6 +1800,23 @@ export default function PresentPage() {
       </nav>
 
       <main className="max-w-[1600px] mx-auto w-full px-4 sm:px-6 md:px-8 pt-6 md:pt-8 pb-10 space-y-5">
+        {isThankYouStage && (
+          <section className="rounded-[2rem] border p-8 md:p-10 text-center" style={{ background: surfaceCard, borderColor: borderSoft }}>
+            <h2 className="text-3xl md:text-5xl font-black" style={{ color: textStrong }}>Thank you. We loved your participation.</h2>
+            <p className="text-base md:text-lg mt-3" style={{ color: textMuted }}>Participants are now rating this interaction on their screens.</p>
+            <div className="mt-7 grid gap-4 sm:grid-cols-2 max-w-xl mx-auto">
+              <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(34,197,94,0.10)', border: '1px solid rgba(34,197,94,0.26)' }}>
+                <span className="inline-flex items-center gap-2 font-bold" style={{ color: '#15803d' }}><ThumbsUp className="w-4 h-4" /> Liked</span>
+                <span className="text-2xl font-black" style={{ color: '#15803d' }}>{thumbsUpCount}</span>
+              </div>
+              <div className="rounded-2xl px-4 py-3 flex items-center justify-between" style={{ background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.22)' }}>
+                <span className="inline-flex items-center gap-2 font-bold" style={{ color: '#B91C1C' }}><ThumbsDown className="w-4 h-4" /> Improve</span>
+                <span className="text-2xl font-black" style={{ color: '#B91C1C' }}>{thumbsDownCount}</span>
+              </div>
+            </div>
+          </section>
+        )}
+        {!isThankYouStage && (
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
           <div
             className="lg:col-span-9 relative rounded-[2rem] p-8 md:p-12 min-h-[360px] md:min-h-[440px] border overflow-hidden"
@@ -1769,8 +1872,9 @@ export default function PresentPage() {
             </div>
           </div>
         </section>
+        )}
 
-        {optionItems.length > 0 ? (
+        {!isThankYouStage && (optionItems.length > 0 ? (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {optionItems.slice(0, 4).map((option, index) => {
               const palette = optionPalette[index] ?? optionPalette[optionPalette.length - 1]
@@ -1796,9 +1900,9 @@ export default function PresentPage() {
           </section>
         ) : (
           currentQuestion && <ResponsePanel question={currentQuestion} responses={responses} dark={isDark} quizAnswersOpen={quizAnswersOpen} quizRevealCorrectAnswer={quizRevealCorrectAnswer} quizTimeRemainingMs={quizTimeRemainingMs} />
-        )}
+        ))}
 
-        {showInsights && currentQuestion && (
+        {!isThankYouStage && showInsights && currentQuestion && (
           <section className="rounded-3xl p-5 border" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold">Live Insights</h3>
@@ -1830,17 +1934,21 @@ export default function PresentPage() {
             </button>
             <button
               onClick={() => {
+                if (isThankYouStage) {
+                  handleEndSession()
+                  return
+                }
                 if (currentIndex < liveQuestionCount - 1) {
                   navigateTo(currentIndex + 1)
                   return
                 }
-                handleEndSession()
+                LiveSessionService.showThankYou(session.joinCode)
               }}
               disabled={isEnding}
               className="px-8 md:px-12 py-3 rounded-full font-black text-sm text-white disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #650cd9 0%, #7e3af2 100%)' }}
             >
-              {currentIndex < liveQuestionCount - 1 ? 'Next Question' : 'Finish Session'}
+              {isThankYouStage ? 'Finish Session' : currentIndex < liveQuestionCount - 1 ? 'Next Question' : 'Show Thank You'}
             </button>
           </div>
 

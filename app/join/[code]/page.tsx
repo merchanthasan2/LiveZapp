@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { get, ref } from 'firebase/database'
 import {
   CheckCircle2, Sparkles, BarChart3, Cloud,
-  MessageSquare, Star, Send, Zap, ArrowRight, Users,
+  MessageSquare, Star, Send, Zap, ArrowRight, Users, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import Image from 'next/image'
 import BrandLockup from '@/components/BrandLockup'
@@ -238,46 +238,38 @@ function PollView({ question, onSubmit, submitted, theme }: {
   )
 }
 
-function WordCloudView({ question, onSubmit, submitted, theme }: {
-  question: WordCloudQuestion; onSubmit: (a: string[]) => void; submitted: boolean; theme: ParticipantTheme
+function WordCloudView({ question, onSubmit, submittedCount, theme }: {
+  question: WordCloudQuestion; onSubmit: (a: string[]) => void; submittedCount: number; theme: ParticipantTheme
 }) {
   const max = question.maxWordsPerResponse
-  const [added, setAdded] = useState<string[]>([])
   const [current, setCurrent] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-  const atMax = added.length >= max
-  const canAdd = current.trim().length > 0 && !atMax
-  function addWord() {
-    const w = current.trim(); if (!w || atMax) return
-    setAdded(prev => [...prev, w]); setCurrent(''); inputRef.current?.focus()
-  }
+  const atMax = submittedCount >= max
+  const canSubmit = current.trim().length > 0 && !atMax
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.accentStrong }}>Add up to {max} word{max > 1 ? 's' : ''}</p>
-        <span className="text-sm font-bold" style={{ color: added.length >= max ? theme.accent : '#9CA3AF' }}>{added.length}/{max}</span>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: theme.accentStrong }}>Submit up to {max} word{max > 1 ? 's' : ''}</p>
+        <span className="text-sm font-bold" style={{ color: submittedCount >= max ? theme.accent : '#9CA3AF' }}>{submittedCount}/{max}</span>
       </div>
-      {added.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {added.map((w, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold" style={{ background: theme.accentSoftStrong, border: `1.5px solid ${theme.accentBorder}`, color: theme.accentStrong }}>
-              {w}
-              {!submitted && <button onClick={() => setAdded(prev => prev.filter((_, idx) => idx !== i))} className="font-bold" style={{ color: theme.accentStrong }}>x</button>}
-            </span>
-          ))}
+      {!atMax && (
+        <div className="flex gap-2 items-center">
+          <input ref={inputRef} type="text" maxLength={30} placeholder="Type a word or phrase..." value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (canSubmit) { onSubmit([current.trim()]); setCurrent('') } } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
         </div>
       )}
-      {!submitted && !atMax && (
-        <div className="flex gap-2">
-          <input ref={inputRef} type="text" maxLength={30} placeholder={added.length === 0 ? 'Type a word or phrase...' : 'Add another...'} value={current} autoFocus onChange={e => setCurrent(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addWord() } }} className="flex-1 px-4 py-3.5 rounded-xl text-base outline-none transition-all" style={{ background: '#FFFFFF', border: '2px solid #E5E7EB', color: '#1A1A2E', fontSize: '1rem' }} onFocus={e => { e.currentTarget.style.borderColor = theme.accent }} onBlur={e => { e.currentTarget.style.borderColor = '#E5E7EB' }} />
-          <button disabled={!canAdd} onClick={addWord} className="px-5 py-3.5 rounded-xl text-sm font-black transition-all active:scale-[0.97] disabled:opacity-40" style={{ background: canAdd ? theme.accent : theme.accentSoftStrong, color: canAdd ? theme.accentText : theme.accentStrong, border: '2px solid transparent', boxShadow: canAdd ? `0 2px 12px ${theme.accentRing}` : 'none' }}>Add</button>
-        </div>
-      )}
-      {!submitted && (
-        <button disabled={added.length === 0} onClick={() => onSubmit(added)} className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2" style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: `0 10px 24px ${theme.accentRing}` }}>
-          Submit {added.length} word{added.length !== 1 ? 's' : ''} <Send className="w-4 h-4" />
-        </button>
-      )}
+      <button
+        disabled={!canSubmit}
+        onClick={() => {
+          if (!canSubmit) return
+          onSubmit([current.trim()])
+          setCurrent('')
+          inputRef.current?.focus()
+        }}
+        className="w-full py-4 rounded-2xl font-bold text-base transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        style={{ background: atMax ? '#9CA3AF' : `linear-gradient(135deg, ${theme.accent}, ${theme.accentStrong})`, color: theme.accentText, boxShadow: atMax ? 'none' : `0 10px 24px ${theme.accentRing}` }}
+      >
+        Submit ({submittedCount}/{max}) <Send className="w-4 h-4" />
+      </button>
     </div>
   )
 }
@@ -661,6 +653,9 @@ export default function ParticipantPage() {
   const [answered,         setAnswered]          = useState<Record<string, boolean>>({})
   const [submittedAnswers, setSubmittedAnswers]  = useState<Record<string, string | string[] | number>>({})
   const [submissionError,  setSubmissionError]   = useState('')
+  const [wordCloudSubmittedCount, setWordCloudSubmittedCount] = useState<Record<string, number>>({})
+  const [campaignVote, setCampaignVote] = useState<'up' | 'down' | null>(null)
+  const [campaignVoteSaving, setCampaignVoteSaving] = useState(false)
   const [participantCount, setParticipantCount]  = useState(0)
   const [presentationAccentColor, setPresentationAccentColor] = useState<string | null>(null)
   const [timerNow, setTimerNow] = useState(() => Date.now())
@@ -741,6 +736,7 @@ export default function ParticipantPage() {
   const quizAnswerLocked = currentQ?.kind === 'quiz'
     ? quizRevealCorrectAnswer || !quizAnswersOpen || (quizAnswerDeadlineAt ? quizTimeRemainingMs <= 0 : false)
     : false
+  const isThankYouStage = session.stage === 'thank_you'
 
   useEffect(() => {
     if (currentQ?.kind !== 'quiz' || !quizAnswersOpen || !quizAnswerDeadlineAt) {
@@ -764,12 +760,28 @@ export default function ParticipantPage() {
       return
     }
 
-    const response: ParticipantResponse = { answer, submittedAt: new Date().toISOString() }
+    let finalAnswer: string | string[] | number = answer
+    if (question.kind === 'word_cloud') {
+      const prev = Array.isArray(submittedAnswers[question.id]) ? (submittedAnswers[question.id] as string[]) : []
+      const incoming = Array.isArray(answer) ? answer : [String(answer)]
+      const maxWords = (question as WordCloudQuestion).maxWordsPerResponse
+      const merged = [...prev, ...incoming].slice(0, maxWords)
+      finalAnswer = merged
+    }
+
+    const response: ParticipantResponse = { answer: finalAnswer, submittedAt: new Date().toISOString() }
 
     try {
       await LiveSessionService.submitResponse(code, question.id, participantId.current, response)
-      setAnswered(prev => ({ ...prev, [question.id]: true }))
-      setSubmittedAnswers(prev => ({ ...prev, [question.id]: answer }))
+      if (question.kind === 'word_cloud') {
+        const total = Array.isArray(finalAnswer) ? finalAnswer.length : 0
+        const maxWords = (question as WordCloudQuestion).maxWordsPerResponse
+        setWordCloudSubmittedCount((prev) => ({ ...prev, [question.id]: total }))
+        setAnswered(prev => ({ ...prev, [question.id]: total >= maxWords }))
+      } else {
+        setAnswered(prev => ({ ...prev, [question.id]: true }))
+      }
+      setSubmittedAnswers(prev => ({ ...prev, [question.id]: finalAnswer }))
     } catch (err: any) {
       setSubmissionError(err?.message ?? 'Failed to submit your response. Please try again.')
     }
@@ -817,6 +829,54 @@ export default function ParticipantPage() {
             ))}
           </div>
         </motion.div>
+      </div>
+    )
+  }
+
+  if (isThankYouStage) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5 text-center" style={{ background: mix(theme.accent, '#FFFFFF', 0.95) }}>
+        <div className="w-full max-w-md rounded-3xl p-6" style={{ background: '#FFFFFF', border: '1px solid rgba(0,0,0,0.08)' }}>
+          <h2 className="text-3xl font-black leading-tight" style={{ color: '#1A1A2E' }}>Thank you.</h2>
+          <p className="text-sm mt-2" style={{ color: '#6B7280' }}>We loved your participation. Rate this interaction.</p>
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              disabled={campaignVoteSaving || campaignVote !== null}
+              onClick={async () => {
+                if (campaignVoteSaving || campaignVote) return
+                setCampaignVoteSaving(true)
+                try {
+                  await LiveSessionService.submitCampaignRating(code, participantId.current, 'up', participantName ?? undefined)
+                  setCampaignVote('up')
+                } finally {
+                  setCampaignVoteSaving(false)
+                }
+              }}
+              className="rounded-2xl px-4 py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: campaignVote === 'up' ? 'rgba(34,197,94,0.14)' : 'rgba(34,197,94,0.08)', color: '#15803d', border: '1px solid rgba(34,197,94,0.25)' }}
+            >
+              <ThumbsUp className="w-5 h-5" /> Liked it
+            </button>
+            <button
+              disabled={campaignVoteSaving || campaignVote !== null}
+              onClick={async () => {
+                if (campaignVoteSaving || campaignVote) return
+                setCampaignVoteSaving(true)
+                try {
+                  await LiveSessionService.submitCampaignRating(code, participantId.current, 'down', participantName ?? undefined)
+                  setCampaignVote('down')
+                } finally {
+                  setCampaignVoteSaving(false)
+                }
+              }}
+              className="rounded-2xl px-4 py-4 font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+              style={{ background: campaignVote === 'down' ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)', color: '#B91C1C', border: '1px solid rgba(239,68,68,0.22)' }}
+            >
+              <ThumbsDown className="w-5 h-5" /> Needs work
+            </button>
+          </div>
+          {campaignVote && <p className="text-xs mt-4 font-semibold" style={{ color: '#6B7280' }}>Thanks for your feedback.</p>}
+        </div>
       </div>
     )
   }
@@ -882,7 +942,7 @@ export default function ParticipantPage() {
               </p>
 
               <a
-                href="/register?promo=PARTICIPANT3M"
+                href="https://live-zapp.com/register?promo=8PNJX48R"
                 className="flex items-center justify-center gap-2 w-full py-3.5 rounded-2xl font-black text-base transition-all active:scale-[0.98]"
                 style={{
                   background: 'linear-gradient(135deg, #650cd9, #4c1d95)',
@@ -1043,7 +1103,7 @@ export default function ParticipantPage() {
                 <>
                   {currentQ.kind === 'quiz'       && <QuizView      question={currentQ as QuizQuestion}      onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} submittedAnswer={typeof submittedAnswer === 'string' ? submittedAnswer : null} locked={quizAnswerLocked} revealCorrectAnswer={quizRevealCorrectAnswer} timeRemainingMs={quizTimeRemainingMs} theme={theme} errorMessage={submissionError} />}
                   {currentQ.kind === 'poll'       && <PollView      question={currentQ as PollQuestion}      onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
-                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
+                  {currentQ.kind === 'word_cloud' && <WordCloudView question={currentQ as WordCloudQuestion} onSubmit={a => handleSubmit(currentQ, a)} submittedCount={wordCloudSubmittedCount[currentQ.id] ?? 0} theme={theme} />}
                   {currentQ.kind === 'qa'         && <QAView        question={currentQ as QAQuestion}        onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
                   {currentQ.kind === 'feedback'   && <FeedbackView  question={currentQ as FeedbackQuestion}  onSubmit={a => handleSubmit(currentQ, a)} submitted={isAnswered} theme={theme} />}
                   {currentQ.kind !== 'quiz' && submissionError && (

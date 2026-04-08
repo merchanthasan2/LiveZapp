@@ -22,6 +22,7 @@ export interface LiveSessionData {
   answerDeadlineAt?: string | null
   quizAnswersOpen?: boolean
   quizRevealCorrectAnswer?: boolean
+  stage?: 'lobby' | 'question' | 'thank_you'
   brandLogoUrl?: string  // Firebase Storage download URL for host's logo
   brandName?: string     // Host's display / brand name
   brandAccentColor?: string
@@ -90,6 +91,7 @@ export const LiveSessionService = {
       answerDeadlineAt: null,
       quizAnswersOpen: false,
       quizRevealCorrectAnswer: false,
+      stage: 'lobby',
       ...(brandLogoUrl ? { brandLogoUrl } : {}),
       ...(brandName    ? { brandName    } : {}),
       ...(brandAccentColor ? { brandAccentColor } : {}),
@@ -128,7 +130,10 @@ export const LiveSessionService = {
    * Navigate to a specific question (presenter only).
    */
   async setCurrentQuestion(joinCode: string, index: number, question?: Question): Promise<void> {
-    await update(ref(rtdb, `live_sessions/${joinCode}`), buildQuestionPhase(index, question))
+    await update(ref(rtdb, `live_sessions/${joinCode}`), {
+      ...buildQuestionPhase(index, question),
+      stage: 'question',
+    })
   },
 
   /**
@@ -162,8 +167,42 @@ export const LiveSessionService = {
   async startPresentation(joinCode: string, index = 0, question?: Question): Promise<void> {
     await update(ref(rtdb, `live_sessions/${joinCode}`), {
       hasStarted: true,
+      stage: 'question',
       ...buildQuestionPhase(index, question),
     })
+  },
+
+  async showThankYou(joinCode: string): Promise<void> {
+    await update(ref(rtdb, `live_sessions/${joinCode}`), {
+      stage: 'thank_you',
+      quizAnswersOpen: false,
+      quizRevealCorrectAnswer: false,
+      answerDeadlineAt: null,
+      activeQuestionId: null,
+      questionStartedAt: new Date().toISOString(),
+    })
+  },
+
+  async submitCampaignRating(
+    joinCode: string,
+    participantId: string,
+    vote: 'up' | 'down',
+    participantName?: string,
+  ): Promise<void> {
+    await set(ref(rtdb, `live_sessions/${joinCode}/campaignFeedback/${participantId}`), {
+      vote,
+      participantName: participantName ?? null,
+      submittedAt: new Date().toISOString(),
+    })
+  },
+
+  subscribeToCampaignFeedback(
+    joinCode: string,
+    callback: (votes: Record<string, { vote: 'up' | 'down'; participantName?: string; submittedAt: string }>) => void,
+  ): () => void {
+    const r = ref(rtdb, `live_sessions/${joinCode}/campaignFeedback`)
+    onValue(r, snap => callback(snap.exists() ? snap.val() : {}))
+    return () => off(r)
   },
 
   /** Pause a session — participants see a holding screen. */

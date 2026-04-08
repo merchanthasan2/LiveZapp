@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { deleteLogoFile, uploadLogoFile } from '@/lib/logoUpload'
+import { processLogoImage } from '@/lib/logoImageProcessing'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
 import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
@@ -168,38 +169,6 @@ function QuestionTypePicker({
   )
 }
 
-async function compressToWebP(file: File, maxWidth = 640, quality = 0.82): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const scale = Math.min(1, maxWidth / img.width)
-      const width = Math.round(img.width * scale)
-      const height = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        reject(new Error('Could not process image'))
-        return
-      }
-      ctx.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(
-        blob => blob ? resolve(blob) : reject(new Error('Compression failed')),
-        'image/webp',
-        quality,
-      )
-    }
-    img.onerror = () => {
-      URL.revokeObjectURL(url)
-      reject(new Error('Invalid image'))
-    }
-    img.src = url
-  })
-}
-
 // ─── Main wizard ───────────────────────────────────────────────────────────
 
 export default function CreatePage() {
@@ -232,6 +201,7 @@ export default function CreatePage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
 
   const canBrand    = !!planLimits.plan?.features.canUseBranding && !planLimits.isPlanExpired
   const canCreate   = planLimits.canCreatePresentation
@@ -289,14 +259,14 @@ export default function CreatePage() {
     setUploadSuccess(false)
     setUploading(true)
     try {
-      const uploadBlob = file.type === 'image/svg+xml'
-        ? file
-        : await compressToWebP(file)
+      const uploadBlob = await processLogoImage(file, {
+        removeBackground: removeLogoBackground,
+      })
       const downloadUrl = await uploadLogoFile({
         file: uploadBlob,
         userId: user.id,
         slot: 'wizard-draft',
-        fileName: file.type === 'image/svg+xml' ? 'logo.svg' : 'logo.webp',
+        fileName: 'logo.webp',
       })
       setBrandLogoUrl(downloadUrl)
       setUploadSuccess(true)
@@ -558,7 +528,7 @@ export default function CreatePage() {
                       <div className="flex gap-2">
                         <label className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer" style={{ background: accentSoft, color: accent, border: `1px solid ${accentBorder}` }}>
                           <RefreshCw className="w-3 h-3" /> Replace
-                          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
+                          <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                         </label>
                         <button type="button" onClick={handleLogoRemove} disabled={uploading} className="rounded-xl px-3 py-2 text-xs font-semibold disabled:opacity-40" style={{ background: 'rgba(239,68,68,0.08)', color: '#ef4444' }}>
                           Remove
@@ -572,11 +542,20 @@ export default function CreatePage() {
                       </div>
                       <div className="text-center">
                         <p className="text-sm font-semibold" style={{ color: textStrong }}>{uploading ? 'Uploading logo…' : 'Upload logo'}</p>
-                        <p className="text-xs mt-1" style={{ color: textSoft }}>PNG, JPG, WebP, or SVG</p>
+                        <p className="text-xs mt-1" style={{ color: textSoft }}>PNG, JPG, or WebP</p>
                       </div>
-                      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
+                      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                     </label>
                   )}
+                  <label className="mt-3 flex items-center gap-2 text-xs font-semibold" style={{ color: textMuted }}>
+                    <input
+                      type="checkbox"
+                      checked={removeLogoBackground}
+                      onChange={(e) => setRemoveLogoBackground(e.target.checked)}
+                      disabled={!canBrand || uploading}
+                    />
+                    Remove white background from uploaded logo
+                  </label>
 
                   {uploadError && <p className="text-xs mt-2 text-red-500">{uploadError}</p>}
                   {uploadSuccess && <p className="text-xs mt-2" style={{ color: '#16A34A' }}>Logo uploaded successfully.</p>}
@@ -671,7 +650,7 @@ export default function CreatePage() {
 
   if (step === 'type') {
     return (
-      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto">
           <ProgressBar step="type" isQuiz={false} isDark={isDark} />
 
@@ -722,7 +701,7 @@ export default function CreatePage() {
 
   if (step === 'sections') {
     return (
-      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto">
           <ProgressBar step="sections" isQuiz={true} isDark={isDark} />
 
@@ -837,19 +816,19 @@ export default function CreatePage() {
       <div className="min-h-screen flex flex-col" style={{ background: pageBg }}>
         {/* Top bar */}
         <div className="flex items-center justify-between px-4 md:px-6 py-3.5" style={{ background: panelBg, borderBottom: `1px solid ${border}` }}>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button onClick={prevStep} className="p-2 rounded-lg transition-colors" style={{ color: textMuted }}>
               <ArrowLeft className="w-4 h-4" />
             </button>
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: textSoft }}>Step {isQuiz ? 5 : 4} — Questions</p>
-              <h1 className="text-lg font-black" style={{ color: textStrong }}>{name}</h1>
+              <h1 className="text-lg font-black truncate" style={{ color: textStrong }}>{name}</h1>
               <p className="text-xs mt-1" style={{ color: textMuted }}>
                 Choose a question type, configure it, then repeat the loop until your Zapp is ready.
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
             <div className="hidden md:flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em]" style={{ background: isDark ? 'rgba(255,255,255,0.05)' : '#f4eef9', color: textMuted }}>
               <span>{questions.length}</span>
               <span>/</span>
@@ -859,7 +838,7 @@ export default function CreatePage() {
             <button
               onClick={nextStep}
               disabled={questions.length === 0}
-              className="btn-primary disabled:opacity-50"
+              className="btn-primary disabled:opacity-50 whitespace-nowrap"
             >
               Next <ArrowRight className="w-4 h-4" />
             </button>
@@ -1056,7 +1035,7 @@ export default function CreatePage() {
     ]
 
     return (
-      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto">
           <ProgressBar step="scoring" isQuiz={true} isDark={isDark} />
 
@@ -1124,7 +1103,7 @@ export default function CreatePage() {
       : [{ section: null, qs: questions }]
 
     return (
-      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto">
           <ProgressBar step="review" isQuiz={isQuiz} isDark={isDark} />
 

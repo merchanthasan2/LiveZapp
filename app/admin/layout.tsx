@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       <div className="flex-1 lg:ml-[280px]">
         <header className="sticky top-0 z-20 border-b" style={{ background: headerBg, borderBottomColor: headerBorder, backdropFilter: 'blur(10px)' }}>
-          <div className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4 sm:gap-5">
+          <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center gap-2 sm:gap-5">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
@@ -169,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <Home className="w-4 h-4" /> Website
             </Link>
-            <div className="relative max-w-2xl flex-1 min-w-0">
+            <div className="relative max-w-2xl flex-1 min-w-0 hidden sm:block">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9c93ac' }} />
               <input
                 type="text"
@@ -180,7 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
             <button
               type="button"
-              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0"
               style={{ color: iconTone, background: '#ffffff' }}
               aria-label="Notifications"
             >
@@ -188,13 +188,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
             <button
               type="button"
-              className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0"
               style={{ color: iconTone, background: '#ffffff' }}
               aria-label="Toggle theme"
             >
               <Moon className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-3 pl-4 sm:pl-5 shrink-0" style={{ borderLeft: '1px solid #ece7f5' }}>
+            <div className="flex items-center gap-2 sm:gap-3 pl-2.5 sm:pl-5 shrink-0" style={{ borderLeft: '1px solid #ece7f5' }}>
               <div className="text-right leading-tight hidden sm:block">
                 <p className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>Admin Profile</p>
                 <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: '#7a3af0' }}>Super Admin</p>

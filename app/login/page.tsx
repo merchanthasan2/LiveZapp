@@ -28,7 +28,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.push(safeRedirect)
+      router.replace(safeRedirect)
     }
   }, [user, isLoading, router, safeRedirect])
 

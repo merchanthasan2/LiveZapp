@@ -158,9 +158,9 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center py-10 sm:py-16 px-3 sm:px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
       <div className="w-full max-w-md relative">
-        <div className="p-8 sm:p-10 rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
+        <div className="p-6 sm:p-8 rounded-[1.75rem] sm:rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
           <div className="flex flex-col items-center mb-8 text-center">
             <BrandLockup href="/" size="md" theme="light" variant="wordmark" />
             <div
@@ -173,7 +173,7 @@ function RegisterContent() {
               <Zap className="w-6 h-6" style={{ color: '#ffffff' }} />
             </div>
             <p className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: '#8f78ba' }}>Create Your Account</p>
-            <h1 className="text-3xl font-black mt-3" style={{ color: '#181324' }}>Start your first Zapp</h1>
+            <h1 className="text-[2.2rem] sm:text-3xl font-black mt-3 leading-tight" style={{ color: '#181324' }}>Start your first Zapp</h1>
             <p className="text-sm mt-2 max-w-xs" style={{ color: '#6d667b' }}>Build live quizzes, polls, and word clouds with the new LiveZapp design system.</p>
           </div>
 
@@ -189,11 +189,14 @@ function RegisterContent() {
 
           {promoCode && (
             <div
-              className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm mb-5"
+              className="flex items-start gap-2.5 px-3.5 sm:px-4 py-3 rounded-xl text-sm mb-5"
               style={{ background: '#f3efff', border: '1px solid #dacbff', color: '#5b21b6' }}
             >
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-              Promo code <strong>{promoCode}</strong> applied. Your participant offer is ready.
+              <p className="min-w-0 leading-snug">
+                Promo code <strong className="break-all">{promoCode}</strong> applied.
+                <span className="block">Your participant offer is ready.</span>
+              </p>
             </div>
           )}
 

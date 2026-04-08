@@ -135,8 +135,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           }}
         />
         <header className="sticky top-0 z-30 shrink-0 backdrop-blur-md shadow-sm border-b" style={{ background: headerBg, borderColor: cardBorder }}>
-          <div className="flex justify-between items-center w-full px-4 sm:px-6 md:px-8 lg:px-10 py-4 max-w-[1520px] mx-auto">
-            <div className="flex items-center gap-8">
+          <div className="flex justify-between items-center w-full px-3 sm:px-6 md:px-8 lg:px-10 py-3.5 sm:py-4 max-w-[1520px] mx-auto gap-2">
+            <div className="flex items-center gap-2 sm:gap-8 min-w-0">
               <button
                 className="md:hidden w-11 h-11 rounded-full flex items-center justify-center transition-colors"
                 style={{ color: iconMuted, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(101,12,217,0.06)' }}
@@ -146,7 +146,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <BrandLockup href="/" size="sm" theme={isDark ? 'dark' : 'light'} className="md:hidden" />
+              <BrandLockup href="/" size="sm" theme={isDark ? 'dark' : 'light'} className="md:hidden min-w-0" />
               <div className="hidden lg:flex items-center gap-6">
                 <Link href="/" className="font-bold transition-colors inline-flex items-center gap-2" style={{ color: textMuted }}>
                   <House className="w-4 h-4" />
@@ -158,8 +158,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <button className="w-11 h-11 rounded-full flex items-center justify-center transition-colors" style={{ color: iconMuted }} aria-label="Notifications">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+              <button className="hidden sm:flex w-11 h-11 rounded-full items-center justify-center transition-colors" style={{ color: iconMuted }} aria-label="Notifications">
                 <Bell className="w-5 h-5" />
               </button>
               <button
@@ -178,7 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <PlusCircle className="w-4 h-4" />
                 <span>Create New</span>
               </Link>
-              <div className="h-10 w-10 rounded-full border-2 flex items-center justify-center text-xs font-bold" style={{ borderColor: isDark ? 'rgba(200,173,255,0.25)' : 'rgba(101,12,217,0.12)', background: isDark ? '#171821' : '#ffffff', color: isDark ? '#d6c5ff' : '#650cd9' }}>
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border-2 flex items-center justify-center text-xs font-bold" style={{ borderColor: isDark ? 'rgba(200,173,255,0.25)' : 'rgba(101,12,217,0.12)', background: isDark ? '#171821' : '#ffffff', color: isDark ? '#d6c5ff' : '#650cd9' }}>
                 {initials || <User className="w-4 h-4" />}
               </div>
             </div>

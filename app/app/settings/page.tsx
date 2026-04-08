@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { deleteLogoFile, uploadLogoFile } from '@/lib/logoUpload'
+import { processLogoImage } from '@/lib/logoImageProcessing'
 import { BrandingService } from '@/lib/services/BrandingService'
 import { PLANS } from '@/types/plans'
 import type { BrandingConfig } from '@/types/domain'
@@ -195,31 +196,6 @@ function ParticipantPreview({ branding, isDark = false }: { branding: BrandingCo
   )
 }
 
-// ─── Client-side image compression ───────────────────────────────────────────
-async function compressToWebP(file: File, maxWidth = 640, quality = 0.82): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const img = new window.Image()
-    const url = URL.createObjectURL(file)
-    img.onload = () => {
-      URL.revokeObjectURL(url)
-      const scale = Math.min(1, maxWidth / img.width)
-      const w = Math.round(img.width * scale)
-      const h = Math.round(img.height * scale)
-      const canvas = document.createElement('canvas')
-      canvas.width = w; canvas.height = h
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, w, h)
-      canvas.toBlob(
-        blob => blob ? resolve(blob) : reject(new Error('Compression failed')),
-        'image/webp',
-        quality,
-      )
-    }
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Invalid image')) }
-    img.src = url
-  })
-}
-
 // ─── Locked overlay ───────────────────────────────────────────────────────────
 function LockedOverlay({ isDark = false }: { isDark?: boolean }) {
   return (
@@ -362,6 +338,7 @@ function SettingsContent() {
   const [uploading,     setUploading]     = useState(false)
   const [uploadError,   setUploadError]   = useState('')
   const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -381,14 +358,14 @@ function SettingsContent() {
     if (!file || !user) return
     setUploadError(''); setUploadSuccess(false); setUploading(true)
     try {
-      const uploadBlob = file.type === 'image/svg+xml'
-        ? file
-        : await compressToWebP(file)
+      const uploadBlob = await processLogoImage(file, {
+        removeBackground: removeLogoBackground,
+      })
       const downloadUrl = await uploadLogoFile({
         file: uploadBlob,
         userId: user.id,
         slot: 'branding',
-        fileName: file.type === 'image/svg+xml' ? 'logo.svg' : 'logo.webp',
+        fileName: 'logo.webp',
       })
       updateBrand({ logoUrl: downloadUrl })
       setUploadSuccess(true)
@@ -458,14 +435,14 @@ function SettingsContent() {
       {/* Tab bar */}
       <motion.div
         variants={itemVars}
-        className="flex gap-1 p-1 rounded-2xl"
+        className="grid grid-cols-1 sm:grid-cols-3 gap-1 p-1 rounded-2xl"
         style={{ background: tabShell, border: `1px solid ${tabBorder}` }}
       >
         {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => switchTab(id)}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
+            className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all"
             style={
               activeTab === id
                 ? { background: 'linear-gradient(135deg, #650cd9, #7a3af0)', color: '#ffffff', boxShadow: '0 6px 18px rgba(101,12,217,0.24)' }
@@ -865,7 +842,7 @@ function SettingsContent() {
                     <div className="flex gap-2">
                       <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg cursor-pointer" style={{ background: 'rgba(101,12,217,0.08)', color: '#650cd9', border: '1px solid rgba(101,12,217,0.18)' }}>
                         <RefreshCw className="w-3 h-3" /> Replace
-                        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
+                        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                       </label>
                       <button onClick={handleLogoRemove} disabled={!canBrand || uploading} className="p-1.5 rounded-lg hover:text-red-500 transition-colors disabled:opacity-40" style={{ color: 'rgba(255,255,255,0.38)' }}>
                         <Trash2 className="w-4 h-4" />
@@ -878,9 +855,18 @@ function SettingsContent() {
                       {uploading ? <RefreshCw className="w-5 h-5 animate-spin" style={{ color: '#650cd9' }} /> : <Upload className="w-5 h-5" style={{ color: '#650cd9' }} />}
                     </div>
                     <p className="text-sm font-semibold" style={{ color: textMuted }}>{uploading ? 'Uploading…' : 'Click to upload logo'}</p>
-                    <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
+                    <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={!canBrand || uploading} onChange={handleLogoUpload} />
                   </label>
                 )}
+                <label className="flex items-center gap-2 text-xs font-semibold" style={{ color: textMuted }}>
+                  <input
+                    type="checkbox"
+                    checked={removeLogoBackground}
+                    onChange={(e) => setRemoveLogoBackground(e.target.checked)}
+                    disabled={!canBrand || uploading}
+                  />
+                  Remove white background from uploaded logo
+                </label>
                 {uploadError && <p className="text-xs text-red-500">{uploadError}</p>}
                 {uploadSuccess && <p className="text-xs" style={{ color: '#16A34A' }}>Logo uploaded!</p>}
               </div>

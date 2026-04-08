@@ -204,15 +204,15 @@ body {
   /* ── Typography ───────────────────────────────────────────────────── */
   .font-display {
     font-family: 'Inter', var(--font-inter, system-ui, sans-serif);
-    font-weight: 800;
-    letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.018em;
   }
 
   .text-hero {
     font-size: 3rem;
-    font-weight: 800;
-    line-height: 1.1;
-    letter-spacing: -0.02em;
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.018em;
     color: #FFFFFF;
   }
 

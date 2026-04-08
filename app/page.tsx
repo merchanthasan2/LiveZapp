@@ -74,8 +74,15 @@ function TopNav() {
         WebkitBackdropFilter: 'blur(12px)',
       }}
     >
-      <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
-        <BrandLockup href="/" size="md" theme="light" />
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+        <div className="min-w-0">
+          <div className="sm:hidden">
+            <BrandLockup href="/" size="sm" theme="light" />
+          </div>
+          <div className="hidden sm:block">
+            <BrandLockup href="/" size="md" theme="light" />
+          </div>
+        </div>
 
         <div className="hidden items-center space-x-8 md:flex">
           <a
@@ -104,11 +111,11 @@ function TopNav() {
           </a>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <Link href="/login" className="touch-target inline-flex items-center rounded-full px-4 py-2 text-sm font-bold transition-all" style={{ color: '#4a4455' }}>
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
+          <Link href="/login" className="touch-target inline-flex items-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold leading-none transition-all sm:px-4 sm:text-sm" style={{ color: '#4a4455' }}>
             Log In
           </Link>
-          <Link href="/join" className="touch-target inline-flex items-center rounded-full px-6 py-2 text-sm font-bold text-white shadow-md transition-all" style={{ background: '#650cd9' }}>
+          <Link href="/join" className="touch-target inline-flex items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold text-white shadow-md transition-all sm:px-6" style={{ background: '#650cd9' }}>
             Join Now
           </Link>
         </div>
@@ -137,11 +144,11 @@ function HeroSection() {
             New: Live Word Clouds 2.0 Released
           </div>
 
-          <h1 className="text-4xl font-extrabold leading-[1.04] tracking-tight lg:text-[4.25rem]" style={{ color: '#1c1b1b' }}>
+          <h1 className="text-[2.75rem] font-bold leading-[1.06] tracking-tight md:text-5xl lg:text-[4.25rem] lg:font-extrabold" style={{ color: '#1c1b1b' }}>
             Turn every session into a <span style={{ color: '#650cd9', fontStyle: 'italic' }}>live, interactive</span> experience
           </h1>
 
-          <p className="max-w-xl text-lg leading-relaxed" style={{ color: '#4a4455' }}>
+          <p className="max-w-xl text-[1.1rem] leading-relaxed" style={{ color: '#4a4455' }}>
             Build multi-question sessions in minutes. Audiences join from any phone or laptop and you see live responses instantly.
           </p>
 
@@ -242,7 +249,7 @@ function FeaturesSection() {
     <section id="features" className="scroll-mt-28 bg-[#f6f3f2] px-6 py-16 md:py-14">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto mb-10 max-w-2xl text-center">
-          <h2 className="mb-3 text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+          <h2 className="mb-3 text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
             Everything you need to captivate any audience
           </h2>
           <p className="text-base" style={{ color: '#4a4455' }}>
@@ -259,7 +266,7 @@ function FeaturesSection() {
               >
                 <feature.icon className="h-7 w-7" />
               </div>
-              <h3 className="mb-3 text-[2rem] font-bold leading-[1.05]" style={{ color: '#1c1b1b' }}>
+              <h3 className="mb-3 text-[1.75rem] font-semibold leading-[1.08] md:text-[1.9rem] md:font-bold" style={{ color: '#1c1b1b' }}>
                 {feature.title}
               </h3>
               <p className="text-[1rem] leading-relaxed" style={{ color: '#4a4455' }}>
@@ -299,7 +306,7 @@ function HowItWorksSection() {
     <section id="how-it-works" className="bg-[#fcf9f8] px-6 py-24">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto mb-16 max-w-2xl text-center">
-          <h2 className="mb-4 text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+          <h2 className="mb-4 text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
             Up and running in three steps
           </h2>
           <p className="text-lg" style={{ color: '#4a4455' }}>
@@ -315,7 +322,7 @@ function HowItWorksSection() {
               <p className="mb-2 text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#650cd9' }}>
                 Step {step.number}
               </p>
-              <h3 className="mb-3 text-2xl font-bold" style={{ color: '#1c1b1b' }}>{step.title}</h3>
+              <h3 className="mb-3 text-2xl font-semibold md:font-bold" style={{ color: '#1c1b1b' }}>{step.title}</h3>
               <p style={{ color: '#4a4455' }}>{step.text}</p>
             </article>
           ))}
@@ -332,7 +339,7 @@ function PricingSection() {
     <section id="pricing" className="scroll-mt-28 bg-[#fcf9f8] px-6 py-20 md:py-18">
       <div className="mx-auto max-w-7xl">
         <div className="mb-16 text-center">
-          <h2 className="text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+          <h2 className="text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
             Precision Pricing
           </h2>
           <p className="mt-4" style={{ color: '#4a4455' }}>
@@ -392,7 +399,7 @@ function TestimonialsSection() {
     <section className="bg-[#f6f3f2] px-6 py-20">
       <div className="mx-auto max-w-7xl">
         <div className="mb-12 text-center">
-          <h2 className="text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+          <h2 className="text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
             What our users are saying
           </h2>
         </div>
@@ -430,7 +437,7 @@ function QuantumStepSection() {
             <Sparkles className="h-3.5 w-3.5" />
             Built by QuantumStep
           </p>
-          <h2 className="mb-4 text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+          <h2 className="mb-4 text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
             Modern products built for the AI era
           </h2>
           <p className="text-lg" style={{ color: '#4a4455' }}>
@@ -469,7 +476,7 @@ function ContactSection() {
         <div className="grid grid-cols-1 items-start gap-20 lg:grid-cols-2">
           <div className="space-y-10">
             <div>
-              <h2 className="mb-6 text-4xl font-extrabold" style={{ color: '#1c1b1b' }}>
+              <h2 className="mb-6 text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
                 Need a Conductor&apos;s Hand?
               </h2>
               <p className="text-lg" style={{ color: '#4a4455' }}>
@@ -569,11 +576,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (isLoading) return
-    if (user && typeof window !== 'undefined') {
-      const fromAuth = document.referrer.includes('/login') || document.referrer.includes('/register')
-      if (fromAuth) {
-        router.replace('/app/dashboard')
-      }
+    if (user) {
+      router.replace('/app/dashboard')
     }
   }, [user, isLoading, router])
 

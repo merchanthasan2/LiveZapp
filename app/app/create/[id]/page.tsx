@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, BarChart3, MessageSquare, Cloud, Smile,
   ArrowRight, ArrowLeft, AlertCircle, Plus, Trash2,
-  CheckCircle2, ChevronRight, Edit2,
+  CheckCircle2, ChevronRight, Edit2, Upload, RefreshCw, Image as ImageIcon, Palette,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useTheme } from '@/lib/contexts/ThemeContext'
 import { PresentationService } from '@/lib/services/PresentationService'
 import { QuestionService } from '@/lib/services/QuestionService'
+import { deleteLogoFile, uploadLogoFile } from '@/lib/logoUpload'
+import { processLogoImage } from '@/lib/logoImageProcessing'
 import { QuestionEditor } from '@/components/question-editor/QuestionEditor'
 import { makeQuestion, convertQuestionKind } from '@/components/question-editor/makeQuestion'
 import { Q_TYPES } from '@/components/question-editor/qtypes'
@@ -28,16 +30,29 @@ const ZAPP_TYPES = [
   { type: 'feedback'   as PresentationType, name: 'Vibe Check',  icon: Smile,        color: '#BBDEF0', bg: 'rgba(187,222,240,0.15)' },
 ]
 
-type EditStep = 'name' | 'sections' | 'questions' | 'scoring' | 'review'
+type EditStep = 'name' | 'branding' | 'sections' | 'questions' | 'scoring' | 'review'
+
+const COLOR_PALETTES = [
+  { name: 'Teal Classic', primary: '#00A6A6' },
+  { name: 'Ocean', primary: '#0369A1' },
+  { name: 'Sunset', primary: '#DC2626' },
+  { name: 'Midnight', primary: '#1E293B' },
+  { name: 'Forest', primary: '#15803D' },
+  { name: 'Berry', primary: '#9333EA' },
+  { name: 'Coral', primary: '#EA580C' },
+  { name: 'Slate', primary: '#475569' },
+  { name: 'Gold', primary: '#B45309' },
+  { name: 'Monochrome', primary: '#111111' },
+]
 
 // ─── Progress bar ──────────────────────────────────────────────────────────
 
 function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
   const steps: EditStep[] = isQuiz
-    ? ['name', 'sections', 'questions', 'scoring', 'review']
-    : ['name', 'questions', 'review']
+    ? ['name', 'branding', 'sections', 'questions', 'scoring', 'review']
+    : ['name', 'branding', 'questions', 'review']
   const labels: Record<EditStep, string> = {
-    name: 'Name', sections: 'Sections', questions: 'Questions', scoring: 'Scoring', review: 'Review',
+    name: 'Name', branding: 'Brand', sections: 'Sections', questions: 'Questions', scoring: 'Scoring', review: 'Review',
   }
   const currentIdx = steps.indexOf(step)
 
@@ -183,6 +198,13 @@ function EditZappPage() {
   const [showTypePicker, setShowTypePicker] = useState(false)
   const [typePickerPurpose, setTypePickerPurpose] = useState<'add' | 'change'>('add')
   const [mobileQuestionsView, setMobileQuestionsView] = useState<'list' | 'editor'>('list')
+  const [brandLogoUrl, setBrandLogoUrl] = useState('')
+  const [brandAccentColor, setBrandAccentColor] = useState(COLOR_PALETTES[5].primary)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+  const [removeLogoBackground, setRemoveLogoBackground] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const isQuiz = type === 'quiz'
 
@@ -202,6 +224,8 @@ function EditZappPage() {
         if (!pres) { setLoadError('Zapp not found'); return }
         setName(pres.title ?? '')
         setType(pres.type)
+        setBrandLogoUrl(pres.brandLogoUrl ?? '')
+        setBrandAccentColor(pres.brandAccentColor ?? COLOR_PALETTES[5].primary)
         if (pres.scoringConfig) setScoring(pres.scoringConfig as ScoringConfig)
         if (pres.sections && pres.sections.length > 0) {
           setSections(pres.sections)
@@ -228,6 +252,7 @@ function EditZappPage() {
     if (!raw) return
     const map: Record<string, EditStep> = {
       name: 'name',
+      branding: 'branding',
       sections: 'sections',
       questions: 'questions',
       scoring: 'scoring',
@@ -244,8 +269,48 @@ function EditZappPage() {
 
   function getStepOrder(): EditStep[] {
     return isQuiz
-      ? ['name', 'sections', 'questions', 'scoring', 'review']
-      : ['name', 'questions', 'review']
+      ? ['name', 'branding', 'sections', 'questions', 'scoring', 'review']
+      : ['name', 'branding', 'questions', 'review']
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    setUploadError('')
+    setUploadSuccess(false)
+    setUploadingLogo(true)
+    try {
+      const processed = await processLogoImage(file, { removeBackground: removeLogoBackground })
+      const url = await uploadLogoFile({
+        file: processed,
+        userId: user.id,
+        slot: 'branding',
+        fileName: 'logo.webp',
+      })
+      setBrandLogoUrl(url)
+      setUploadSuccess(true)
+      setTimeout(() => setUploadSuccess(false), 2500)
+    } catch (err: any) {
+      setUploadError(err?.message ?? 'Upload failed')
+    } finally {
+      setUploadingLogo(false)
+      e.target.value = ''
+    }
+  }
+
+  async function handleLogoRemove() {
+    setUploadError('')
+    setUploadSuccess(false)
+    if (!user) {
+      setBrandLogoUrl('')
+      return
+    }
+    try {
+      await deleteLogoFile({ userId: user.id, slot: 'branding' })
+    } catch (err: any) {
+      setUploadError(err?.message ?? 'Could not remove logo')
+    }
+    setBrandLogoUrl('')
   }
 
   function nextStep() {
@@ -324,6 +389,8 @@ function EditZappPage() {
     const updates: Record<string, unknown> = { title: name || 'Untitled Zapp' }
     if (useSections && sections.length > 0) updates.sections = sections
     if (isQuiz) updates.scoringConfig = scoring
+    updates.brandAccentColor = brandAccentColor
+    updates.brandLogoUrl = brandLogoUrl
     await PresentationService.updatePresentation(id, updates)
     await QuestionService.saveQuestionSet(id, questions, type, name || 'Untitled Zapp')
   }
@@ -441,13 +508,103 @@ function EditZappPage() {
     )
   }
 
+  if (step === 'branding') {
+    return (
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto">
+          <ProgressBar step="branding" isQuiz={isQuiz} />
+          <div className="rounded-2xl p-6 sm:p-8 border" style={{ background: panelBg, borderColor: border, boxShadow: cardShadow }}>
+            <h1 className="text-3xl font-black mb-2" style={{ color: textStrong }}>Branding</h1>
+            <p className="text-sm mb-6" style={{ color: textMuted }}>Update logo and colour before editing questions.</p>
+
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <ImageIcon className="w-4 h-4" style={{ color: accent }} />
+                  <p className="text-sm font-bold" style={{ color: textStrong }}>Logo</p>
+                </div>
+                {brandLogoUrl ? (
+                  <div className="flex items-center gap-4 rounded-2xl p-4" style={{ background: panelAlt, border: `1px solid ${border}` }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={brandLogoUrl} alt="Brand logo" className="h-12 w-auto max-w-[120px] object-contain rounded" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: textStrong }}>Logo ready</p>
+                      <p className="text-xs" style={{ color: textSoft }}>Used on presenter and participant screens.</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <label className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer" style={{ background: accentSoft, color: accent }}>
+                        <RefreshCw className="w-3 h-3" /> Replace
+                        <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={handleLogoUpload} />
+                      </label>
+                      <button type="button" onClick={handleLogoRemove} className="rounded-xl px-3 py-2 text-xs font-semibold" style={{ background: 'rgba(239,68,68,0.10)', color: '#DC2626' }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-3 rounded-2xl px-6 py-10 cursor-pointer" style={{ background: panelAlt, border: `2px dashed ${border}` }}>
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: accentSoft }}>
+                      {uploadingLogo ? <RefreshCw className="w-5 h-5 animate-spin" style={{ color: accent }} /> : <Upload className="w-5 h-5" style={{ color: accent }} />}
+                    </div>
+                    <p className="text-sm font-semibold" style={{ color: textStrong }}>{uploadingLogo ? 'Uploading logo…' : 'Upload logo (PNG/JPG/WebP)'}</p>
+                    <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingLogo} onChange={handleLogoUpload} />
+                  </label>
+                )}
+                <label className="mt-3 flex items-center gap-2 text-xs font-semibold" style={{ color: textMuted }}>
+                  <input type="checkbox" checked={removeLogoBackground} onChange={(e) => setRemoveLogoBackground(e.target.checked)} />
+                  Remove white background from uploaded logo
+                </label>
+                {uploadError && <p className="text-xs mt-2 text-red-500">{uploadError}</p>}
+                {uploadSuccess && <p className="text-xs mt-2" style={{ color: '#16A34A' }}>Logo uploaded successfully.</p>}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette className="w-4 h-4" style={{ color: accent }} />
+                  <p className="text-sm font-bold" style={{ color: textStrong }}>Colour theme</p>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {COLOR_PALETTES.map((palette) => (
+                    <button
+                      key={palette.name}
+                      type="button"
+                      onClick={() => setBrandAccentColor(palette.primary)}
+                      className="rounded-2xl p-3 text-left transition-all"
+                      style={{
+                        background: panelAlt,
+                        border: `1px solid ${brandAccentColor === palette.primary ? 'rgba(101,12,217,0.34)' : border}`,
+                        boxShadow: brandAccentColor === palette.primary ? '0 10px 20px rgba(101,12,217,0.14)' : 'none',
+                      }}
+                    >
+                      <div className="w-8 h-8 rounded-xl mb-2" style={{ background: palette.primary }} />
+                      <p className="text-sm font-bold" style={{ color: textStrong }}>{palette.name}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-8">
+              <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: textMuted }}>
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+              <button onClick={nextStep} className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-white text-sm" style={{ background: accent }}>
+                Continue <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    )
+  }
+
   // ════════════════════════════════════════════════════════════════════════
   // ── STEP 2: Sections (Quiz only) ─────────────────────────────────────────
   // ════════════════════════════════════════════════════════════════════════
 
   if (step === 'sections') {
     return (
-      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
+      <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto">
           <ProgressBar step="sections" isQuiz={true} />
 
@@ -457,7 +614,7 @@ function EditZappPage() {
           </div>
 
           {!useSections ? (
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
               <button
                 onClick={() => { setUseSections(false); nextStep() }}
                 className="p-6 rounded-xl border-2 text-center transition-all"
@@ -582,7 +739,7 @@ function EditZappPage() {
             </button>
             <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em]" style={{ color: textSoft }}>
-                {isQuiz ? 'Step 3' : 'Step 2'} — Questions
+                {isQuiz ? 'Step 4' : 'Step 3'} — Questions
               </p>
               <h1 className="text-lg sm:text-xl font-black truncate tracking-tight" style={{ color: textStrong }}>{name}</h1>
             </div>

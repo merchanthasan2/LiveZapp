@@ -21,11 +21,12 @@ export default function JoinLandingPage() {
   return (
     <div className="surface-page min-h-screen pb-20 md:pb-28">
       <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b" style={{ borderColor: 'rgba(123,116,135,0.12)' }}>
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between gap-3">
-          <BrandLockup href="/" size="lg" theme="light" />
-          <div className="flex items-center gap-6">
-            <Link href="/login" className="text-sm sm:text-base font-bold" style={{ color: '#3f3a4f' }}>Log In</Link>
-            <Link href="/register" className="rounded-full px-4 sm:px-6 py-2.5 text-sm sm:text-base font-bold text-white shadow-md" style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}>
+        <div className="mx-auto w-full max-w-5xl px-3 sm:px-6 py-3.5 sm:py-5 flex items-center justify-between gap-2.5">
+          <div className="sm:hidden"><BrandLockup href="/" size="sm" theme="light" /></div>
+          <div className="hidden sm:block"><BrandLockup href="/" size="lg" theme="light" /></div>
+          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+            <Link href="/login" className="text-xs sm:text-base font-bold whitespace-nowrap px-2 py-1.5 rounded-lg" style={{ color: '#3f3a4f' }}>Log In</Link>
+            <Link href="/register" className="rounded-full px-3.5 sm:px-6 py-2 text-xs sm:text-base font-bold text-white shadow-md whitespace-nowrap" style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}>
               Join Now
             </Link>
           </div>
@@ -34,8 +35,8 @@ export default function JoinLandingPage() {
 
       <main className="mx-auto w-full max-w-5xl px-4 sm:px-6 py-8 md:py-10">
         <div className="text-center mb-8">
-          <h1 className="text-4xl md:text-5xl font-black" style={{ color: '#1c1b1b' }}>Ready to Play?</h1>
-          <p className="mt-2 text-lg md:text-2xl" style={{ color: '#4a4455' }}>Enter the session code from the host screen</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={{ color: '#1c1b1b' }}>Ready to Play?</h1>
+          <p className="mt-2 text-base sm:text-lg md:text-2xl" style={{ color: '#4a4455' }}>Enter the session code from the host screen</p>
         </div>
 
         <div className="mx-auto w-full max-w-2xl surface-card p-6 sm:p-8 md:p-10">

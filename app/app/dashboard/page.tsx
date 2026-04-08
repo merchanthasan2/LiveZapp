@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Edit, List, Play, Radio, Search, Trash2, Users } from 'lucide-react'
+import { AlertTriangle, Edit, List, Play, Radio, Search, Sparkles, Trash2, Users, X } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import { useTheme } from '@/lib/contexts/ThemeContext'
@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState<PresentationStatus | 'all'>('all')
   const [confirmDelete, setConfirmDelete] = useState<Presentation | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -86,6 +87,15 @@ export default function DashboardPage() {
     void loadPresentations()
     return () => { isMounted = false }
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    if (planLimits.plan.id === 'free') {
+      setShowUpgradePrompt(true)
+    } else {
+      setShowUpgradePrompt(false)
+    }
+  }, [user, planLimits.plan.id])
 
   const filtered = useMemo(
     () => presentations
@@ -310,7 +320,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={p.id}
-                  className="rounded-2xl p-4 flex items-center gap-4 transition-shadow hover:shadow-md"
+                  className="rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-shadow hover:shadow-md"
                   style={{
                     background: isDark ? innerCard : '#ffffff',
                     border: `1px solid ${border}`,
@@ -326,12 +336,12 @@ export default function DashboardPage() {
                   >
                     {p.type}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 w-full">
                     <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
                     <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {p.audienceSize ?? 0} participants</p>
                     <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: statusStyle[p.status].bg, color: statusStyle[p.status].text }}>{p.status}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">
                     <Link href={presenterHref} className="p-2.5 rounded-full" style={{ background: launchBg, color: launchText }} title={presenterTitle}>
                       <Play className="w-4 h-4" />
                     </Link>
@@ -427,6 +437,81 @@ export default function DashboardPage() {
           </div>
         </section>
       </div>
+
+      {showUpgradePrompt && (
+        <div className="fixed inset-0 z-40 bg-black/55 backdrop-blur-sm p-4 sm:p-6 flex items-end sm:items-center justify-center">
+          <div
+            className="relative w-full max-w-[56rem] rounded-[1.6rem] sm:rounded-[1.85rem] overflow-hidden border"
+            style={{ background: shellCard, borderColor: border, boxShadow: cardShadow }}
+          >
+            <button
+              type="button"
+              onClick={() => setShowUpgradePrompt(false)}
+              className="absolute right-3 top-3 sm:right-4 sm:top-4 z-10 inline-flex items-center justify-center w-10 h-10 rounded-full"
+              style={{ background: isDark ? 'rgba(255,255,255,0.10)' : '#f3f0ff', color: textMuted, border: `1px solid ${border}` }}
+              aria-label="Close plan upgrade popup"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="grid grid-cols-1 md:grid-cols-2">
+              <div
+                className="p-6 sm:p-8 md:p-9"
+                style={{
+                  background: isDark
+                    ? 'linear-gradient(145deg, rgba(101,12,217,0.30), rgba(122,58,240,0.12))'
+                    : 'linear-gradient(145deg, rgba(101,12,217,0.13), rgba(122,58,240,0.05))',
+                }}
+              >
+                <div className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em]" style={{ background: 'rgba(101,12,217,0.16)', color: isDark ? '#e2d5ff' : '#5b21b6' }}>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Upgrade recommended
+                </div>
+                <h3 className="mt-4 text-2xl sm:text-3xl font-black leading-tight" style={{ color: textStrong }}>
+                  Unlock bigger sessions and premium branding
+                </h3>
+                <p className="mt-3 text-sm sm:text-base leading-relaxed" style={{ color: textMuted }}>
+                  You are currently on the Free plan. Move to Basic or above to get more Zapps, more participants, exports, and custom branding.
+                </p>
+              </div>
+
+              <div className="p-6 sm:p-8 md:p-9">
+                <div className="space-y-3">
+                  {[
+                    'More monthly Zapps and higher participant limits',
+                    'Custom logo and brand colors for your events',
+                    'Exports and better controls for professional sessions',
+                  ].map(item => (
+                    <div key={item} className="rounded-xl px-4 py-3 text-sm font-medium" style={{ background: isDark ? innerCard : '#f8f7ff', color: textStrong, border: `1px solid ${border}` }}>
+                      {item}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 flex flex-col sm:flex-row gap-2.5">
+                  <Link
+                    href="/plans"
+                    className="flex-1 inline-flex items-center justify-center rounded-full px-5 py-3.5 text-sm font-bold text-white"
+                    style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}
+                    onClick={() => setShowUpgradePrompt(false)}
+                  >
+                    View Paid Plans
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpgradePrompt(false)}
+                    className="flex-1 rounded-full px-5 py-3.5 text-sm font-semibold"
+                    style={{ background: actionBg, color: textMuted, border: `1px solid ${border}` }}
+                  >
+                    Maybe later
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => !isDeleting && setConfirmDelete(null)}>
