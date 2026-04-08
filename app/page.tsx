@@ -547,37 +547,6 @@ function ContactSection() {
   )
 }
 
-function MobileBottomNav() {
-  const pathname = usePathname()
-  const items = [
-    { label: 'Home', href: '/', icon: Sparkles },
-    { label: 'Join', href: '/join', icon: HelpCircle },
-    { label: 'Plans', href: '/plans', icon: BarChart3 },
-    { label: 'Login', href: '/login', icon: Settings },
-  ]
-
-  return (
-    <nav
-      className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around rounded-t-3xl border-t px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2 md:hidden"
-      style={{ background: 'rgba(255,255,255,0.92)', borderColor: 'rgba(123,116,135,0.15)', backdropFilter: 'blur(12px)' }}
-    >
-      {items.map(item => {
-        const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
-        return (
-        <Link
-          key={item.label}
-          href={item.href}
-          className={`touch-target flex flex-col items-center justify-center ${isActive ? 'mb-4 h-12 w-12 rounded-full text-white' : 'text-[#7b7487]'}`}
-          style={isActive ? { background: '#650cd9', boxShadow: '0 12px 24px rgba(101,12,217,0.35)' } : undefined}
-        >
-          <item.icon className="h-5 w-5" />
-          {!isActive && <span className="text-[10px] font-semibold">{item.label}</span>}
-        </Link>
-      )})}
-    </nav>
-  )
-}
-
 function HomeFooter() {
   return (
     <footer className="border-t px-6 py-12 text-center" style={{ background: '#ebe7e7', borderColor: 'rgba(123,116,135,0.18)', color: '#4a4455' }}>
@@ -629,8 +598,6 @@ export default function HomePage() {
         <ContactSection />
       </main>
       <HomeFooter />
-      <MobileBottomNav />
-      <div className="h-20 md:hidden" />
     </div>
   )
 }
