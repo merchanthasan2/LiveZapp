@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Twitter, Linkedin, Github, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import BrandLockup from '@/components/BrandLockup'
 
 const footerLinks = {
@@ -22,9 +22,6 @@ const footerLinks = {
 }
 
 const socialLinks = [
-  { icon: Twitter, label: 'Twitter', href: '#' },
-  { icon: Linkedin, label: 'LinkedIn', href: '#' },
-  { icon: Github, label: 'GitHub', href: '#' },
   { icon: Mail, label: 'Email', href: '/contact' },
 ]
 

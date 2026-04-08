@@ -153,7 +153,7 @@ function RegisterContent() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+      <div className="surface-page min-h-screen flex items-center justify-center py-16 px-4">
         <div className="p-12 max-w-md w-full text-center space-y-5 rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto" style={{ background: 'rgba(101,12,217,0.10)' }}>
             <CheckCircle2 className="w-8 h-8" style={{ color: '#650cd9' }} />
@@ -168,7 +168,7 @@ function RegisterContent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center py-10 sm:py-16 px-3 sm:px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+    <div className="surface-page min-h-screen flex items-center justify-center py-10 sm:py-16 px-3 sm:px-4">
       <div className="w-full max-w-md relative">
         <div className="p-6 sm:p-8 rounded-[1.75rem] sm:rounded-[2rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', boxShadow: '0 30px 80px rgba(101,12,217,0.10)' }}>
           <div className="flex flex-col items-center mb-8 text-center">
@@ -334,7 +334,7 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center py-16 px-4" style={{ background: 'linear-gradient(180deg, #fcfaf7 0%, #f5eefc 100%)' }}>
+        <div className="surface-page min-h-screen flex items-center justify-center py-16 px-4">
           <div className="p-8 text-sm rounded-[1.75rem] border" style={{ background: 'rgba(255,255,255,0.92)', borderColor: '#eadff7', color: '#6d667b' }}>Loading...</div>
         </div>
       }

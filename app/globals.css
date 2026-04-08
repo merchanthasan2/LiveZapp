@@ -365,7 +365,7 @@ body {
   .btn-secondary:hover   { background: #0d7de0; transform: translateY(-1px); }
   .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
-  /* Ghost: transparent with subtle white border */
+  /* Ghost: transparent with subtle border */
   .btn-ghost {
     display: inline-flex;
     align-items: center;
@@ -375,9 +375,9 @@ body {
     border-radius: var(--radius-btn);
     font-weight: 600;
     font-size: 0.875rem;
-    color: rgba(255,255,255,0.85);
+    color: #4a4455;
     background: transparent;
-    border: 1.5px solid rgba(255,255,255,0.18);
+    border: 1.5px solid rgba(123,116,135,0.20);
     cursor: pointer;
     transition: all 0.18s ease;
     text-decoration: none;

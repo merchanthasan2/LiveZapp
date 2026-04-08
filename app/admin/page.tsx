@@ -120,8 +120,9 @@ export default function AdminOverviewPage() {
           <p className="mt-1 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: '#9ca3af' }}>Source: {data.source.toUpperCase()}</p>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-3 md:justify-end">
-          <button className="rounded-full px-5 py-2.5 font-semibold" style={{ background: '#eef1f7', color: '#4f4a63' }}>Export Report</button>
-          <button className="rounded-full px-5 py-2.5 font-semibold" style={{ background: '#ede4ff', color: '#5e2fb5' }}>Date Range: Last 30 Days</button>
+          <span className="rounded-full px-4 py-2 text-xs font-bold uppercase tracking-widest" style={{ background: 'rgba(249,115,22,0.10)', color: '#b45309', border: '1px solid rgba(249,115,22,0.20)' }}>Sample Data</span>
+          <button disabled className="rounded-full px-5 py-2.5 font-semibold opacity-40 cursor-not-allowed" style={{ background: '#eef1f7', color: '#4f4a63' }} title="Coming soon">Export Report</button>
+          <button disabled className="rounded-full px-5 py-2.5 font-semibold opacity-40 cursor-not-allowed" style={{ background: '#ede4ff', color: '#5e2fb5' }} title="Coming soon">Date Range: Last 30 Days</button>
         </div>
       </div>
 
@@ -139,7 +140,7 @@ export default function AdminOverviewPage() {
               <h2 className="text-2xl font-black md:text-4xl" style={{ color: '#1a1a2e' }}>Platform Engagement</h2>
               <p className="text-sm" style={{ color: '#6d667b' }}>Monthly active interactions across all services.</p>
             </div>
-            <button className="rounded-xl px-3 py-1.5 text-xs" style={{ background: '#f3eefb', color: '#6d28d9' }}>Monthly</button>
+            <span className="rounded-xl px-3 py-1.5 text-xs cursor-default" style={{ background: '#f3eefb', color: '#6d28d9' }}>Monthly</span>
           </div>
           <div className="h-[320px] rounded-2xl p-3" style={{ background: 'linear-gradient(180deg,#ede4ff,#f6f2fb)' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -183,7 +184,7 @@ export default function AdminOverviewPage() {
             <h2 className="text-2xl font-black md:text-4xl" style={{ color: '#1a1a2e' }}>Recent Platform Activity</h2>
             <p className="text-sm" style={{ color: '#6d667b' }}>Real-time logs of new signups and billing events.</p>
           </div>
-          <button className="text-sm font-semibold" style={{ color: '#6d28d9' }}>View All Activity</button>
+          <span className="text-sm font-semibold opacity-40 cursor-default" style={{ color: '#6d28d9' }} title="Coming soon">View All Activity</span>
         </div>
         <div className="overflow-auto rounded-2xl" style={{ border: '1px solid #ece8f2' }}>
           <table className="w-full text-sm">

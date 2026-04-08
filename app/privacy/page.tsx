@@ -94,8 +94,8 @@ export default function PrivacyPage() {
             <p>
               Depending on your region, you may have rights to access, correct, delete, or export your personal data, or
               to object to certain processing. Contact us at{' '}
-              <a href="mailto:hello@quantumstep.in" className="text-primary font-semibold hover:underline">
-                hello@quantumstep.in
+              <a href="mailto:hello@live-zapp.com" className="text-primary font-semibold hover:underline">
+                hello@live-zapp.com
               </a>{' '}
               and we will respond within a reasonable time.
             </p>

@@ -19,10 +19,11 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useTheme } from '@/lib/contexts/ThemeContext'
+import { usePlanLimits } from '@/lib/hooks/usePlanLimits'
 import BrandLockup from '@/components/BrandLockup'
 
 const sidebarLinks = [
-  { icon: LayoutDashboard, label: 'My Library', href: '/app/dashboard' },
+  { icon: LayoutDashboard, label: 'My Zapps', href: '/app/dashboard' },
   { icon: PlusCircle, label: 'Create New', href: '/app/create' },
   { icon: Settings, label: 'Settings', href: '/app/settings' },
 ]
@@ -32,6 +33,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const { user, isLoading, isAdmin, logout } = useAuth()
   const { isDark, toggleTheme } = useTheme()
+  const { plan } = usePlanLimits()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
@@ -73,7 +75,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-3 px-2 py-6 mb-4">
           <div>
             <BrandLockup href="/" size="md" theme={isDark ? 'dark' : 'light'} />
-            <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: textMuted }}>Premium Plan</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold" style={{ color: textMuted }}>{plan.name} Plan</p>
           </div>
         </div>
 
@@ -159,7 +161,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
-              <button className="hidden sm:flex w-11 h-11 rounded-full items-center justify-center transition-colors" style={{ color: iconMuted }} aria-label="Notifications">
+              <button className="hidden sm:flex w-11 h-11 rounded-full items-center justify-center transition-colors opacity-40 cursor-default" style={{ color: iconMuted }} aria-label="Notifications (coming soon)" title="Notifications coming soon">
                 <Bell className="w-5 h-5" />
               </button>
               <button
@@ -268,7 +270,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl rounded-t-3xl border-t" style={{ background: isDark ? '#141626f2' : 'rgba(255,255,255,0.95)', boxShadow: isDark ? '0 -8px 30px rgba(0,0,0,0.35)' : '0 -8px 30px rgba(63,40,98,0.10)', borderColor: cardBorder }}>
         <Link className="flex flex-col items-center justify-center transition-colors" style={{ color: textMuted }} href="/app/dashboard">
           <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[10px] font-semibold mt-1">Home</span>
+          <span className="text-[10px] font-semibold mt-1">My Zapps</span>
         </Link>
         <Link className="flex flex-col items-center justify-center bg-violet-600 text-white rounded-full w-12 h-12 mb-4 shadow-lg shadow-violet-600/50" href="/app/create">
           <PlusCircle className="w-5 h-5" />

@@ -15,7 +15,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 const contactInfo = [
-  { icon: Mail, label: 'Email', value: 'hello@quantumstep.in' },
+  { icon: Mail, label: 'Email', value: 'hello@live-zapp.com' },
   { icon: MapPin, label: 'Location', value: 'India 🇮🇳' },
   { icon: Clock, label: 'Response time', value: 'Within 24–48 hours' },
 ]

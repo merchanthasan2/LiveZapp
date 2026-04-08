@@ -4,7 +4,7 @@
  * lib/hooks/useAuth.ts
  *
  * Real Firebase auth hook. Listens to onAuthStateChanged and fetches the
- * expanded User profile (role, planId) from Firestore's `users` collection.
+ * expanded User profile (role, planId) from RTDB's `users` node.
  * 
  * Includes auto-provisioning logic for the 3 requested development accounts
  * (admin, user1, user2) so they don't have to be manually created in Firebase.

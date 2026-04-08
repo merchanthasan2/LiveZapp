@@ -127,7 +127,7 @@ function LoginPageContent() {
                   Password
                 </label>
                 <Link href="/contact" className="text-xs font-semibold" style={{ color: 'var(--brand-primary-light)' }}>
-                  Need help?
+                  Contact support
                 </Link>
               </div>
               <div className="relative">

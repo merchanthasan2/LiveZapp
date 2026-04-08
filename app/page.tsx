@@ -2,32 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import {
   ArrowRight,
   BarChart2,
-  BarChart3,
   Bolt,
   CheckCircle2,
-  Cloud,
   Code2,
   Cpu,
   Globe,
   Globe2,
-  HelpCircle,
   Layers,
   LocateFixed,
   Mail,
   PenSquare,
   Play,
   Quote,
-  Settings,
-  Share,
   Share2,
   Smartphone,
   Sparkles,
   TrendingUp,
-  User,
 } from 'lucide-react'
 import { useAuth } from '@/lib/hooks/useAuth'
 import { useCurrency } from '@/lib/hooks/useCurrency'
@@ -390,7 +384,7 @@ function PricingSection() {
   const { currency, formatAmount, getPlanPrice } = useCurrency()
 
   return (
-    <section id="pricing" className="scroll-mt-28 bg-[#fcf9f8] px-6 py-20 md:py-18">
+    <section id="pricing" className="scroll-mt-28 bg-[#fcf9f8] px-6 py-20 md:py-20">
       <div className="mx-auto max-w-7xl">
         <div className="mb-16 text-center">
           <h2 className="text-3xl font-bold md:text-4xl md:font-extrabold" style={{ color: '#1c1b1b' }}>
@@ -525,7 +519,7 @@ function QuantumStepSection() {
 
 function ContactSection() {
   return (
-    <section id="contact" className="scroll-mt-28 overflow-hidden bg-[#f6f3f2] px-6 py-20 md:py-18">
+    <section id="contact" className="scroll-mt-28 overflow-hidden bg-[#f6f3f2] px-6 py-20 md:py-20">
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-1 items-start gap-20 lg:grid-cols-2">
           <div className="space-y-10">
@@ -545,7 +539,7 @@ function ContactSection() {
                 </div>
                 <div>
                   <p className="text-sm font-bold uppercase tracking-widest" style={{ color: '#4a4455' }}>Email Us</p>
-                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>hello@live-zap.com</p>
+                  <p className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>hello@live-zapp.com</p>
                 </div>
               </div>
 
@@ -561,46 +555,29 @@ function ContactSection() {
             </div>
 
             <div className="flex gap-4">
-              {[Globe, Share, User].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="#"
-                  className="flex h-10 w-10 items-center justify-center rounded-full transition-all"
-                  style={{ background: '#e5e2e1', color: '#4a4455' }}
-                >
-                  <Icon className="h-4 w-4" />
-                </a>
-              ))}
+              <Link
+                href="/contact"
+                className="flex h-10 w-10 items-center justify-center rounded-full transition-all"
+                style={{ background: '#e5e2e1', color: '#4a4455' }}
+              >
+                <Mail className="h-4 w-4" />
+              </Link>
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white p-10 shadow-xl">
-            <form className="space-y-6">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold" style={{ color: '#4a4455' }}>First Name</label>
-                  <input type="text" className="w-full rounded-xl border-none px-4 py-3 outline-none" style={{ background: '#f0edec' }} />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-bold" style={{ color: '#4a4455' }}>Last Name</label>
-                  <input type="text" className="w-full rounded-xl border-none px-4 py-3 outline-none" style={{ background: '#f0edec' }} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold" style={{ color: '#4a4455' }}>Email Address</label>
-                <input type="email" className="w-full rounded-xl border-none px-4 py-3 outline-none" style={{ background: '#f0edec' }} />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold" style={{ color: '#4a4455' }}>Message</label>
-                <textarea rows={4} className="w-full resize-none rounded-xl border-none px-4 py-3 outline-none" style={{ background: '#f0edec' }} />
-              </div>
-
-              <button type="button" className="w-full rounded-xl py-4 font-bold text-white transition-shadow hover:shadow-lg" style={{ background: '#650cd9' }}>
-                Send Message
-              </button>
-            </form>
+          <div className="flex flex-col items-center justify-center rounded-3xl bg-white p-10 shadow-xl text-center">
+            <h3 className="text-2xl font-bold mb-3" style={{ color: '#1c1b1b' }}>Get in Touch</h3>
+            <p className="text-base mb-8" style={{ color: '#4a4455' }}>
+              Have a question, want a demo, or need support? Our team is ready to help.
+            </p>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 rounded-xl px-8 py-4 font-bold text-white transition-shadow hover:shadow-lg"
+              style={{ background: '#650cd9' }}
+            >
+              <Mail className="h-5 w-5" />
+              Contact Us
+            </Link>
           </div>
         </div>
       </div>
@@ -617,7 +594,7 @@ function HomeFooter() {
         <div className="flex gap-8 text-sm font-semibold">
           <Link href="/terms" className="hover:opacity-80">Terms</Link>
           <Link href="/privacy" className="hover:opacity-80">Privacy</Link>
-          <a href="#" className="hover:opacity-80">Accessibility</a>
+          <Link href="/contact" className="hover:opacity-80">Contact</Link>
         </div>
       </div>
     </footer>

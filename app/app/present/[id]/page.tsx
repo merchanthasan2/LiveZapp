@@ -180,8 +180,8 @@ function WordCloudDisplay({ responses, dark = false }: { responses: Record<strin
       {sorted.map(([word, count], idx) => {
         const ratio = count / maxCount
         const fontSize = dark
-          ? Math.round(28 + ratio * 72)   // 28â€“100 px for projector
-          : Math.round(20 + ratio * 44)   // 20â€“64 px for dashboard
+          ? Math.round(28 + ratio * 72)   // 28—100 px for projector
+          : Math.round(20 + ratio * 44)   // 20—64 px for dashboard
         const color = CLOUD_COLORS[idx % CLOUD_COLORS.length]
         return (
           <span key={word} className="font-black leading-none inline-flex items-start gap-0.5">
@@ -223,7 +223,7 @@ function QADisplay({ responses, dark = false }: { responses: Record<string, Part
 
 function RatingDisplay({ responses, max, dark = false }: { responses: Record<string, ParticipantResponse>; max: number; dark?: boolean }) {
   const values = Object.values(responses).map(r => Number(r.answer)).filter(n => !isNaN(n) && n > 0)
-  const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : 'â€”'
+  const avg = values.length > 0 ? (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1) : '—'
   const counts = Array.from({ length: max }, (_, i) => values.filter(v => v === i + 1).length)
   return (
     <div className="mt-4 space-y-3">
@@ -531,7 +531,7 @@ function QuestionSlide({
               />
             ))}
             <span className="text-sm ml-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
-              Waiting for responsesâ€¦
+              Waiting for responses…
             </span>
           </motion.div>
         </motion.div>
@@ -582,7 +582,7 @@ function QuestionSlide({
             </div>
           </motion.div>
 
-          {/* Response visualisation â€” fills remaining space */}
+          {/* Response visualisation — fills remaining space */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -801,7 +801,7 @@ export default function PresentPage() {
     if (document.fullscreenElement) {
       await document.exitFullscreen().catch(() => {})
     }
-    router.push(`/app/create/${id}`)
+    router.push(`/app/create/${id}?step=questions`)
   }, [id, router])
 
   const navigateTo = useCallback(async (index: number) => {
@@ -1091,7 +1091,7 @@ export default function PresentPage() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center gap-4">
         <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(101,12,217,0.20)', borderTopColor: '#650cd9' }} />
-        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading presenter viewâ€¦</p>
+        <p className="text-sm" style={{ color: '#9CA3AF' }}>Loading presenter view…</p>
       </div>
     )
   }
@@ -1166,7 +1166,7 @@ export default function PresentPage() {
         {isComputingLeaderboard ? (
           <div className="py-10 flex flex-col items-center gap-3">
             <div className="w-10 h-10 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(101,12,217,0.20)', borderTopColor: '#650cd9' }} />
-            <p className="text-sm" style={{ color: '#6B7280' }}>Calculating scoresâ€¦</p>
+            <p className="text-sm" style={{ color: '#6B7280' }}>Calculating scores…</p>
           </div>
         ) : leaderboardEntries.length === 0 ? (
           <div className="py-10 text-center">
@@ -1567,10 +1567,10 @@ export default function PresentPage() {
   const totalResponses = Object.keys(responses).length
   const engagementPct = participantCount > 0 ? Math.round((totalResponses / participantCount) * 100) : 0
   const optionPalette = [
-    { bg: '#ba1a1a', label: 'Option A' },
-    { bg: '#650cd9', label: 'Option B' },
-    { bg: '#912f03', label: 'Option C' },
-    { bg: '#006b5f', label: 'Option D' },
+    { bg: '#ba1a1a' },
+    { bg: '#650cd9' },
+    { bg: '#912f03' },
+    { bg: '#006b5f' },
   ]
   const surface = isDark ? '#131313' : '#fcf9f8'
   const surfaceSoft = isDark ? '#201f1f' : '#f0edec'
@@ -1619,7 +1619,7 @@ export default function PresentPage() {
         >
           <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] items-center gap-3 lg:gap-4">
             <div className="flex items-center justify-center lg:justify-start gap-3 md:gap-4 min-w-0">
-              <Link href={`/app/create/${id}`} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold" style={{ background: surfaceCardAlt, borderColor: borderSoft, color: textStrong }}>
+              <Link href={`/app/create/${id}?step=questions`} className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold" style={{ background: surfaceCardAlt, borderColor: borderSoft, color: textStrong }}>
                 <ArrowLeft className="w-4 h-4" />
                 Back to builder
               </Link>
@@ -1860,7 +1860,7 @@ export default function PresentPage() {
           >
             <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(101,12,217,0.25), transparent 50%)' }} />
             <div className="absolute top-6 right-6 md:top-8 md:right-8 w-20 h-20 md:w-24 md:h-24 rounded-full border-8 flex items-center justify-center" style={{ borderColor: isDark ? '#353534' : '#ebe7e7', color: '#650cd9' }}>
-              <span className="text-xl md:text-2xl font-black">18</span>
+              <span className="text-xl md:text-2xl font-black">{currentIndex + 1}</span>
             </div>
 
             <div className="relative z-10 h-full flex flex-col justify-center items-center text-center">
@@ -1927,7 +1927,7 @@ export default function PresentPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-lg font-bold leading-snug" style={{ color: textStrong }}>{option.label}</p>
                     <p className="text-xs font-bold uppercase tracking-widest mt-1" style={{ color: textMuted }}>
-                      {palette.label} · {entryCount} votes
+                      {entryCount} vote{entryCount !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
@@ -1956,9 +1956,7 @@ export default function PresentPage() {
         style={{ background: isDark ? 'rgba(14,14,14,0.9)' : 'rgba(255,255,255,0.9)', borderColor: borderSoft }}
       >
         <div className="max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full" style={{ background: surfaceSoft }}>
-            <span className="text-xs font-bold" style={{ color: textMuted }}>Lobby Groove - Vol. 4</span>
-          </div>
+          <div className="px-4 py-2" />
 
           <div className="flex items-center gap-3">
             <button

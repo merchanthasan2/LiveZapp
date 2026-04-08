@@ -126,7 +126,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
     if (planLimits.plan.id === 'free') {
-      setShowUpgradePrompt(true)
+      const dismissed = sessionStorage.getItem('upgradePromptDismissed')
+      if (!dismissed) setShowUpgradePrompt(true)
     } else {
       setShowUpgradePrompt(false)
     }
@@ -363,13 +364,13 @@ export default function DashboardPage() {
                   }}
                 >
                   <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-xs font-black uppercase shrink-0"
+                    className="min-w-[4.5rem] px-3 h-14 rounded-2xl flex items-center justify-center text-[10px] font-black uppercase tracking-wide shrink-0 text-center leading-tight"
                     style={{
                       background: isDark ? 'rgba(122,58,240,0.18)' : 'rgba(167, 139, 250, 0.15)',
                       color: isDark ? '#d5c4ff' : '#6d28d9',
                     }}
                   >
-                    {p.type}
+                    {p.type.replace(/_/g, ' ')}
                   </div>
                   <div className="flex-1 min-w-0 w-full">
                     <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
@@ -494,7 +495,7 @@ export default function DashboardPage() {
           >
             <button
               type="button"
-              onClick={() => setShowUpgradePrompt(false)}
+              onClick={() => { setShowUpgradePrompt(false); sessionStorage.setItem('upgradePromptDismissed', '1') }}
               className="absolute right-3 top-3 sm:right-4 sm:top-4 z-10 inline-flex items-center justify-center w-10 h-10 rounded-full"
               style={{ background: isDark ? 'rgba(255,255,255,0.10)' : '#f3f0ff', color: textMuted, border: `1px solid ${border}` }}
               aria-label="Close plan upgrade popup"
@@ -542,13 +543,13 @@ export default function DashboardPage() {
                     href="/plans"
                     className="flex-1 inline-flex items-center justify-center rounded-full px-5 py-3.5 text-sm font-bold text-white"
                     style={{ background: 'linear-gradient(135deg, #650cd9, #7a3af0)' }}
-                    onClick={() => setShowUpgradePrompt(false)}
+                    onClick={() => { setShowUpgradePrompt(false); sessionStorage.setItem('upgradePromptDismissed', '1') }}
                   >
                     View Paid Plans
                   </Link>
                   <button
                     type="button"
-                    onClick={() => setShowUpgradePrompt(false)}
+                    onClick={() => { setShowUpgradePrompt(false); sessionStorage.setItem('upgradePromptDismissed', '1') }}
                     className="flex-1 rounded-full px-5 py-3.5 text-sm font-semibold"
                     style={{ background: actionBg, color: textMuted, border: `1px solid ${border}` }}
                   >

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { get, ref } from 'firebase/database'
 import {
@@ -687,6 +687,7 @@ function WaitScreen({ name, sessionTitle, participantCount, brandLogoUrl, brandN
 export default function ParticipantPage() {
   const { code } = useParams<{ code: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const participantId = useRef(getParticipantId())
 
   const [session,          setSession]          = useState<LiveSessionData | null>(null)
@@ -710,11 +711,18 @@ export default function ParticipantPage() {
 
   const prevIndexRef = useRef<number>(-1)
 
-  // Load saved name on mount
+  // Load name from ?name= query param or sessionStorage
   useEffect(() => {
+    const nameFromUrl = searchParams.get('name')?.trim()
+    if (nameFromUrl) {
+      setNameInput(nameFromUrl)
+      setParticipantName(nameFromUrl)
+      sessionStorage.setItem('lz_participant_name', nameFromUrl)
+      return
+    }
     const saved = sessionStorage.getItem('lz_participant_name')
     if (saved) { setParticipantName(saved); setNameInput(saved) }
-  }, [])
+  }, [searchParams])
 
   // Subscribe to session (always â€” to get title before name entry)
   useEffect(() => {

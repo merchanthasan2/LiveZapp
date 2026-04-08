@@ -9,7 +9,7 @@ import {
 } from '@paypal/react-paypal-js'
 import {
   ArrowLeft, Check, Shield, AlertTriangle, Loader2,
-  CheckCircle, RefreshCw, Info, ChevronDown, ChevronUp,
+  CheckCircle, Info, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { ref, update, get } from 'firebase/database'
 import { auth, rtdb } from '@/lib/firebase'
@@ -152,7 +152,7 @@ function CheckoutContent() {
         country: saved.country || '',
       }))
 
-      const hasRequiredProfile = !!(saved.fullName && saved.phone && saved.addressLine1 && saved.city)
+      const hasRequiredProfile = !!(saved.fullName && saved.phone && saved.addressLine1 && saved.city && saved.country)
       setProfileComplete(hasRequiredProfile)
       setProfileSaved(hasRequiredProfile && !requiresConfirm)
     }

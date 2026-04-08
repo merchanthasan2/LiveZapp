@@ -106,8 +106,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-bold text-text-primary">10. Contact</h2>
             <p>
               Questions about these Terms:{' '}
-              <a href="mailto:hello@quantumstep.in" className="text-primary font-semibold hover:underline">
-                hello@quantumstep.in
+              <a href="mailto:hello@live-zapp.com" className="text-primary font-semibold hover:underline">
+                hello@live-zapp.com
               </a>
               . See also our{' '}
               <Link href="/privacy" className="text-primary font-semibold hover:underline">

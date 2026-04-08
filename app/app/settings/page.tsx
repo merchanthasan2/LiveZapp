@@ -4,10 +4,10 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import {
-  Palette, Image as ImageIcon, Type, Eye, Save, Lock,
+  Palette, Type, Eye, Save, Lock,
   CheckCircle2, AlertCircle, Zap, ArrowRight, RefreshCw,
-  Upload, Trash2, X, User, CreditCard, Info, AlertTriangle,
-  CheckCircle, TrendingUp, Calendar, Phone, MapPin,
+  Upload, Trash2, User, CreditCard, Info, AlertTriangle,
+  CheckCircle, TrendingUp, Calendar, MapPin,
 } from 'lucide-react'
 import Link from 'next/link'
 import { ref, update, get } from 'firebase/database'
@@ -626,15 +626,15 @@ function SettingsContent() {
               <div className="text-right">
                 {plan.pricePerMonth > 0 ? (
                   <>
-                    <p className="text-2xl font-black" style={{ color: '#FFFFFF' }}>
+                    <p className="text-2xl font-black" style={{ color: isDark ? '#FFFFFF' : '#1c1b1b' }}>
                       {formatAmount(user?.billingCycle === 'annual' ? displayedAnnualPrice : displayedMonthlyPrice)}
                     </p>
-                    <p className="text-xs" style={{ color: 'rgba(255,255,255,0.38)' }}>
+                    <p className="text-xs" style={{ color: isDark ? 'rgba(255,255,255,0.38)' : '#706879' }}>
                       per {user?.billingCycle === 'annual' ? 'year' : 'month'}
                     </p>
                   </>
                 ) : (
-                  <p className="text-2xl font-black" style={{ color: '#FFFFFF' }}>Free</p>
+                  <p className="text-2xl font-black" style={{ color: isDark ? '#FFFFFF' : '#1c1b1b' }}>Free</p>
                 )}
               </div>
             </div>
@@ -789,8 +789,8 @@ function SettingsContent() {
         <motion.div variants={itemVars}>
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold" style={{ color: '#FFFFFF' }}>Brand Identity</h2>
-              <p className="text-sm" style={{ color: 'rgba(255,255,255,0.55)' }}>Customise what participants see when they join your sessions.</p>
+              <h2 className="text-base font-bold" style={{ color: isDark ? '#FFFFFF' : '#1c1b1b' }}>Brand Identity</h2>
+              <p className="text-sm" style={{ color: isDark ? 'rgba(255,255,255,0.55)' : '#706879' }}>Customise what participants see when they join your sessions.</p>
             </div>
             <div
               className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold"

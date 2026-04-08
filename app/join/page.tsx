@@ -10,10 +10,15 @@ export default function JoinLandingPage() {
   const router = useRouter()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
+  const [codeError, setCodeError] = useState('')
 
   function handleJoin() {
     const normalized = code.trim().toUpperCase()
-    if (!normalized) return
+    if (!normalized) {
+      setCodeError('Please enter a session code to join.')
+      return
+    }
+    setCodeError('')
     const path = `/join/${encodeURIComponent(normalized)}${name.trim() ? `?name=${encodeURIComponent(name.trim())}` : ''}`
     router.push(path)
   }
@@ -44,12 +49,13 @@ export default function JoinLandingPage() {
           <input
             type="text"
             value={code}
-            onChange={e => setCode(e.target.value)}
+            onChange={e => { setCode(e.target.value); if (codeError) setCodeError('') }}
             onKeyDown={e => { if (e.key === 'Enter') handleJoin() }}
             placeholder="000 000"
             className="w-full rounded-3xl px-5 sm:px-6 py-4 sm:py-5 text-center text-3xl sm:text-4xl md:text-5xl font-black tracking-[0.18em] sm:tracking-[0.25em] outline-none"
             style={{ background: '#ece9e8', color: '#a9a2b8' }}
           />
+          {codeError && <p className="text-sm font-semibold mt-2 text-center" style={{ color: '#dc2626' }}>{codeError}</p>}
 
           <label className="block text-sm font-black uppercase tracking-[0.14em] mb-2 mt-8" style={{ color: '#8f63df' }}>Your Name</label>
           <input

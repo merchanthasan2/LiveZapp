@@ -47,7 +47,7 @@ const COLOR_PALETTES = [
 
 // ─── Progress bar ──────────────────────────────────────────────────────────
 
-function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
+function ProgressBar({ step, isQuiz, isDark = false }: { step: EditStep; isQuiz: boolean; isDark?: boolean }) {
   const steps: EditStep[] = isQuiz
     ? ['name', 'branding', 'sections', 'questions', 'scoring', 'review']
     : ['name', 'branding', 'questions', 'review']
@@ -55,6 +55,10 @@ function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
     name: 'Name', branding: 'Brand', sections: 'Sections', questions: 'Questions', scoring: 'Scoring', review: 'Review',
   }
   const currentIdx = steps.indexOf(step)
+  const inactiveBg = isDark ? 'rgba(255,255,255,0.10)' : '#E5E7EB'
+  const inactiveText = isDark ? 'rgba(255,255,255,0.40)' : '#9CA3AF'
+  const activeLabel = isDark ? '#ffffff' : '#1A1A2E'
+  const currentBg = isDark ? '#650cd9' : '#1A1A2E'
 
   return (
     <div className="flex items-center justify-center gap-1 mb-8">
@@ -64,18 +68,18 @@ function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all"
               style={{
-                background: i < currentIdx ? '#00A6A6' : i === currentIdx ? '#1A1A2E' : '#E5E7EB',
-                color: i <= currentIdx ? '#fff' : '#9CA3AF',
+                background: i < currentIdx ? '#00A6A6' : i === currentIdx ? currentBg : inactiveBg,
+                color: i <= currentIdx ? '#fff' : inactiveText,
               }}
             >
               {i < currentIdx ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
             </div>
-            <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: i === currentIdx ? '#1A1A2E' : '#9CA3AF' }}>
+            <span className="text-[9px] font-semibold uppercase tracking-wide" style={{ color: i === currentIdx ? activeLabel : inactiveText }}>
               {labels[s]}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div className="w-8 h-0.5 mb-4 rounded-full" style={{ background: i < currentIdx ? '#00A6A6' : '#E5E7EB' }} />
+            <div className="w-8 h-0.5 mb-4 rounded-full" style={{ background: i < currentIdx ? '#00A6A6' : inactiveBg }} />
           )}
         </div>
       ))}
@@ -86,12 +90,20 @@ function ProgressBar({ step, isQuiz }: { step: EditStep; isQuiz: boolean }) {
 // ─── Question type picker overlay ─────────────────────────────────────────
 
 function QuestionTypePicker({
-  onSelect, onClose, defaultKind,
+  onSelect, onClose, defaultKind, isDark = false,
 }: {
   onSelect: (kind: QuestionKind) => void
   onClose: () => void
   defaultKind?: QuestionKind
+  isDark?: boolean
 }) {
+  const modalBg = isDark ? '#1e1f2e' : '#FFFFFF'
+  const headerBorder = isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6'
+  const headingColor = isDark ? '#ffffff' : '#1A1A2E'
+  const subColor = isDark ? 'rgba(255,255,255,0.55)' : '#6B7280'
+  const itemBg = isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB'
+  const itemBorder = isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -104,12 +116,12 @@ function QuestionTypePicker({
         exit={{ opacity: 0, scale: 0.94, y: 16 }}
         transition={{ duration: 0.18 }}
         className="w-full max-w-lg rounded-3xl overflow-hidden"
-        style={{ background: '#FFFFFF', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
+        style={{ background: modalBg, boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="px-6 pt-6 pb-4" style={{ borderBottom: '1px solid #F3F4F6' }}>
-          <h3 className="text-lg font-black" style={{ color: '#1A1A2E' }}>Choose question type</h3>
-          <p className="text-sm mt-0.5" style={{ color: '#6B7280' }}>Each question in your Zapp can be a different type</p>
+        <div className="px-6 pt-6 pb-4" style={{ borderBottom: `1px solid ${headerBorder}` }}>
+          <h3 className="text-lg font-black" style={{ color: headingColor }}>Choose question type</h3>
+          <p className="text-sm mt-0.5" style={{ color: subColor }}>Each question in your Zapp can be a different type</p>
         </div>
         <div className="p-4 space-y-2">
           {Q_TYPES.map(qt => {
@@ -121,18 +133,18 @@ function QuestionTypePicker({
                 onClick={() => onSelect(qt.kind as QuestionKind)}
                 className="w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-left transition-all active:scale-[0.99]"
                 style={{
-                  background: isDefault ? qt.bg : '#F9FAFB',
-                  border: `1.5px solid ${isDefault ? qt.border : '#E5E7EB'}`,
+                  background: isDefault ? qt.bg : itemBg,
+                  border: `1.5px solid ${isDefault ? qt.border : itemBorder}`,
                 }}
                 onMouseEnter={e => { e.currentTarget.style.background = qt.bg; e.currentTarget.style.borderColor = qt.border }}
-                onMouseLeave={e => { e.currentTarget.style.background = isDefault ? qt.bg : '#F9FAFB'; e.currentTarget.style.borderColor = isDefault ? qt.border : '#E5E7EB' }}
+                onMouseLeave={e => { e.currentTarget.style.background = isDefault ? qt.bg : itemBg; e.currentTarget.style.borderColor = isDefault ? qt.border : itemBorder }}
               >
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${qt.color}18` }}>
                   <Icon className="w-5 h-5" style={{ color: qt.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm" style={{ color: '#1A1A2E' }}>{qt.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{qt.sub}</p>
+                  <p className="font-bold text-sm" style={{ color: headingColor }}>{qt.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: subColor }}>{qt.sub}</p>
                 </div>
                 {isDefault && (
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md shrink-0" style={{ background: qt.bg, color: qt.color }}>
@@ -260,7 +272,8 @@ function EditZappPage() {
     }
     const next = map[raw]
     if (next) {
-      setStep(next)
+      const validSteps = getStepOrder()
+      setStep(validSteps.includes(next) ? next : validSteps[0])
       stepFromUrlApplied.current = true
     }
   }, [searchParams])
@@ -512,7 +525,7 @@ function EditZappPage() {
     return (
       <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-3xl mx-auto">
-          <ProgressBar step="branding" isQuiz={isQuiz} />
+          <ProgressBar step="branding" isQuiz={isQuiz} isDark={isDark} />
           <div className="rounded-2xl p-6 sm:p-8 border" style={{ background: panelBg, borderColor: border, boxShadow: cardShadow }}>
             <h1 className="text-3xl font-black mb-2" style={{ color: textStrong }}>Branding</h1>
             <p className="text-sm mb-6" style={{ color: textMuted }}>Update logo and colour before editing questions.</p>
@@ -606,7 +619,7 @@ function EditZappPage() {
     return (
       <div className="min-h-screen py-12 px-4 sm:px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-xl mx-auto">
-          <ProgressBar step="sections" isQuiz={true} />
+          <ProgressBar step="sections" isQuiz={true} isDark={isDark} />
 
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-black mb-2" style={{ color: textStrong }}>Does your Quiz have sections?</h1>
@@ -1012,6 +1025,7 @@ function EditZappPage() {
                   ? (selectedQuestion.kind as QuestionKind)
                   : (type as QuestionKind | undefined)
               }
+              isDark={isDark}
             />
           )}
         </AnimatePresence>
@@ -1031,24 +1045,25 @@ function EditZappPage() {
     ]
 
     return (
-      <div className="min-h-screen bg-[#F5F7FA] py-12 px-6">
+      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-lg mx-auto">
-          <ProgressBar step="scoring" isQuiz={true} />
+          <ProgressBar step="scoring" isQuiz={true} isDark={isDark} />
 
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>When to reveal scores?</h1>
-            <p style={{ color: '#6B7280' }}>Choose when participants see their score — you can enable multiple</p>
+            <h1 className="text-3xl font-black mb-2" style={{ color: textStrong }}>When to reveal scores?</h1>
+            <p style={{ color: textMuted }}>Choose when participants see their score — you can enable multiple</p>
           </div>
 
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden mb-6">
+          <div className="rounded-2xl overflow-hidden mb-6" style={{ background: panelBg, border: `1px solid ${border}` }}>
             {toggles.map((t, i) => (
               <div
                 key={t.key}
-                className={`flex items-center justify-between px-6 py-5 ${i < toggles.length - 1 ? 'border-b border-[#E5E7EB]' : ''}`}
+                className="flex items-center justify-between px-6 py-5"
+                style={i < toggles.length - 1 ? { borderBottom: `1px solid ${border}` } : undefined}
               >
                 <div>
-                  <p className="text-sm font-bold" style={{ color: '#1A1A2E' }}>{t.label}</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{t.desc}</p>
+                  <p className="text-sm font-bold" style={{ color: textStrong }}>{t.label}</p>
+                  <p className="text-xs mt-0.5" style={{ color: textMuted }}>{t.desc}</p>
                 </div>
                 <button
                   onClick={() => setScoring(prev => ({ ...prev, [t.key]: !prev[t.key] }))}
@@ -1065,7 +1080,7 @@ function EditZappPage() {
           </div>
 
           <div className="flex items-center justify-between">
-            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+            <button onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: textMuted }}>
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
             <button
@@ -1097,13 +1112,13 @@ function EditZappPage() {
       : [{ section: null, qs: questions }]
 
     return (
-      <div className="min-h-screen bg-[#F5F7FA] py-12 px-6">
+      <div className="min-h-screen py-12 px-6" style={{ background: pageBg }}>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto">
-          <ProgressBar step="review" isQuiz={isQuiz} />
+          <ProgressBar step="review" isQuiz={isQuiz} isDark={isDark} />
 
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-black mb-2" style={{ color: '#1A1A2E' }}>Ready to save?</h1>
-            <p style={{ color: '#6B7280' }}>Review your changes before saving</p>
+            <h1 className="text-3xl font-black mb-2" style={{ color: textStrong }}>Ready to save?</h1>
+            <p style={{ color: textMuted }}>Review your changes before saving</p>
           </div>
 
           {error && (
@@ -1114,24 +1129,24 @@ function EditZappPage() {
           )}
 
           {/* Summary card */}
-          <div className="bg-white rounded-2xl border border-[#E5E7EB] p-6 mb-6 space-y-4">
+          <div className="rounded-2xl p-6 mb-6 space-y-4" style={{ background: panelBg, border: `1px solid ${border}` }}>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-black" style={{ color: '#1A1A2E' }}>{name || 'Untitled Zapp'}</h2>
+                <h2 className="text-xl font-black" style={{ color: textStrong }}>{name || 'Untitled Zapp'}</h2>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   {typeInfo && (
                     <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: typeInfo.bg, color: typeInfo.color }}>
                       {typeInfo.name}
                     </span>
                   )}
-                  <span className="text-xs" style={{ color: '#6B7280' }}>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
-                  {useSections && <span className="text-xs" style={{ color: '#6B7280' }}>{sections.length} sections</span>}
+                  <span className="text-xs" style={{ color: textMuted }}>{questions.length} question{questions.length !== 1 ? 's' : ''}</span>
+                  {useSections && <span className="text-xs" style={{ color: textMuted }}>{sections.length} sections</span>}
                   {isQuiz && scoringLabels.length > 0 && (
-                    <span className="text-xs" style={{ color: '#6B7280' }}>Scoring: {(scoringLabels as string[]).join(', ')}</span>
+                    <span className="text-xs" style={{ color: textMuted }}>Scoring: {(scoringLabels as string[]).join(', ')}</span>
                   )}
                 </div>
               </div>
-              <button onClick={() => setStep('name')} className="p-2 rounded-lg transition-colors" style={{ color: '#9CA3AF' }} aria-label="Edit name">
+              <button onClick={() => setStep('name')} className="p-2 rounded-lg transition-colors" style={{ color: textSoft }} aria-label="Edit name">
                 <Edit2 className="w-4 h-4" />
               </button>
             </div>
@@ -1139,9 +1154,9 @@ function EditZappPage() {
 
           {/* Questions grouped */}
           {questions.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#E5E7EB] p-8 text-center mb-6">
-              <p className="font-bold" style={{ color: '#1A1A2E' }}>No questions yet</p>
-              <p className="text-sm mt-1" style={{ color: '#6B7280' }}>You can save and add questions later in the editor</p>
+            <div className="rounded-2xl p-8 text-center mb-6" style={{ background: panelBg, border: `1px solid ${border}` }}>
+              <p className="font-bold" style={{ color: textStrong }}>No questions yet</p>
+              <p className="text-sm mt-1" style={{ color: textMuted }}>You can save and add questions later in the editor</p>
               <button onClick={() => setStep('questions')} className="mt-4 text-sm font-bold" style={{ color: '#00A6A6' }}>
                 Add questions now
               </button>
@@ -1149,19 +1164,19 @@ function EditZappPage() {
           ) : (
             <div className="space-y-4 mb-6">
               {grouped.map(({ section, qs }) => (
-                <div key={section?.id ?? 'all'} className="bg-white rounded-2xl border border-[#E5E7EB] overflow-hidden">
+                <div key={section?.id ?? 'all'} className="rounded-2xl overflow-hidden" style={{ background: panelBg, border: `1px solid ${border}` }}>
                   {section && (
-                    <div className="px-5 py-3 border-b border-[#E5E7EB]" style={{ background: '#F5F7FA' }}>
-                      <p className="text-xs font-black uppercase tracking-wider" style={{ color: '#1A1A2E' }}>{section.name}</p>
+                    <div className="px-5 py-3" style={{ background: panelAlt, borderBottom: `1px solid ${border}` }}>
+                      <p className="text-xs font-black uppercase tracking-wider" style={{ color: textStrong }}>{section.name}</p>
                     </div>
                   )}
                   {qs.map((q, i) => {
                     const qtype = Q_TYPES.find(t => t.kind === q.kind)
                     return (
-                      <div key={q.id} className="flex items-center justify-between px-5 py-4 border-b border-[#F5F7FA] last:border-0">
+                      <div key={q.id} className="flex items-center justify-between px-5 py-4 last:border-0" style={{ borderBottom: `1px solid ${panelAlt}` }}>
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="text-xs font-black w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#F5F7FA', color: '#6B7280' }}>{i + 1}</span>
-                          <p className="text-sm font-medium truncate" style={{ color: q.prompt ? '#1A1A2E' : '#9CA3AF', fontStyle: q.prompt ? 'normal' : 'italic' }}>
+                          <span className="text-xs font-black w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: panelAlt, color: textMuted }}>{i + 1}</span>
+                          <p className="text-sm font-medium truncate" style={{ color: q.prompt ? textStrong : textSoft, fontStyle: q.prompt ? 'normal' : 'italic' }}>
                             {q.prompt || 'Untitled question'}
                           </p>
                         </div>
@@ -1173,8 +1188,8 @@ function EditZappPage() {
                           )}
                           {q.kind === 'quiz' && (
                             <>
-                              <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{(q as any).timerSeconds}s</span>
-                              <span className="text-[10px]" style={{ color: '#9CA3AF' }}>{(q as any).points}pts</span>
+                              <span className="text-[10px]" style={{ color: textSoft }}>{(q as any).timerSeconds}s</span>
+                              <span className="text-[10px]" style={{ color: textSoft }}>{(q as any).points}pts</span>
                             </>
                           )}
                           <button
@@ -1195,7 +1210,7 @@ function EditZappPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <button type="button" onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: '#6B7280' }}>
+            <button type="button" onClick={prevStep} className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg" style={{ color: textMuted }}>
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
             <div className="flex flex-wrap items-center gap-2 justify-end">
@@ -1204,7 +1219,7 @@ function EditZappPage() {
                 onClick={() => void saveToDashboard()}
                 disabled={isSaving}
                 className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border transition-all disabled:opacity-50"
-                style={{ borderColor: '#E5E7EB', color: '#374151', background: '#fff' }}
+                style={{ borderColor: border, color: textStrong, background: panelBg }}
               >
                 {isSaving ? 'Saving…' : 'Save'}
               </button>
