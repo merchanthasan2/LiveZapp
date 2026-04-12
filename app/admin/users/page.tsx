@@ -119,7 +119,7 @@ function TransactionsTab({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}>
+    <div className="scroll-touch overflow-x-auto rounded-xl" style={{ background: '#FFFFFF', border: '1px solid #E5E7EB' }}>
       <table className="w-full text-sm">
         <thead>
           <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
@@ -674,6 +674,7 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null)
   const [isSaving, setIsSaving]     = useState(false)
   const [toastMsg, setToastMsg]     = useState<{ text: string; ok: boolean } | null>(null)
+  const [loadError, setLoadError]   = useState<string | null>(null)
 
   useEffect(() => { loadUsers() }, [])
 
@@ -703,9 +704,13 @@ export default function AdminUsersPage() {
 
   async function loadUsers() {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const snap = await get(ref(rtdb, 'users'))
-      if (!snap.exists()) { setUsers([]); return }
+      if (!snap.exists()) {
+        setUsers([])
+        return
+      }
       const data = snap.val() as Record<string, any>
 
       const rows: UserRow[] = Object.entries(data).map(([uid, u]) => {
@@ -736,6 +741,9 @@ export default function AdminUsersPage() {
       setUsers(rows)
     } catch (e) {
       console.error('[admin/users] load failed', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load users.'
+      setLoadError(msg)
+      setUsers([])
     } finally {
       setIsLoading(false)
     }
@@ -898,7 +906,12 @@ export default function AdminUsersPage() {
 
   const filtered = sortRows(
     users.filter(u => {
-      const matchSearch  = !search || u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
+      const q = search.toLowerCase()
+      const matchSearch =
+        !search ||
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.uid.toLowerCase().includes(q)
       const matchPlan    = planFilter === 'all' || u.planId === planFilter
       const status       = userStatus(u)
       const matchStatus  =
@@ -949,7 +962,8 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex flex-wrap gap-2 self-start">
           <button
-            onClick={loadUsers}
+            type="button"
+            onClick={() => void loadUsers()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
             style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
           >
@@ -966,6 +980,15 @@ export default function AdminUsersPage() {
           </button>
         </div>
       </div>
+
+      {loadError && !isLoading && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Summary tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -994,11 +1017,11 @@ export default function AdminUsersPage() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         {/* Search */}
-        <div className="relative min-w-64">
+        <div className="relative min-w-0 w-full sm:min-w-[16rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9CA3AF' }} />
           <input
             type="text"
-            placeholder="Search name or email…"
+            placeholder="Search name, email, or UID…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
@@ -1009,25 +1032,29 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Plan filter */}
-        <div className="flex rounded-xl overflow-hidden text-xs font-bold" style={{ border: '1px solid #E5E7EB', background: '#F5F7FA' }}>
-          {['all', 'free', 'basic', 'regular', 'pro'].map(p => (
-            <button key={p} onClick={() => setPlanFilter(p)}
-              className="px-3 py-2.5 capitalize transition-all"
-              style={planFilter === p ? { background: '#1A1A2E', color: '#FFFFFF' } : { color: '#6B7280' }}>
-              {p === 'all' ? 'All plans' : p}
-            </button>
-          ))}
+        <div className="scroll-touch w-full min-w-0 overflow-x-auto sm:w-auto sm:overflow-visible">
+          <div className="inline-flex min-w-max rounded-xl text-xs font-bold" style={{ border: '1px solid #E5E7EB', background: '#F5F7FA' }}>
+            {['all', 'free', 'basic', 'regular', 'pro'].map(p => (
+              <button key={p} onClick={() => setPlanFilter(p)}
+                className="shrink-0 px-3 py-2.5 capitalize transition-all"
+                style={planFilter === p ? { background: '#1A1A2E', color: '#FFFFFF' } : { color: '#6B7280' }}>
+                {p === 'all' ? 'All plans' : p}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Status filter */}
-        <div className="flex rounded-xl overflow-hidden text-xs font-bold" style={{ border: '1px solid #E5E7EB', background: '#F5F7FA' }}>
-          {(['all', 'active', 'inactive', 'suspended', 'paid', 'admin_gift'] as StatusFilter[]).map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className="px-3 py-2.5 capitalize transition-all"
-              style={statusFilter === s ? { background: '#1A1A2E', color: '#FFFFFF' } : { color: '#6B7280' }}>
-              {s === 'admin_gift' ? 'Admin Gift' : s}
-            </button>
-          ))}
+        <div className="scroll-touch w-full min-w-0 overflow-x-auto sm:w-auto sm:overflow-visible">
+          <div className="inline-flex min-w-max rounded-xl text-xs font-bold" style={{ border: '1px solid #E5E7EB', background: '#F5F7FA' }}>
+            {(['all', 'active', 'inactive', 'suspended', 'paid', 'admin_gift'] as StatusFilter[]).map(s => (
+              <button key={s} onClick={() => setStatusFilter(s)}
+                className="shrink-0 px-3 py-2.5 capitalize transition-all"
+                style={statusFilter === s ? { background: '#1A1A2E', color: '#FFFFFF' } : { color: '#6B7280' }}>
+                {s === 'admin_gift' ? 'Admin Gift' : s}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1093,7 +1120,7 @@ export default function AdminUsersPage() {
             <p className="text-sm font-semibold" style={{ color: '#9CA3AF' }}>No users match your filters</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #F0F0F0', background: '#FAFAFA' }}>

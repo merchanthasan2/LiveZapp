@@ -629,7 +629,7 @@ function SubscribersByTierTable({ planStats }: { planStats: Record<PlanId, PlanS
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border" style={{ background: '#ffffff', borderColor: '#e8e4ef' }}>
+      <div className="scroll-touch overflow-x-auto rounded-2xl border" style={{ background: '#ffffff', borderColor: '#e8e4ef' }}>
         <table className="min-w-[640px] w-full border-collapse text-left text-sm">
           <thead>
             <tr style={{ borderBottom: '1px solid #e8e4ef' }}>
@@ -835,6 +835,7 @@ export default function AdminPlansPage() {
   const [isSavingPricing, setIsSavingPricing] = useState(false)
   const [isSyncingRates, setIsSyncingRates] = useState(false)
   const [saveStatus, setSaveStatus] = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     void loadData()
@@ -867,6 +868,7 @@ export default function AdminPlansPage() {
 
   async function loadData() {
     setIsLoading(true)
+    setLoadError(null)
 
     try {
       const [usersSnap, configSnap, pricingSnap, pricingMetaSnap] = await Promise.all([
@@ -925,7 +927,9 @@ export default function AdminPlansPage() {
       setPlanStats(nextStats)
     } catch (error) {
       console.error('[admin/plans] load failed', error)
-      setSaveStatus('Failed to load pricing data')
+      const msg = error instanceof Error ? error.message : 'Failed to load pricing data'
+      setLoadError(msg)
+      setSaveStatus('')
     } finally {
       setIsLoading(false)
     }
@@ -943,8 +947,9 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus(''), 3000)
     } catch (error) {
       console.error('Failed to save limits', error)
-      setSaveStatus('Could not save limits')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Could not save limits'
+      setSaveStatus(`Could not save limits: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     }
   }
 
@@ -960,8 +965,9 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus(''), 3000)
     } catch (error) {
       console.error('Failed to reset limits', error)
-      setSaveStatus('Could not reset limits')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Reset failed'
+      setSaveStatus(`Could not reset limits: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     }
   }
 
@@ -977,8 +983,9 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus(''), 3000)
     } catch (error) {
       console.error('Failed to save entitlements', error)
-      setSaveStatus('Could not save entitlements')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Could not save entitlements'
+      setSaveStatus(`Could not save entitlements: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     }
   }
 
@@ -994,8 +1001,9 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus(''), 3000)
     } catch (error) {
       console.error('Failed to reset entitlements', error)
-      setSaveStatus('Could not reset entitlements')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Could not reset entitlements'
+      setSaveStatus(`Could not reset entitlements: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     }
   }
 
@@ -1016,8 +1024,9 @@ export default function AdminPlansPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to save pricing engine', error)
-      setSaveStatus('Could not save pricing engine')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Could not save pricing engine'
+      setSaveStatus(`Could not save pricing engine: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     } finally {
       setIsSavingPricing(false)
     }
@@ -1058,8 +1067,9 @@ export default function AdminPlansPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to sync exchange rates', error)
-      setSaveStatus('Could not sync exchange rates')
-      setTimeout(() => setSaveStatus(''), 3500)
+      const msg = error instanceof Error ? error.message : 'Could not sync exchange rates'
+      setSaveStatus(`Could not sync exchange rates: ${msg}`)
+      setTimeout(() => setSaveStatus(''), 6000)
     } finally {
       setIsSyncingRates(false)
     }
@@ -1074,7 +1084,7 @@ export default function AdminPlansPage() {
   }
 
   return (
-    <div className="max-w-[1400px] space-y-8 pb-12">
+    <div className="mx-auto w-full min-w-0 max-w-[1400px] space-y-8 pb-12">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#bda6ff' }}>Admin console</p>
@@ -1086,7 +1096,14 @@ export default function AdminPlansPage() {
 
         <div className="flex flex-wrap items-center gap-3">
           {saveStatus && (
-            <span className="rounded-2xl border px-4 py-2 text-xs font-semibold" style={{ background: '#ecf8f7', borderColor: '#bfeae7', color: '#0f766e' }}>
+            <span
+              className="rounded-2xl border px-4 py-2 text-xs font-semibold max-w-[min(100%,28rem)]"
+              style={
+                /Could not|Failed/i.test(saveStatus)
+                  ? { background: '#FEF2F2', borderColor: '#FECACA', color: '#991B1B' }
+                  : { background: '#ecf8f7', borderColor: '#bfeae7', color: '#0f766e' }
+              }
+            >
               {saveStatus}
             </span>
           )}
@@ -1100,6 +1117,15 @@ export default function AdminPlansPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          className="rounded-2xl border px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', borderColor: '#FECACA', color: '#991B1B' }}
+        >
+          <strong className="font-semibold">Could not load plans data.</strong> {loadError}
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-3">
         {[

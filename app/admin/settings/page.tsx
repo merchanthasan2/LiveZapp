@@ -9,6 +9,7 @@ import { auth } from '@/lib/firebase'
 import {
   DEFAULT_JOIN_CONFIG,
   DEFAULT_QR_SETTINGS,
+  formatJoinCodeDisplay,
   generateJoinCodeSync,
   type JoinConfig,
   type QRSettings,
@@ -18,13 +19,7 @@ import { SITE_HOST, toAbsoluteUrl } from '@/lib/site'
 import { QRCodeSVG } from 'qrcode.react'
 
 // ─── QR Code preview (SVG placeholder — replace with `qrcode.react` in Phase 9) ────
-function QRPreview({
-  joinCode,
-  codeLength,
-}: {
-  joinCode: string
-  codeLength: number
-}) {
+function QRPreview({ joinCode }: { joinCode: string }) {
   const joinUrl = toAbsoluteUrl(`/join/${joinCode}`)
 
   return (
@@ -52,8 +47,8 @@ function QRPreview({
         <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
           Scan to join
         </p>
-        <p className="text-2xl font-bold tracking-[0.2em] text-text-primary font-mono">
-          {joinCode.slice(0, codeLength / 2)}&nbsp;{joinCode.slice(codeLength / 2)}
+        <p className="text-2xl font-bold tracking-[0.1em] text-text-primary font-mono whitespace-nowrap tabular-nums">
+          {formatJoinCodeDisplay(joinCode)}
         </p>
         <p className="text-xs text-text-secondary">
           or visit{' '}
@@ -374,10 +369,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <QRPreview
-            joinCode={previewCode}
-            codeLength={config.defaultCodeLength}
-          />
+          <QRPreview joinCode={previewCode} />
 
           <p className="text-[11px] text-text-secondary text-center">
             This preview updates live. The actual QR image is generated per session.

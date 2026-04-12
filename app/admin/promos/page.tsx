@@ -343,6 +343,7 @@ export default function AdminPromosPage() {
   const { user } = useAuth()
   const [promos, setPromos]         = useState<PromoCode[]>([])
   const [isLoading, setIsLoading]   = useState(true)
+  const [loadError, setLoadError]   = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [toastMsg, setToastMsg]     = useState<{ text: string; ok: boolean } | null>(null)
@@ -356,15 +357,22 @@ export default function AdminPromosPage() {
 
   async function loadData() {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const snap = await get(ref(rtdb, 'promoCodes'))
-      if (!snap.exists()) { setPromos([]); return }
+      if (!snap.exists()) {
+        setPromos([])
+        return
+      }
       const data = snap.val() as Record<string, PromoCode>
       setPromos(Object.values(data).sort((a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       ))
     } catch (e) {
       console.error('[admin/promos] load failed', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load promo codes.'
+      setLoadError(msg)
+      setPromos([])
     } finally {
       setIsLoading(false)
     }
@@ -448,9 +456,12 @@ export default function AdminPromosPage() {
           <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Create and manage discount codes for plan upgrades</p>
         </div>
         <div className="flex gap-2 self-start">
-          <button onClick={loadData}
+          <button
+            type="button"
+            onClick={() => void loadData()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
+            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
+          >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={() => setShowCreate(true)}
@@ -460,6 +471,15 @@ export default function AdminPromosPage() {
           </button>
         </div>
       </div>
+
+      {loadError && !isLoading && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -492,6 +512,19 @@ export default function AdminPromosPage() {
             <div className="w-8 h-8 border-4 rounded-full animate-spin"
               style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
           </div>
+        ) : loadError ? (
+          <div className="text-center py-16 space-y-4 px-4">
+            <p className="text-sm font-semibold" style={{ color: '#991B1B' }}>Could not load promo codes.</p>
+            <p className="text-xs" style={{ color: '#6B7280' }}>{loadError}</p>
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: '#1A1A2E', color: '#FFFFFF' }}
+            >
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
         ) : promos.length === 0 ? (
           <div className="text-center py-16 space-y-3">
             <Tag className="w-10 h-10 mx-auto" style={{ color: '#E5E7EB' }} />
@@ -503,7 +536,7 @@ export default function AdminPromosPage() {
             </button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import RouteFrame from '@/components/RouteFrame'
@@ -42,6 +42,16 @@ export const metadata: Metadata = {
     shortcut: '/brand/livezapp-logo-only.png',
     apple: '/brand/livezapp-logo-only.png',
   },
+}
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#fcf9f8' },
+    { media: '(prefers-color-scheme: dark)', color: '#000814' },
+  ],
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

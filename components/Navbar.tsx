@@ -62,6 +62,15 @@ function NavbarContent({ pathname }: { pathname: string }) {
   useEffect(() => { setMobileOpen(false); setProfileOpen(false) }, [pathname])
 
   useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setProfileOpen(false)
@@ -86,13 +95,11 @@ function NavbarContent({ pathname }: { pathname: string }) {
   return (
     <>
       <header
-        className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+        className="fixed left-0 right-0 top-0 z-50 backdrop-blur-none transition-all duration-300 md:backdrop-blur-xl"
         style={{
           background: scrolled
             ? 'rgba(0,8,20,0.97)'
             : 'rgba(0,8,20,0.90)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
           borderBottom: `1px solid ${scrolled ? 'rgba(101,12,217,0.20)' : 'rgba(255,255,255,0.07)'}`,
           boxShadow: scrolled ? '0 2px 24px rgba(0,0,0,0.50)' : 'none',
         }}
@@ -397,7 +404,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 z-50 flex flex-col md:hidden"
+              className="fixed top-0 right-0 bottom-0 z-50 flex min-h-0 flex-col md:hidden"
               style={{
                 width: 'min(288px, 88vw)',
                 background: '#001d3d',
@@ -415,7 +422,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="scroll-touch min-h-0 flex-1 overflow-y-auto">
                 {/* User card */}
                 {user && (
                   <div className="px-4 pt-4 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
@@ -437,7 +444,10 @@ function NavbarContent({ pathname }: { pathname: string }) {
                         { label: 'Subscription', href: '/app/settings?tab=subscription' },
                         { label: 'Branding',     href: '/app/settings?tab=branding' },
                       ].map(({ label, href }) => (
-                        <Link key={href} href={href}
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileOpen(false)}
                           className="text-center text-[11px] font-semibold py-2 rounded-lg transition-all"
                           style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.08)' }}
                         >
@@ -451,7 +461,9 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 {user && (
                   <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>App</p>
-                    <Link href="/app/dashboard"
+                    <Link
+                      href="/app/dashboard"
+                      onClick={() => setMobileOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
                       style={{ color: 'rgba(255,255,255,0.75)' }}
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(101,12,217,0.10)'; e.currentTarget.style.color = '#bfa8ff' }}
@@ -466,7 +478,9 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 {user && isAdmin && (
                   <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <p className="text-[9px] font-bold uppercase tracking-[0.16em] mb-2" style={{ color: 'rgba(255,255,255,0.30)' }}>Admin</p>
-                    <Link href="/admin"
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileOpen(false)}
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold mb-2 transition-all"
                       style={{ background: 'rgba(101,12,217,0.10)', border: '1px solid rgba(101,12,217,0.22)', color: '#FFFFFF' }}
                     >
@@ -483,7 +497,10 @@ function NavbarContent({ pathname }: { pathname: string }) {
                         { label: 'SEO',      href: '/admin/seo' },
                         { label: 'Settings', href: '/admin/settings' },
                       ].map(({ label, href }) => (
-                        <Link key={href} href={href}
+                        <Link
+                          key={href}
+                          href={href}
+                          onClick={() => setMobileOpen(false)}
                           className="text-center text-[11px] font-semibold py-2 rounded-lg transition-all"
                           style={{ background: 'rgba(101,12,217,0.08)', color: '#bfa8ff', border: '1px solid rgba(101,12,217,0.15)' }}
                         >
@@ -500,6 +517,7 @@ function NavbarContent({ pathname }: { pathname: string }) {
                     <Link
                       key={link.href}
                       href={link.href}
+                      onClick={() => setMobileOpen(false)}
                       className="flex items-center px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                       style={{ color: 'rgba(255,255,255,0.65)' }}
                       onMouseEnter={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)' }}
@@ -513,7 +531,8 @@ function NavbarContent({ pathname }: { pathname: string }) {
                 <div className="px-4 py-4">
                   {user ? (
                     <button
-                      onClick={logout}
+                      type="button"
+                      onClick={() => { setMobileOpen(false); logout() }}
                       className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold transition-all"
                       style={{ color: '#EF4444', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}
                     >

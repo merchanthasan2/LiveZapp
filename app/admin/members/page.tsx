@@ -36,6 +36,12 @@ const PLAN_BADGE: Record<string, { bg: string; text: string }> = {
 
 type SortKey = 'name' | 'planId' | 'presentations' | 'questions' | 'sessions' | 'joinedAt'
 
+function questionCountFromPresentation(p: Record<string, unknown>): number {
+  const qs = p.questions as { questions?: unknown[] } | undefined
+  if (qs && Array.isArray(qs.questions)) return qs.questions.length
+  return typeof p.questionsCount === 'number' ? p.questionsCount : 0
+}
+
 function sortRows(rows: MemberRow[], key: SortKey, asc: boolean): MemberRow[] {
   return [...rows].sort((a, b) => {
     const av = a[key] ?? ''
@@ -52,6 +58,7 @@ function sortRows(rows: MemberRow[], key: SortKey, asc: boolean): MemberRow[] {
 export default function AdminMembersPage() {
   const [members, setMembers]     = useState<MemberRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch]       = useState('')
   const [planFilter, setPlanFilter] = useState<string>('all')
   const [sortKey, setSortKey]     = useState<SortKey>('joinedAt')
@@ -63,54 +70,50 @@ export default function AdminMembersPage() {
 
   async function loadMembers() {
     setIsLoading(true)
+    setLoadError(null)
     try {
-      // Fetch all users node
-      const usersSnap = await get(ref(rtdb, 'users'))
-      if (!usersSnap.exists()) { setMembers([]); return }
+      const [usersSnap, presSnap] = await Promise.all([
+        get(ref(rtdb, 'users')),
+        get(ref(rtdb, 'presentations')),
+      ])
+      if (!usersSnap.exists()) {
+        setMembers([])
+        return
+      }
 
       const usersData = usersSnap.val() as Record<string, any>
+      const presMap = presSnap.exists() ? (presSnap.val() as Record<string, Record<string, unknown>>) : {}
 
-      const rows: MemberRow[] = await Promise.all(
-        Object.entries(usersData).map(async ([uid, userData]) => {
-          // Count presentations from the user's index
-          const presKeys = userData.presentations
-            ? Object.keys(userData.presentations)
-            : []
-          const presentationCount = presKeys.length
+      const rows: MemberRow[] = Object.entries(usersData).map(([uid, userData]) => {
+        const presKeys = userData.presentations ? Object.keys(userData.presentations) : []
+        let totalQuestions = 0
+        let totalSessions = 0
+        for (const pid of presKeys) {
+          const p = presMap[pid]
+          if (!p) continue
+          totalQuestions += questionCountFromPresentation(p)
+          if (p.status === 'live' || p.status === 'completed') totalSessions++
+        }
 
-          // Sum questions + count completed/live sessions across presentations
-          let totalQuestions = 0
-          let totalSessions  = 0
-
-          if (presKeys.length > 0) {
-            const presData = await Promise.all(
-              presKeys.map(pid => get(ref(rtdb, `presentations/${pid}`)))
-            )
-            presData.forEach(snap => {
-              if (!snap.exists()) return
-              const p = snap.val()
-              totalQuestions += p.questionsCount ?? 0
-              if (p.status === 'live' || p.status === 'completed') totalSessions++
-            })
-          }
-
-          return {
-            uid,
-            name:          userData.name          ?? 'Unknown',
-            email:         userData.email         ?? '—',
-            planId:        userData.planId        ?? 'free',
-            role:          userData.role          ?? 'user',
-            presentations: presentationCount,
-            questions:     totalQuestions,
-            sessions:      totalSessions,
-            joinedAt:      userData.createdAt     ?? null,
-          } satisfies MemberRow
-        })
-      )
+        return {
+          uid,
+          name:          userData.name          ?? 'Unknown',
+          email:         userData.email         ?? '—',
+          planId:        userData.planId        ?? 'free',
+          role:          userData.role          ?? 'user',
+          presentations: presKeys.length,
+          questions:     totalQuestions,
+          sessions:      totalSessions,
+          joinedAt:      userData.createdAt     ?? null,
+        } satisfies MemberRow
+      })
 
       setMembers(rows)
     } catch (e) {
       console.error('Failed to load members', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load members.'
+      setLoadError(msg)
+      setMembers([])
     } finally {
       setIsLoading(false)
     }
@@ -119,9 +122,12 @@ export default function AdminMembersPage() {
   // Filter + sort
   const filtered = sortRows(
     members.filter(m => {
-      const matchSearch = !search ||
-        m.name.toLowerCase().includes(search.toLowerCase()) ||
-        m.email.toLowerCase().includes(search.toLowerCase())
+      const q = search.toLowerCase()
+      const matchSearch =
+        !search ||
+        m.name.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q) ||
+        m.uid.toLowerCase().includes(q)
       const matchPlan = planFilter === 'all' || m.planId === planFilter
       return matchSearch && matchPlan
     }),
@@ -159,11 +165,12 @@ export default function AdminMembersPage() {
             Members <span style={{ color: '#00A6A6' }}>({members.length})</span>
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-            All registered accounts and their activity
+            One RTDB load for all Zapps, then per-member stats (no per-Zapp round trips).
           </p>
         </div>
         <button
-          onClick={loadMembers}
+          type="button"
+          onClick={() => void loadMembers()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all self-start"
           style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
         >
@@ -171,6 +178,15 @@ export default function AdminMembersPage() {
           Refresh
         </button>
       </div>
+
+      {loadError && !isLoading && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {/* Summary tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -208,7 +224,7 @@ export default function AdminMembersPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9CA3AF' }} />
           <input
             type="text"
-            placeholder="Search by name or email…"
+            placeholder="Search name, email, or UID…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none transition-all"
@@ -257,7 +273,7 @@ export default function AdminMembersPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ borderBottom: '1px solid #F0F0F0', background: '#FAFAFA' }}>
@@ -266,7 +282,7 @@ export default function AdminMembersPage() {
                     { key: 'planId',        label: 'Plan'   },
                     { key: 'presentations', label: 'Zapps'  },
                     { key: 'questions',     label: 'Questions'   },
-                    { key: 'sessions',      label: 'Sessions run'},
+                    { key: 'sessions',      label: 'Live / completed' },
                     { key: 'joinedAt',      label: 'Joined' },
                   ] as { key: SortKey; label: string }[]).map(col => (
                     <th

@@ -365,7 +365,6 @@ function SettingsContent() {
         file: uploadBlob,
         userId: user.id,
         slot: 'branding',
-        fileName: 'logo.webp',
       })
       updateBrand({ logoUrl: downloadUrl })
       setUploadSuccess(true)

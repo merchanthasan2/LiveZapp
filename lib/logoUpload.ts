@@ -63,6 +63,16 @@ export async function compressLogoFile(file: File, maxWidth = 640, quality = 0.8
   })
 }
 
+/** Filename for FormData; always follow blob MIME when known so PNG (bg-removed) is not saved as .webp. */
+function defaultLogoFileName(file: Blob, explicit?: string): string {
+  const t = file.type
+  if (t === 'image/png') return 'logo.png'
+  if (t === 'image/jpeg' || t === 'image/jpg') return 'logo.jpg'
+  if (t === 'image/webp') return 'logo.webp'
+  if (t === 'image/svg+xml') return 'logo.svg'
+  return explicit ?? 'logo.webp'
+}
+
 export async function uploadLogoFile({
   file,
   userId,
@@ -74,7 +84,7 @@ export async function uploadLogoFile({
   slot: LogoUploadSlot
   fileName?: string
 }) {
-  const resolvedFileName = fileName || (file.type === 'image/svg+xml' ? 'logo.svg' : 'logo.webp')
+  const resolvedFileName = defaultLogoFileName(file, fileName)
   const body = new FormData()
 
   body.append('userId', userId)

@@ -91,17 +91,25 @@ export default function AdminSeoPage() {
   const [isSaving, setIsSaving]   = useState(false)
   const [saved, setSaved]         = useState(false)
   const [error, setError]         = useState('')
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'meta' | 'analytics' | 'robots'>('meta')
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const snap = await get(ref(rtdb, 'seoConfig/main'))
       if (snap.exists()) setConfig({ ...DEFAULT_CONFIG, ...snap.val() })
     } catch (e) {
       console.error('[admin/seo] load failed', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load SEO config.'
+      setLoadError(
+        msg.includes('permission') || msg.includes('Permission')
+          ? `${msg} Deploy rules that include read/write for seoConfig/main (see database.rules.json), then refresh.`
+          : msg,
+      )
     } finally {
       setIsLoading(false)
     }
@@ -167,9 +175,12 @@ export default function AdminSeoPage() {
           </p>
         </div>
         <div className="flex gap-2 self-start">
-          <button onClick={loadData}
+          <button
+            type="button"
+            onClick={() => void loadData()}
             className="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold"
-            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
+            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
+          >
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={handleSave} disabled={isSaving}
@@ -184,6 +195,15 @@ export default function AdminSeoPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"

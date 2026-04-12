@@ -45,6 +45,7 @@ export default function AdminLogsPage() {
   const { user } = useAuth()
   const [logs, setLogs] = useState<AdminAuditLog[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState('all')
 
@@ -62,6 +63,7 @@ export default function AdminLogsPage() {
     }
 
     setIsLoading(true)
+    setLoadError(null)
     try {
       const token = await currentUser.getIdToken()
       const response = await fetch('/api/admin/logs', {
@@ -78,6 +80,9 @@ export default function AdminLogsPage() {
       setLogs(Array.isArray(data.logs) ? data.logs : [])
     } catch (e) {
       console.error('[admin/logs] load failed', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load audit logs.'
+      setLoadError(msg)
+      setLogs([])
     } finally {
       setIsLoading(false)
     }
@@ -108,11 +113,15 @@ export default function AdminLogsPage() {
   const allActions = ['all', ...Array.from(new Set(logs.map(l => l.action)))]
 
   const filtered = logs.filter(l => {
-    const matchSearch = !search ||
-      l.adminEmail?.toLowerCase().includes(search.toLowerCase()) ||
-      l.targetLabel?.toLowerCase().includes(search.toLowerCase()) ||
-      l.targetEmail?.toLowerCase().includes(search.toLowerCase()) ||
-      l.action?.toLowerCase().includes(search.toLowerCase())
+    const q = search.toLowerCase()
+    const matchSearch =
+      !search ||
+      l.adminEmail?.toLowerCase().includes(q) ||
+      l.adminUid?.toLowerCase().includes(q) ||
+      l.targetLabel?.toLowerCase().includes(q) ||
+      l.targetEmail?.toLowerCase().includes(q) ||
+      (l.targetUid && l.targetUid.toLowerCase().includes(q)) ||
+      l.action?.toLowerCase().includes(q)
     const matchAction = actionFilter === 'all' || l.action === actionFilter
     return matchSearch && matchAction
   })
@@ -128,13 +137,17 @@ export default function AdminLogsPage() {
             Audit <span style={{ color: '#00A6A6' }}>Log</span>
           </h1>
           <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
-            Append-only audit trail from the admin app · {logs.length} entries
+            Append-only audit trail (admin API writes to <code className="text-xs">adminLogs</code>) ·{' '}
+            {loadError ? '—' : logs.length} entries loaded
           </p>
         </div>
         <div className="flex gap-2 self-start">
-          <button onClick={loadData}
+          <button
+            type="button"
+            onClick={() => void loadData()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
-            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
+            style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}
+          >
             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={exportCSV}
@@ -147,11 +160,11 @@ export default function AdminLogsPage() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-        <div className="relative min-w-64">
+        <div className="relative min-w-0 w-full sm:min-w-[16rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9CA3AF' }} />
           <input
             type="text"
-            placeholder="Search admin, target, or action…"
+            placeholder="Search admin, target, UID, or action…"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
@@ -173,6 +186,15 @@ export default function AdminLogsPage() {
         )}
       </div>
 
+      {loadError && !isLoading && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
+
       {/* Log table */}
       <div className="rounded-2xl overflow-hidden"
         style={{ background: '#FFFFFF', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
@@ -181,15 +203,33 @@ export default function AdminLogsPage() {
             <div className="w-8 h-8 border-4 rounded-full animate-spin"
               style={{ borderColor: 'rgba(0,166,166,0.20)', borderTopColor: '#00A6A6' }} />
           </div>
+        ) : loadError ? (
+          <div className="text-center py-16 space-y-3 px-4">
+            <p className="text-sm font-semibold" style={{ color: '#991B1B' }}>Could not load audit log.</p>
+            <button
+              type="button"
+              onClick={() => void loadData()}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
+              style={{ background: '#1A1A2E', color: '#FFFFFF' }}
+            >
+              <RefreshCw className="w-4 h-4" /> Retry
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 space-y-2">
+          <div className="text-center py-16 space-y-2 px-4 max-w-lg mx-auto">
             <ClipboardList className="w-10 h-10 mx-auto" style={{ color: '#E5E7EB' }} />
             <p className="text-sm font-semibold" style={{ color: '#9CA3AF' }}>
               {logs.length === 0 ? 'No audit entries yet' : 'No entries match your filters'}
             </p>
+            {logs.length === 0 && (
+              <p className="text-xs" style={{ color: '#9CA3AF' }}>
+                Entries appear when privileged actions run through <code className="text-[11px]">/api/admin/*</code> and
+                write to Realtime Database. Use Refresh after performing admin tasks.
+              </p>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>

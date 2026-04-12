@@ -32,6 +32,8 @@ export default function DashboardPage() {
   const { isDark } = useTheme()
   const planLimits = usePlanLimits()
   const [presentations, setPresentations] = useState<Presentation[]>([])
+  /** Live RTDB participant count per join code (merged with stored audienceSize for display). */
+  const [liveParticipantsByJoinCode, setLiveParticipantsByJoinCode] = useState<Record<string, number>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<PresentationStatus | 'all'>('all')
@@ -112,6 +114,16 @@ export default function DashboardPage() {
         }
 
         if (isMounted) setPresentations(nextRows)
+
+        const codes = [...new Set(nextRows.map(p => p.joinCode).filter(Boolean))] as string[]
+        if (codes.length === 0) {
+          if (isMounted) setLiveParticipantsByJoinCode({})
+        } else {
+          const entries = await Promise.all(
+            codes.map(async code => [code, await LiveSessionService.getParticipantCount(code)] as const),
+          )
+          if (isMounted) setLiveParticipantsByJoinCode(Object.fromEntries(entries))
+        }
       } catch (error) {
         console.error('[dashboard] failed to load presentations', error)
       } finally {
@@ -133,6 +145,9 @@ export default function DashboardPage() {
     }
   }, [user, planLimits.plan.id])
 
+  const audienceForPresentation = (p: Presentation) =>
+    Math.max(p.audienceSize ?? 0, p.joinCode ? (liveParticipantsByJoinCode[p.joinCode] ?? 0) : 0)
+
   const filtered = useMemo(
     () => presentations
       .filter(p => filter === 'all' || p.status === filter)
@@ -140,7 +155,10 @@ export default function DashboardPage() {
     [presentations, filter, search]
   )
 
-  const totalAudience = presentations.reduce((a, p) => a + (p.audienceSize || 0), 0)
+  const totalAudience = useMemo(
+    () => presentations.reduce((a, p) => a + audienceForPresentation(p), 0),
+    [presentations, liveParticipantsByJoinCode],
+  )
   const totalQuestions = presentations.reduce((a, p) => a + (p.questionsCount || 0), 0)
   const liveNow = presentations.filter(p => p.status === 'live').length
   const currentPlanIndex = ['free', 'basic', 'regular', 'pro'].indexOf(planLimits.plan.id)
@@ -374,7 +392,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1 min-w-0 w-full">
                     <p className="font-bold truncate" style={{ color: textStrong }}>{p.title}</p>
-                    <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {p.audienceSize ?? 0} participants</p>
+                    <p className="text-xs" style={{ color: textMuted }}>{p.questionsCount ?? 0} questions • {audienceForPresentation(p)} participants</p>
                     <span className="inline-flex mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: statusStyle[p.status].bg, color: statusStyle[p.status].text }}>{p.status}</span>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto justify-end">

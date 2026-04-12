@@ -88,6 +88,12 @@
             ".write": "true",
             ".validate": "newData.hasChildren(['joinedAt']) && newData.child('name').isString() && newData.child('name').val().length <= 80"
           }
+        },
+        "campaignFeedback": {
+          "$participantId": {
+            ".write": "true",
+            ".validate": "newData.hasChildren(['vote', 'submittedAt']) && (newData.child('vote').val() === 'up' || newData.child('vote').val() === 'down') && (!newData.child('participantName').exists() || newData.child('participantName').val() === null || (newData.child('participantName').isString() && newData.child('participantName').val().length <= 80))"
+          }
         }
       }
     },
@@ -109,6 +115,18 @@
     "admin": {
       ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
       ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
+    },
+    "analytics": {
+      "pageviews": {
+        ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
+        ".write": "false"
+      }
+    },
+    "seoConfig": {
+      "main": {
+        ".read":  "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'",
+        ".write": "root.child('users').child(auth.uid).child('role').val() === 'admin' || root.child('users').child(auth.uid).child('role').val() === 'superadmin'"
+      }
     }
   }
 }

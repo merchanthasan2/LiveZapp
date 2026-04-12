@@ -208,14 +208,14 @@ function HeroSection() {
               <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#4a4455' }}>
                 Enter Zapp Code
               </span>
-              <div className="flex gap-2">
+              <div className="flex gap-2 min-w-0">
                 <input
                   type="text"
                   value={code}
                   onChange={e => setCode(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleJoin() }}
                   placeholder="000 000"
-                  className="flex-1 rounded-xl border-none py-3.5 text-center text-2xl font-bold tracking-[0.4em] outline-none"
+                  className="min-w-0 flex-1 rounded-xl border-none py-3.5 text-center text-2xl font-bold tabular-nums tracking-[0.12em] whitespace-nowrap outline-none overflow-x-auto"
                   style={{ background: '#f0edec', color: '#1c1b1b' }}
                 />
                 <button

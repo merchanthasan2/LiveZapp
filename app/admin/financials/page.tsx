@@ -76,14 +76,19 @@ function KpiCard({
 export default function AdminFinancialsPage() {
   const [users, setUsers]         = useState<UserFinancial[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => { loadData() }, [])
 
   async function loadData() {
     setIsLoading(true)
+    setLoadError(null)
     try {
       const snap = await get(ref(rtdb, 'users'))
-      if (!snap.exists()) { setUsers([]); return }
+      if (!snap.exists()) {
+        setUsers([])
+        return
+      }
       const data = snap.val() as Record<string, any>
       const rows: UserFinancial[] = Object.entries(data).map(([uid, u]) => ({
         uid,
@@ -98,6 +103,9 @@ export default function AdminFinancialsPage() {
       setUsers(rows)
     } catch (e) {
       console.error('[admin/financials] load failed', e)
+      const msg = e && typeof e === 'object' && 'message' in e ? String((e as Error).message) : 'Failed to load users.'
+      setLoadError(msg)
+      setUsers([])
     } finally {
       setIsLoading(false)
     }
@@ -198,10 +206,13 @@ export default function AdminFinancialsPage() {
           <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#1A1A2E' }}>
             Financials <span style={{ color: '#00A6A6' }}>Overview</span>
           </h1>
-          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>Revenue metrics from active subscriptions · PayPal billing</p>
+          <p className="text-sm mt-1" style={{ color: '#6B7280' }}>
+            Estimates from catalog prices in code and each user&apos;s <code className="text-xs">planId</code>,{' '}
+            <code className="text-xs">billingCycle</code>, and <code className="text-xs">planExpiresAt</code> — not bank or PayPal settlement totals.
+          </p>
         </div>
         <div className="flex gap-2 self-start">
-          <button onClick={loadData}
+          <button onClick={() => void loadData()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold"
             style={{ background: 'rgba(0,166,166,0.10)', color: '#00A6A6', border: '1px solid rgba(0,166,166,0.22)' }}>
             <RefreshCw className="w-4 h-4" /> Refresh
@@ -213,6 +224,25 @@ export default function AdminFinancialsPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B' }}
+        >
+          {loadError}
+        </div>
+      )}
+
+      {!loadError && users.length === 0 && (
+        <div
+          className="rounded-2xl px-4 py-3 text-sm"
+          style={{ background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}
+        >
+          No user rows in Realtime Database yet. MRR and subscriber tables stay at zero until profiles exist under{' '}
+          <code className="text-xs">users/</code>.
+        </div>
+      )}
 
       {/* KPI Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -389,7 +419,7 @@ export default function AdminFinancialsPage() {
             </div>
             <span className="ml-auto text-lg font-black" style={{ color: '#6366F1' }}>{adminGifted.length}</span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>
@@ -447,7 +477,7 @@ export default function AdminFinancialsPage() {
             <p className="text-sm" style={{ color: '#9CA3AF' }}>No paid subscribers yet</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="scroll-touch overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #F0F0F0' }}>

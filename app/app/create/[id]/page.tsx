@@ -298,7 +298,6 @@ function EditZappPage() {
         file: processed,
         userId: user.id,
         slot: 'branding',
-        fileName: 'logo.webp',
       })
       setBrandLogoUrl(url)
       setUploadSuccess(true)
@@ -735,10 +734,10 @@ function EditZappPage() {
     } as const
 
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: pageBg }}>
+      <div className="flex min-h-0 flex-1 flex-col" style={{ background: pageBg }}>
         {/* Top bar */}
         <div
-          className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-b z-10"
+          className="flex shrink-0 flex-col gap-3 border-b z-10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
           style={{ background: panelBg, borderColor: border, boxShadow: headerShadow }}
         >
           <div className="flex items-center gap-3 min-w-0">
@@ -841,7 +840,7 @@ function EditZappPage() {
             )}
 
             {/* Question list */}
-            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+            <div className="scroll-touch flex-1 overflow-y-auto p-2.5 space-y-1.5">
               {visibleQuestions.length === 0 && (
                 <p className="text-xs text-center py-8 px-2 leading-relaxed" style={{ color: textSoft }}>No questions yet</p>
               )}

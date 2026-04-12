@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
+import PageViewTracker from '@/components/PageViewTracker'
 
 function shouldUseMarketingChrome(pathname: string) {
   if (pathname === '/') return false
@@ -19,6 +20,7 @@ export default function RouteFrame({ children }: { children: React.ReactNode }) 
 
   return (
     <>
+      <PageViewTracker />
       {useMarketingChrome ? <Navbar /> : null}
       <main className={useMarketingChrome ? 'pt-20' : ''}>{children}</main>
       {useMarketingChrome ? <Footer /> : null}

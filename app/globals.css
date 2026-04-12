@@ -2,8 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Google Fonts — Inter ───────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Inter is loaded via next/font in app/layout.tsx (--font-inter). Do not @import fonts here —
+   a mid-file @import breaks CSS parsing in some browsers and can drop the rest of this sheet. */
 
 /* ── CSS Custom Properties ─────────────────────────────────────────── */
 :root {
@@ -131,6 +131,16 @@ body {
   .touch-target {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  /* Momentum scrolling on iOS for nested overflow areas */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .overflow-x-touch {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .safe-area-bottom {

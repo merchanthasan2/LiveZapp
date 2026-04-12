@@ -22,6 +22,7 @@ import { makeQuestion } from '@/components/question-editor/makeQuestion'
 import { Q_TYPES } from '@/components/question-editor/qtypes'
 import type { PresentationType, Question, Section, ScoringConfig } from '@/types/domain'
 import type { QuestionKind } from '@/components/question-editor/qtypes'
+import { formatJoinCodeDisplay } from '@/types/join'
 
 // ─── Color palettes (Pro) ─────────────────────────────────────────────────
 
@@ -266,7 +267,6 @@ export default function CreatePage() {
         file: uploadBlob,
         userId: user.id,
         slot: 'wizard-draft',
-        fileName: 'logo.webp',
       })
       setBrandLogoUrl(downloadUrl)
       setUploadSuccess(true)
@@ -628,8 +628,8 @@ export default function CreatePage() {
                 <div className="p-5 space-y-4">
                   <div className="rounded-[22px] p-5" style={{ background: isDark ? '#11131b' : '#ffffff', border: `1px solid ${border}` }}>
                     <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: COLOR_PALETTES[selectedPalette].primary }}>Game pin</p>
-                    <div className="mt-3 rounded-[20px] px-5 py-5 text-center text-3xl font-black tracking-[0.45em]" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f3eef7', color: textStrong }}>
-                      000 000
+                    <div className="mt-3 rounded-[20px] px-5 py-5 text-center text-3xl font-black tabular-nums tracking-[0.1em] whitespace-nowrap overflow-x-auto" style={{ background: isDark ? 'rgba(255,255,255,0.04)' : '#f3eef7', color: textStrong }}>
+                      {formatJoinCodeDisplay('000000')}
                     </div>
                   </div>
                   <button className="w-full rounded-[18px] py-3.5 text-sm font-black text-white" style={{ background: `linear-gradient(135deg, ${COLOR_PALETTES[selectedPalette].primary}, ${COLOR_PALETTES[selectedPalette].accent})`, boxShadow: '0 14px 34px rgba(101,12,217,0.20)' }}>
@@ -813,9 +813,9 @@ export default function CreatePage() {
 
   if (step === 'questions') {
     return (
-      <div className="min-h-screen flex flex-col" style={{ background: pageBg }}>
+      <div className="flex min-h-0 flex-1 flex-col" style={{ background: pageBg }}>
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 md:px-6 py-3.5" style={{ background: panelBg, borderBottom: `1px solid ${border}` }}>
+        <div className="flex shrink-0 items-center justify-between px-4 py-3.5 md:px-6" style={{ background: panelBg, borderBottom: `1px solid ${border}` }}>
           <div className="flex items-center gap-3 min-w-0">
             <button onClick={prevStep} className="p-2 rounded-lg transition-colors" style={{ color: textMuted }}>
               <ArrowLeft className="w-4 h-4" />
@@ -845,9 +845,9 @@ export default function CreatePage() {
           </div>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex min-h-0 flex-1 overflow-hidden">
           {/* Left sidebar */}
-          <div className="w-[min(100%,20rem)] sm:w-[22rem] lg:w-[26rem] xl:w-[28rem] flex flex-col overflow-hidden flex-shrink-0" style={{ background: panelBg, borderRight: `1px solid ${border}` }}>
+          <div className="flex w-[min(100%,20rem)] shrink-0 flex-col overflow-hidden sm:w-[22rem] lg:w-[26rem] xl:w-[28rem]" style={{ background: panelBg, borderRight: `1px solid ${border}` }}>
 
             {/* Section tabs (quiz with sections only) */}
             {isQuiz && useSections && (

@@ -105,9 +105,34 @@ export const LiveSessionService = {
   },
 
   /**
-   * End a live session. Sets isActive → false, presentation status → 'completed'.
+   * End a live session. Sets isActive → false, presentation status → 'completed',
+   * and persists unique participant count onto the presentation (used by dashboard + admin analytics).
    */
   async endSession(joinCode: string, presentationId: string): Promise<void> {
+    let sessionAudience = 0
+    try {
+      const partSnap = await get(ref(rtdb, `live_sessions/${joinCode}/participants`))
+      if (partSnap.exists()) {
+        const val = partSnap.val() as Record<string, unknown>
+        sessionAudience = Object.keys(val).length
+      }
+    } catch {
+      /* still end session */
+    }
+
+    let previousAudience = 0
+    try {
+      const presSnap = await get(ref(rtdb, `presentations/${presentationId}`))
+      if (presSnap.exists()) {
+        const p = presSnap.val() as { audienceSize?: number }
+        previousAudience = typeof p.audienceSize === 'number' && Number.isFinite(p.audienceSize) ? p.audienceSize : 0
+      }
+    } catch {
+      /* ignore */
+    }
+
+    const audienceSize = Math.max(previousAudience, sessionAudience)
+
     await update(ref(rtdb, `live_sessions/${joinCode}`), {
       isActive: false,
       endedAt: new Date().toISOString(),
@@ -115,6 +140,7 @@ export const LiveSessionService = {
     await update(ref(rtdb, `presentations/${presentationId}`), {
       status: 'completed',
       updatedAt: new Date().toISOString(),
+      audienceSize,
     })
   },
 
@@ -124,6 +150,14 @@ export const LiveSessionService = {
   async getSession(joinCode: string): Promise<LiveSessionData | null> {
     const snap = await get(ref(rtdb, `live_sessions/${joinCode}`))
     return snap.exists() ? (snap.val() as LiveSessionData) : null
+  },
+
+  /** Current unique participants in the lobby/session (RTDB `participants` map size). */
+  async getParticipantCount(joinCode: string): Promise<number> {
+    const snap = await get(ref(rtdb, `live_sessions/${joinCode}/participants`))
+    if (!snap.exists()) return 0
+    const val = snap.val() as Record<string, unknown>
+    return Object.keys(val).length
   },
 
   /**

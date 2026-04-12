@@ -7,6 +7,7 @@ import {
   Activity,
   BarChart3,
   CircleDollarSign,
+  LayoutDashboard,
   Megaphone,
   Radio,
   ScrollText,
@@ -60,6 +61,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setMobileMenuOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileMenuOpen])
+
   if (isLoading || !user || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#f6f2fb' }}>
@@ -86,7 +96,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const iconTone = '#6f6681'
 
   return (
-    <div className="min-h-screen flex" style={{ background: shellBg }}>
+    <div
+      className="flex min-h-screen w-full min-w-0 max-w-[100dvw] flex-row overflow-x-hidden"
+      style={{ background: shellBg }}
+    >
       <aside
         className="hidden lg:flex fixed inset-y-0 left-0 w-[280px] p-5 flex-col"
         style={{
@@ -148,13 +161,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      <div className="flex-1 lg:ml-[280px]">
-        <header className="sticky top-0 z-20 border-b" style={{ background: headerBg, borderBottomColor: headerBorder, backdropFilter: 'blur(10px)' }}>
-          <div className="mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-8 py-3.5 sm:py-4 flex items-center gap-2 sm:gap-5">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden lg:ml-[280px]">
+        <header
+          className="sticky top-0 z-20 border-b backdrop-blur-none lg:backdrop-blur-md"
+          style={{ background: headerBg, borderBottomColor: headerBorder }}
+        >
+          <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-wrap items-center gap-2 px-3 py-3.5 sm:gap-3 sm:px-6 sm:py-4 lg:gap-5 lg:px-8">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden inline-flex items-center justify-center w-11 h-11 rounded-xl border shrink-0"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border lg:hidden"
               style={{ color: navText, background: '#ffffff', borderColor: '#e4dbf1' }}
               aria-label="Open admin menu"
               aria-expanded={mobileMenuOpen}
@@ -162,51 +178,76 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             >
               <Menu className="w-5 h-5" />
             </button>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 shrink-0 rounded-full px-3.5 py-2 text-sm font-bold lg:hidden"
-              style={{ color: navActiveText, background: 'rgba(122,58,240,0.10)', border: '1px solid rgba(122,58,240,0.22)' }}
-            >
-              <Home className="w-4 h-4" /> Website
-            </Link>
-            <div className="relative max-w-2xl flex-1 min-w-0 hidden sm:block">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#9c93ac' }} />
-              <input
-                type="text"
-                placeholder="Search platform data..."
-                className="w-full rounded-full pl-10 pr-4 py-3 text-sm outline-none"
-                style={{ background: searchBg, color: searchText, border: searchBorder }}
-              />
+            <div className="flex shrink-0 items-center gap-1.5 lg:hidden">
+              <Link
+                href="/app/dashboard"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-opacity hover:opacity-90"
+                style={{ color: navActiveText, background: 'rgba(122,58,240,0.10)', borderColor: 'rgba(122,58,240,0.22)' }}
+                aria-label="Open LiveZapp app"
+                title="LiveZapp app"
+              >
+                <LayoutDashboard className="w-5 h-5" />
+              </Link>
+              <Link
+                href="/"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border transition-opacity hover:opacity-90"
+                style={{ color: navActiveText, background: 'rgba(122,58,240,0.06)', borderColor: 'rgba(122,58,240,0.16)' }}
+                aria-label="Marketing website"
+                title="Website"
+              >
+                <Home className="w-5 h-5" />
+              </Link>
             </div>
+            <Link
+              href="/admin/users"
+              className="hidden min-w-0 flex-1 items-center gap-2 rounded-full border px-4 py-3 text-sm font-semibold transition-opacity hover:opacity-90 sm:flex sm:max-w-2xl"
+              style={{ background: searchBg, color: searchText, border: searchBorder }}
+              title="Open User Administration to search by name, email, or UID"
+            >
+              <Users className="h-4 w-4 shrink-0" style={{ color: '#9c93ac' }} />
+              User search — name, email, or UID…
+            </Link>
+            <Link
+              href="/admin/users"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border sm:hidden"
+              style={{ color: iconTone, background: '#ffffff', borderColor: '#e4dbf1' }}
+              aria-label="Open user search"
+              title="User search"
+            >
+              <Users className="w-5 h-5" />
+            </Link>
             <button
               type="button"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0"
+              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full sm:flex sm:h-11 sm:w-11"
               style={{ color: iconTone, background: '#ffffff' }}
-              aria-label="Notifications"
+              aria-label="Notifications (coming soon)"
+              title="Coming soon"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-5 h-5 opacity-50" />
             </button>
             <button
               type="button"
-              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-11 sm:w-11"
               style={{ color: iconTone, background: '#ffffff' }}
               aria-label="Toggle theme"
             >
               <Moon className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-2 sm:gap-3 pl-2.5 sm:pl-5 shrink-0" style={{ borderLeft: '1px solid #ece7f5' }}>
-              <div className="text-right leading-tight hidden sm:block">
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3 sm:pl-5" style={{ borderLeft: '1px solid #ece7f5' }}>
+              <div className="hidden text-right leading-tight sm:block">
                 <p className="text-sm font-semibold" style={{ color: '#1a1a2e' }}>Admin Profile</p>
                 <p className="text-[11px] font-black uppercase tracking-wider" style={{ color: '#7a3af0' }}>Super Admin</p>
               </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm" style={{ background: 'linear-gradient(135deg,#7a3af0,#a885ff)', color: '#fff' }}>
+              <div className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold sm:h-10 sm:w-10" style={{ background: 'linear-gradient(135deg,#7a3af0,#a885ff)', color: '#fff' }}>
                 {initials}
               </div>
             </div>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1600px] px-4 sm:px-6 lg:px-8 py-6 md:py-8">{children}</main>
+        <main className="mx-auto w-full min-w-0 max-w-[1600px] flex-1 px-3 py-5 sm:px-6 sm:py-6 md:py-8 lg:px-8 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
+          {children}
+        </main>
       </div>
 
       {mobileMenuOpen && (
@@ -220,15 +261,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           />
           <aside
             id="admin-mobile-menu"
-            className="absolute inset-y-0 left-0 w-[86%] max-w-[340px] p-4 flex flex-col"
+            className="absolute inset-y-0 left-0 flex h-full min-h-0 w-[86%] max-w-[340px] flex-col overflow-hidden p-4"
             style={{ background: sidebarBg, borderRight: sidebarBorder }}
           >
-            <div className="mb-4 flex items-center justify-between px-1 py-2">
+            <div className="mb-3 flex shrink-0 items-center justify-between px-1 py-2">
               <BrandLockup href="/" size="sm" theme="light" subtitle="Admin Control" />
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-11 h-11 rounded-full flex items-center justify-center"
+                className="flex h-11 w-11 items-center justify-center rounded-full"
                 style={{ color: iconTone, background: '#f7f3fc' }}
                 aria-label="Close admin menu"
               >
@@ -236,55 +277,72 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </button>
             </div>
 
-            <nav className="flex-1 space-y-1 pt-2 overflow-y-auto" aria-label="Mobile admin navigation">
+            <nav className="scroll-touch min-h-0 flex-1 space-y-1 overflow-y-auto pt-1" aria-label="Mobile admin navigation">
               {adminLinks.map((item) => {
                 const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold transition-all"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 font-semibold transition-all"
                     style={active
                       ? { background: navActiveBg, color: navActiveText, border: navActiveBorder }
                       : { color: navText }}
                   >
-                    <item.icon className="w-4 h-4" />
+                    <item.icon className="h-4 w-4 shrink-0" />
                     <span>{item.label}</span>
                   </Link>
                 )
               })}
             </nav>
 
-            <div className="pt-4 mt-4 space-y-2" style={{ borderTop: '1px solid #ece8f4' }}>
+            <div className="mt-3 shrink-0 space-y-2 border-t pt-4 pb-[env(safe-area-inset-bottom,0px)]" style={{ borderTopColor: '#ece8f4' }}>
               <button
                 type="button"
                 className="w-full rounded-xl py-3 text-sm font-bold"
                 style={{ background: 'linear-gradient(135deg, #7a3af0, #5b21b6)', color: '#ffffff' }}
-                onClick={() => router.push('/admin/promos')}
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  router.push('/admin/promos')
+                }}
               >
                 Create New Campaign
               </button>
               <Link
+                href="/app/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
+                style={{ color: navActiveText, background: 'rgba(122,58,240,0.08)', border: '1px solid rgba(122,58,240,0.18)' }}
+              >
+                <LayoutDashboard className="h-4 w-4" /> LiveZapp app
+              </Link>
+              <Link
                 href="/admin/settings"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
                 style={{ color: navText, background: '#f8f5fc', border: '1px solid #ece7f5' }}
               >
-                <Settings className="w-4 h-4" /> Settings
+                <Settings className="h-4 w-4" /> Settings
               </Link>
               <Link
                 href="/"
-                className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold"
                 style={{ color: navActiveText, background: 'rgba(122,58,240,0.08)', border: '1px solid rgba(122,58,240,0.18)' }}
               >
-                <Home className="w-4 h-4" /> Back to website
+                <Home className="h-4 w-4" /> Back to website
               </Link>
               <button
                 type="button"
-                onClick={logout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold"
+                onClick={() => {
+                  setMobileMenuOpen(false)
+                  logout()
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-semibold"
                 style={{ color: '#4f465f', background: '#f8f5fc', border: '1px solid #ece7f5' }}
               >
-                <LogOut className="w-4 h-4" style={{ color: '#ba1a1a' }} /> Sign out
+                <LogOut className="h-4 w-4" style={{ color: '#ba1a1a' }} /> Sign out
               </button>
             </div>
           </aside>

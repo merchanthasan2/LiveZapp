@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState, useMemo } from 'react'
 import {
   AreaChart,
@@ -13,9 +14,23 @@ import {
   Bar,
   Cell,
 } from 'recharts'
-import { Monitor, Smartphone, Tablet, Globe, Clock, User, UserX, RefreshCw, MapPin, Chrome, Search } from 'lucide-react'
-import { ref, get } from 'firebase/database'
-import { rtdb } from '@/lib/firebase'
+import {
+  Monitor,
+  Smartphone,
+  Tablet,
+  Globe,
+  Clock,
+  User,
+  UserX,
+  RefreshCw,
+  MapPin,
+  Search,
+  ArrowLeftRight,
+  LogOut,
+  Radio,
+} from 'lucide-react'
+import { auth } from '@/lib/firebase'
+import { useAuth } from '@/lib/hooks/useAuth'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -70,7 +85,51 @@ function groupCount<T>(arr: T[], key: (item: T) => string): { name: string; coun
     .sort((a, b) => b.count - a.count)
 }
 
+function referrerHost(referrer: string | null): string {
+  if (!referrer || !referrer.trim()) return 'Direct / bookmark / app'
+  try {
+    const href = /^https?:\/\//i.test(referrer) ? referrer : `https://${referrer}`
+    const u = new URL(href)
+    return u.hostname || referrer.slice(0, 80)
+  } catch {
+    return referrer.slice(0, 80)
+  }
+}
+
+/** Stable per-browser session key for engagement (falls back when sessionId missing). */
+function sessionKey(v: PageView): string {
+  if (v.sessionId && String(v.sessionId).trim().length > 0) return String(v.sessionId)
+  return `anon:${v.ip}:${Math.floor(v.ts / 300_000)}`
+}
+
+/** Product area for analytics (not raw URL paths). */
+function pathToSection(path: string | null): string {
+  const raw = (path ?? '/').split('?')[0] || '/'
+  if (raw === '/' || raw === '') return 'Marketing · Home'
+  if (raw.startsWith('/admin')) return 'Admin console'
+  if (raw.startsWith('/app')) return 'Presenter app'
+  if (raw.startsWith('/join')) return 'Participant join'
+  if (raw.startsWith('/login') || raw.startsWith('/register') || raw.startsWith('/checkout')) {
+    return 'Auth & checkout'
+  }
+  if (raw.startsWith('/api')) return 'Other'
+  return 'Marketing · Site pages'
+}
+
 const BRAND_COLORS = ['#00A6A6', '#F08700', '#EFCA08', '#F49F0A', '#007A7A', '#C46E00']
+
+interface LiveOverviewState {
+  activeSessionCount: number
+  totalLiveParticipants: number
+  sessions: {
+    joinCode: string
+    presentationId: string
+    title: string
+    hostId: string
+    participantCount: number
+    isPaused: boolean
+  }[]
+}
 
 // ─── Stat Tile ────────────────────────────────────────────────────────────────
 
@@ -80,9 +139,10 @@ interface StatTileProps {
   icon: React.ReactNode
   bgColor: string
   textColor: string
+  hint?: string
 }
 
-function StatTile({ label, value, icon, bgColor, textColor }: StatTileProps) {
+function StatTile({ label, value, icon, bgColor, textColor, hint }: StatTileProps) {
   return (
     <div
       style={{
@@ -92,7 +152,7 @@ function StatTile({ label, value, icon, bgColor, textColor }: StatTileProps) {
         borderRadius: 16,
         padding: '20px 24px',
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 16,
       }}
     >
@@ -111,11 +171,14 @@ function StatTile({ label, value, icon, bgColor, textColor }: StatTileProps) {
       >
         {icon}
       </div>
-      <div>
+      <div className="min-w-0 flex-1">
         <div style={{ fontSize: 26, fontWeight: 700, color: '#1A1A2E', lineHeight: 1.1 }}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </div>
         <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{label}</div>
+        {hint ? (
+          <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 6, lineHeight: 1.35 }}>{hint}</div>
+        ) : null}
       </div>
     </div>
   )
@@ -154,34 +217,87 @@ function DeviceIcon({ device }: { device: string }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TrafficPage() {
+  const { user } = useAuth()
   const [allViews, setAllViews] = useState<PageView[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [totalInDb, setTotalInDb] = useState<number | null>(null)
+  const [capped, setCapped] = useState(false)
   const [dateRange, setDateRange] = useState<'today' | '7d' | '30d' | 'all'>('7d')
+  const [liveOverview, setLiveOverview] = useState<LiveOverviewState | null>(null)
+  const [liveError, setLiveError] = useState<string | null>(null)
 
   const loadData = async () => {
+    const currentUser = auth.currentUser
+    if (!currentUser) {
+      setAllViews([])
+      setLiveOverview(null)
+      setIsLoading(false)
+      return
+    }
+
     setIsLoading(true)
+    setLoadError(null)
+    setLiveError(null)
     try {
-      const snapshot = await get(ref(rtdb, 'analytics/pageviews'))
-      if (!snapshot.exists()) {
-        setAllViews([])
-        return
+      const token = await currentUser.getIdToken()
+      const headers = { Authorization: `Bearer ${token}` }
+
+      const [pvRes, liveRes] = await Promise.all([
+        fetch('/api/admin/pageviews', { headers, cache: 'no-store' }),
+        fetch('/api/admin/live-sessions-summary', { headers, cache: 'no-store' }),
+      ])
+
+      const liveJson = (await liveRes.json()) as {
+        success?: boolean
+        activeSessionCount?: number
+        totalLiveParticipants?: number
+        sessions?: LiveOverviewState['sessions']
+        error?: string
       }
-      const raw = snapshot.val() as Record<string, PageView>
-      const arr = Object.values(raw)
-        .sort((a, b) => b.ts - a.ts)
-        .slice(0, 500)
-      setAllViews(arr)
+      if (!liveRes.ok || !liveJson.success) {
+        setLiveError(liveJson.error || 'Could not load live Zapp snapshot.')
+        setLiveOverview(null)
+      } else {
+        setLiveOverview({
+          activeSessionCount: liveJson.activeSessionCount ?? 0,
+          totalLiveParticipants: liveJson.totalLiveParticipants ?? 0,
+          sessions: Array.isArray(liveJson.sessions) ? liveJson.sessions : [],
+        })
+      }
+
+      const data = (await pvRes.json()) as {
+        success?: boolean
+        pageviews?: PageView[]
+        totalInDatabase?: number
+        capped?: boolean
+        error?: string
+      }
+      if (!pvRes.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load traffic data.')
+      }
+      setAllViews(Array.isArray(data.pageviews) ? data.pageviews : [])
+      setTotalInDb(typeof data.totalInDatabase === 'number' ? data.totalInDatabase : null)
+      setCapped(Boolean(data.capped))
     } catch (err) {
       console.error('[traffic] load error:', err)
+      const msg =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as Error).message)
+          : 'Failed to load analytics.'
+      setLoadError(msg)
       setAllViews([])
+      setTotalInDb(null)
+      setCapped(false)
     } finally {
       setIsLoading(false)
     }
   }
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (!user) return
+    void loadData()
+  }, [user])
 
   // ── Filter by date range ──────────────────────────────────────────────────
 
@@ -199,14 +315,40 @@ export default function TrafficPage() {
 
   // ── Computed stats ────────────────────────────────────────────────────────
 
-  const totalVisits = views.length
-  const uniqueVisitors = useMemo(() => new Set(views.map((v) => v.sessionId)).size, [views])
-  const registeredUsers = useMemo(() => views.filter((v) => v.isRegistered === true).length, [views])
-  const anonymousUsers = useMemo(() => views.filter((v) => v.isRegistered === false).length, [views])
+  const totalPageViews = views.length
+
+  const engagement = useMemo(() => {
+    const byKey = new Map<string, number>()
+    for (const v of views) {
+      const k = sessionKey(v)
+      byKey.set(k, (byKey.get(k) ?? 0) + 1)
+    }
+    let singlePage = 0
+    let multiPage = 0
+    for (const n of byKey.values()) {
+      if (n <= 1) singlePage++
+      else multiPage++
+    }
+    const sessions = byKey.size
+    const bouncePct = sessions > 0 ? Math.round((singlePage / sessions) * 100) : 0
+    return { sessions, singlePage, multiPage, bouncePct }
+  }, [views])
+
+  const uniqueVisitors = engagement.sessions
+  const loggedInHits = useMemo(() => views.filter((v) => v.isRegistered === true).length, [views])
+  const anonymousHits = useMemo(() => views.filter((v) => v.isRegistered === false).length, [views])
+  const distinctLoggedInUsers = useMemo(() => {
+    const ids = new Set<string>()
+    for (const v of views) {
+      const id = v.userId && String(v.userId).trim()
+      if (id) ids.add(id)
+    }
+    return ids.size
+  }, [views])
 
   // ── Visits over time ──────────────────────────────────────────────────────
 
-  const visitsOverTime = useMemo(() => {
+  const pageViewsOverTime = useMemo(() => {
     const map: Record<string, number> = {}
     for (const v of views) {
       const d = toDateStr(v.ts)
@@ -214,16 +356,27 @@ export default function TrafficPage() {
     }
     return Object.entries(map)
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, visits]) => ({ date, visits }))
+      .map(([date, pageViews]) => ({ date, pageViews }))
   }, [views])
 
   // ── Breakdowns ────────────────────────────────────────────────────────────
 
   const countryData = useMemo(() => groupCount(views, (v) => v.country || 'Unknown').slice(0, 10), [views])
+  const cityData = useMemo(
+    () =>
+      groupCount(views, (v) => {
+        if (v.city && v.countryCode) return `${v.city}, ${v.countryCode}`
+        if (v.city) return v.city
+        if (v.region && v.country) return `${v.region}, ${v.country}`
+        return v.country || 'Unknown'
+      }).slice(0, 12),
+    [views],
+  )
+  const referrerData = useMemo(() => groupCount(views, (v) => referrerHost(v.referrer)).slice(0, 12), [views])
   const deviceData = useMemo(() => groupCount(views, (v) => v.device || 'Unknown'), [views])
   const osData = useMemo(() => groupCount(views, (v) => v.os || 'Unknown').slice(0, 6), [views])
   const browserData = useMemo(() => groupCount(views, (v) => v.browser || 'Unknown').slice(0, 6), [views])
-  const topPages = useMemo(() => groupCount(views, (v) => v.path || '/').slice(0, 10), [views])
+  const sectionData = useMemo(() => groupCount(views, (v) => pathToSection(v.path)).slice(0, 12), [views])
 
   // ── Recent visits ─────────────────────────────────────────────────────────
 
@@ -239,9 +392,9 @@ export default function TrafficPage() {
   ]
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F5F7FA', padding: '32px 24px' }}>
+    <div className="w-full min-w-0 max-w-full bg-[#F5F7FA] px-3 py-5 sm:px-5 sm:py-6 md:px-6">
       {/* Header */}
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
+      <div className="mx-auto w-full min-w-0 max-w-[1280px]">
         <div
           style={{
             display: 'flex',
@@ -254,8 +407,10 @@ export default function TrafficPage() {
         >
           <div>
             <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1A1A2E', margin: 0 }}>Traffic Analytics</h1>
-            <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0' }}>
-              Page view tracking and visitor insights
+            <p style={{ fontSize: 14, color: '#6B7280', margin: '4px 0 0', maxWidth: 720, lineHeight: 1.45 }}>
+              Site page views (each navigation is one hit) — not the same as unique people or live audience in a Zapp. Use{' '}
+              <strong>Unique sessions</strong> and <strong>Distinct logged-in users</strong> for people-ish signals; use{' '}
+              <strong>Live Zapps</strong> for who is in sessions right now.
             </p>
           </div>
 
@@ -315,6 +470,131 @@ export default function TrafficPage() {
           </div>
         </div>
 
+        {loadError && !isLoading && (
+          <div
+            style={{
+              marginBottom: 20,
+              padding: '14px 18px',
+              borderRadius: 12,
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              color: '#991B1B',
+              fontSize: 14,
+            }}
+          >
+            {loadError}
+          </div>
+        )}
+
+        {liveError && !isLoading && user && (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: '12px 16px',
+              borderRadius: 12,
+              background: '#FFFBEB',
+              border: '1px solid #FDE68A',
+              color: '#92400E',
+              fontSize: 13,
+            }}
+          >
+            {liveError}
+          </div>
+        )}
+
+        {!isLoading && user && liveOverview && (
+          <Card title="Live Zapps now" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Radio size={20} color="#00A6A6" />
+                <span style={{ fontSize: 15, fontWeight: 600, color: '#1A1A2E' }}>
+                  {liveOverview.totalLiveParticipants.toLocaleString()} live participant
+                  {liveOverview.totalLiveParticipants === 1 ? '' : 's'}
+                </span>
+                <span style={{ fontSize: 13, color: '#6B7280' }}>
+                  across {liveOverview.activeSessionCount} active session
+                  {liveOverview.activeSessionCount === 1 ? '' : 's'}
+                </span>
+              </div>
+            </div>
+            {liveOverview.sessions.length === 0 ? (
+              <p style={{ margin: 0, fontSize: 14, color: '#6B7280' }}>
+                No active Zapps right now. When a host starts a session and participants join, they appear here with join
+                links.
+              </p>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      {['Join', 'Participants', 'Title', 'Host', 'Status'].map((h) => (
+                        <th
+                          key={h}
+                          style={{
+                            textAlign: 'left',
+                            padding: '8px 12px',
+                            color: '#6B7280',
+                            fontWeight: 600,
+                            fontSize: 12,
+                            borderBottom: '1px solid #E5E7EB',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {liveOverview.sessions.map((s) => (
+                      <tr key={s.joinCode}>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F4F6' }}>
+                          <Link
+                            href={`/join/${encodeURIComponent(s.joinCode)}`}
+                            style={{ color: '#00A6A6', fontWeight: 600, textDecoration: 'none' }}
+                          >
+                            /join/{s.joinCode}
+                          </Link>
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F4F6', fontWeight: 600 }}>
+                          {s.participantCount}
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 12px',
+                            borderBottom: '1px solid #F3F4F6',
+                            maxWidth: 240,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                          title={s.title}
+                        >
+                          {s.title || '—'}
+                        </td>
+                        <td
+                          style={{
+                            padding: '10px 12px',
+                            borderBottom: '1px solid #F3F4F6',
+                            fontFamily: 'monospace',
+                            fontSize: 12,
+                            color: '#6B7280',
+                          }}
+                        >
+                          {s.hostId ? `${s.hostId.slice(0, 8)}…` : '—'}
+                        </td>
+                        <td style={{ padding: '10px 12px', borderBottom: '1px solid #F3F4F6', color: '#6B7280' }}>
+                          {s.isPaused ? 'Paused' : 'Live'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+
         {/* Loading spinner */}
         {isLoading && (
           <div style={{ textAlign: 'center', padding: '80px 0' }}>
@@ -333,8 +613,8 @@ export default function TrafficPage() {
           </div>
         )}
 
-        {/* Empty state */}
-        {!isLoading && views.length === 0 && (
+        {/* Empty: no data in database */}
+        {!isLoading && !loadError && allViews.length === 0 && (
           <div
             style={{
               textAlign: 'center',
@@ -345,9 +625,29 @@ export default function TrafficPage() {
             }}
           >
             <Globe size={48} color="#E5E7EB" style={{ marginBottom: 16 }} />
-            <h3 style={{ color: '#1A1A2E', fontSize: 18, fontWeight: 600, margin: '0 0 8px' }}>No data yet</h3>
+            <h3 style={{ color: '#1A1A2E', fontSize: 18, fontWeight: 600, margin: '0 0 8px' }}>No traffic data yet</h3>
+            <p style={{ color: '#6B7280', fontSize: 14, margin: '0 auto', maxWidth: 460, lineHeight: 1.5 }}>
+              Page views are sent to <code style={{ fontSize: 12 }}>/api/track</code> on each navigation (device, OS, geo,
+              referrer). Browse the public site while signed out or in, then refresh. If this stays empty, confirm{' '}
+              <code style={{ fontSize: 12 }}>FIREBASE_ADMIN_*</code> is set so the track API can write to Realtime Database.
+            </p>
+          </div>
+        )}
+
+        {/* Filtered range has no rows */}
+        {!isLoading && !loadError && allViews.length > 0 && views.length === 0 && (
+          <div
+            style={{
+              textAlign: 'center',
+              padding: '48px 24px',
+              background: '#ffffff',
+              borderRadius: 16,
+              border: '1px solid #E5E7EB',
+              marginBottom: 16,
+            }}
+          >
             <p style={{ color: '#6B7280', fontSize: 14, margin: 0 }}>
-              Visit some pages to start collecting data
+              No page views in the selected date range. Try <strong>All Time</strong> or a wider window.
             </p>
           </div>
         )}
@@ -355,6 +655,23 @@ export default function TrafficPage() {
         {/* Dashboard content */}
         {!isLoading && views.length > 0 && (
           <>
+            {capped && totalInDb != null && (
+              <div
+                style={{
+                  marginBottom: 16,
+                  padding: '12px 16px',
+                  borderRadius: 12,
+                  background: '#EFF6FF',
+                  border: '1px solid #BFDBFE',
+                  color: '#1E40AF',
+                  fontSize: 13,
+                }}
+              >
+                Showing the <strong>{allViews.length.toLocaleString()}</strong> most recent events of{' '}
+                <strong>{totalInDb.toLocaleString()}</strong> stored. Charts and tables use this sample; widen infrastructure
+                later if you need full history in-browser.
+              </div>
+            )}
             {/* Stat tiles */}
             <div
               style={{
@@ -365,39 +682,67 @@ export default function TrafficPage() {
               }}
             >
               <StatTile
-                label="Total Visits"
-                value={totalVisits}
+                label="Page views"
+                value={totalPageViews}
                 icon={<Globe size={22} />}
                 bgColor="#00A6A6"
                 textColor="#ffffff"
+                hint="Every page load in this date range. One person browsing five pages counts as five."
               />
               <StatTile
-                label="Unique Visitors"
+                label="Unique sessions"
                 value={uniqueVisitors}
                 icon={<User size={22} />}
                 bgColor="#EFCA08"
                 textColor="#1A1A2E"
+                hint="Estimated browsers (session id or IP + time bucket). Not the same as logged-in accounts."
               />
               <StatTile
-                label="Registered Users"
-                value={registeredUsers}
+                label="Distinct logged-in users"
+                value={distinctLoggedInUsers}
+                icon={<User size={22} />}
+                bgColor="#007A7A"
+                textColor="#ffffff"
+                hint="Unique user IDs on logged-in hits in this range."
+              />
+              <StatTile
+                label="Logged-in hits"
+                value={loggedInHits}
                 icon={<User size={22} />}
                 bgColor="#F08700"
                 textColor="#ffffff"
+                hint="Page views while signed in (can be many per user)."
               />
               <StatTile
-                label="Anonymous Users"
-                value={anonymousUsers}
+                label="Anonymous hits"
+                value={anonymousHits}
                 icon={<UserX size={22} />}
                 bgColor="#F49F0A"
                 textColor="#1A1A2E"
+                hint="Page views with no Firebase user on the request."
+              />
+              <StatTile
+                label="Bounce rate (est.)"
+                value={`${engagement.bouncePct}%`}
+                icon={<LogOut size={22} />}
+                bgColor="#1A1A2E"
+                textColor="#ffffff"
+                hint="Share of sessions with only one page view in this sample."
+              />
+              <StatTile
+                label="Multi-page sessions"
+                value={engagement.multiPage}
+                icon={<ArrowLeftRight size={22} />}
+                bgColor="#00A6A6"
+                textColor="#ffffff"
+                hint="Sessions with more than one page view in the selected range."
               />
             </div>
 
             {/* Visits over time chart */}
-            <Card title="Visits Over Time" style={{ marginBottom: 24 }}>
+            <Card title="Page views over time" style={{ marginBottom: 24 }}>
               <ResponsiveContainer width="100%" height={220}>
-                <AreaChart data={visitsOverTime} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                <AreaChart data={pageViewsOverTime} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="tealGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#00A6A6" stopOpacity={0.25} />
@@ -427,7 +772,8 @@ export default function TrafficPage() {
                   />
                   <Area
                     type="monotone"
-                    dataKey="visits"
+                    dataKey="pageViews"
+                    name="Page views"
                     stroke="#00A6A6"
                     strokeWidth={2}
                     fill="url(#tealGradient)"
@@ -469,11 +815,57 @@ export default function TrafficPage() {
                 </ResponsiveContainer>
               </Card>
 
+              <Card title="Top cities & regions">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={cityData} layout="vertical" margin={{ left: 4, right: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#6B7280' }} tickLine={false} axisLine={false} width={118} />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#ffffff',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                      {cityData.map((_, i) => (
+                        <Cell key={i} fill={BRAND_COLORS[(i + 2) % BRAND_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+
+              <Card title="Traffic sources (referrer host)">
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={referrerData} layout="vertical" margin={{ left: 4, right: 16 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" horizontal={false} />
+                    <XAxis type="number" tick={{ fontSize: 11, fill: '#6B7280' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis dataKey="name" type="category" tick={{ fontSize: 11, fill: '#6B7280' }} tickLine={false} axisLine={false} width={118} />
+                    <Tooltip
+                      contentStyle={{
+                        background: '#ffffff',
+                        border: '1px solid #E5E7EB',
+                        borderRadius: 8,
+                        fontSize: 12,
+                      }}
+                    />
+                    <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+                      {referrerData.map((_, i) => (
+                        <Cell key={i} fill={BRAND_COLORS[(i + 1) % BRAND_COLORS.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+
               {/* Device breakdown */}
               <Card title="Device Types">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
                   {deviceData.map((d, i) => {
-                    const pct = totalVisits > 0 ? Math.round((d.count / totalVisits) * 100) : 0
+                    const pct = totalPageViews > 0 ? Math.round((d.count / totalPageViews) * 100) : 0
                     return (
                       <div key={d.name}>
                         <div
@@ -514,7 +906,7 @@ export default function TrafficPage() {
               <Card title="Operating Systems">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
                   {osData.map((d, i) => {
-                    const pct = totalVisits > 0 ? Math.round((d.count / totalVisits) * 100) : 0
+                    const pct = totalPageViews > 0 ? Math.round((d.count / totalPageViews) * 100) : 0
                     return (
                       <div key={d.name}>
                         <div
@@ -552,7 +944,7 @@ export default function TrafficPage() {
               <Card title="Browsers">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingTop: 4 }}>
                   {browserData.map((d, i) => {
-                    const pct = totalVisits > 0 ? Math.round((d.count / totalVisits) * 100) : 0
+                    const pct = totalPageViews > 0 ? Math.round((d.count / totalPageViews) * 100) : 0
                     return (
                       <div key={d.name}>
                         <div
@@ -586,11 +978,14 @@ export default function TrafficPage() {
                 </div>
               </Card>
 
-              {/* Top pages */}
-              <Card title="Top Pages" style={{ gridColumn: 'span 2' }}>
+              {/* Traffic by product section */}
+              <Card title="Traffic by section" style={{ gridColumn: 'span 2' }}>
+                <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 12px', lineHeight: 1.4 }}>
+                  Paths grouped into product areas (marketing, app, join, admin, etc.), not individual URLs.
+                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {topPages.map((p, i) => {
-                    const pct = totalVisits > 0 ? Math.round((p.count / totalVisits) * 100) : 0
+                  {sectionData.map((p, i) => {
+                    const pct = totalPageViews > 0 ? Math.round((p.count / totalPageViews) * 100) : 0
                     return (
                       <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <span
@@ -615,7 +1010,6 @@ export default function TrafficPage() {
                             flex: 1,
                             fontSize: 13,
                             color: '#1A1A2E',
-                            fontFamily: 'monospace',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
@@ -634,27 +1028,28 @@ export default function TrafficPage() {
             </div>
 
             {/* Recent visits table */}
-            <Card title="Recent Visits">
+            <Card title="Recent page views">
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr>
-                      {['Time', 'Page', 'User', 'Location', 'Device', 'OS', 'Browser', 'IP'].map((h) => (
-                        <th
-                          key={h}
-                          style={{
-                            textAlign: 'left',
-                            padding: '8px 12px',
-                            color: '#6B7280',
-                            fontWeight: 600,
-                            fontSize: 12,
-                            borderBottom: '1px solid #E5E7EB',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {h}
-                        </th>
-                      ))}
+                      {['Time', 'Page', 'Section', 'Referrer', 'User', 'Location', 'Device', 'OS', 'Browser', 'IP'].map(
+                        (h) => (
+                          <th
+                            key={h}
+                            style={{
+                              textAlign: 'left',
+                              padding: '8px 12px',
+                              color: '#6B7280',
+                              fontWeight: 600,
+                              fontSize: 12,
+                              borderBottom: '1px solid #E5E7EB',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {h}
+                          </th>
+                        ))}
                     </tr>
                   </thead>
                   <tbody>
@@ -704,6 +1099,39 @@ export default function TrafficPage() {
                             }}
                           >
                             {v.path ?? '/'}
+                          </td>
+
+                          {/* Section */}
+                          <td
+                            style={{
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #F3F4F6',
+                              maxWidth: 160,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: '#374151',
+                              fontSize: 12,
+                            }}
+                          >
+                            {pathToSection(v.path)}
+                          </td>
+
+                          {/* Referrer */}
+                          <td
+                            style={{
+                              padding: '10px 12px',
+                              borderBottom: '1px solid #F3F4F6',
+                              maxWidth: 160,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: '#374151',
+                              fontSize: 12,
+                            }}
+                            title={v.referrer ?? undefined}
+                          >
+                            {referrerHost(v.referrer)}
                           </td>
 
                           {/* User */}

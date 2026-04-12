@@ -117,10 +117,14 @@ export const PresentationService = {
   },
 
   /**
-   * Check how many participants are in a live session vs the plan cap.
-   * Called by LiveSessionService when a participant tries to join.
+   * Check live participant count vs the host's plan cap (counts RTDB `live_sessions/{joinCode}/participants`).
+   * If `participantId` is already in that map, allow (reconnect / same device).
    */
-  async canParticipantJoin(presentationId: string): Promise<{ allowed: boolean; reason?: string }> {
+  async canParticipantJoin(
+    presentationId: string,
+    joinCode: string,
+    participantId?: string,
+  ): Promise<{ allowed: boolean; reason?: string }> {
     const presentation = await this.getPresentation(presentationId);
     if (!presentation) return { allowed: false, reason: 'Session not found.' };
 
@@ -131,7 +135,14 @@ export const PresentationService = {
     const plan = PLANS.find(p => p.id === (profile.planId ?? 'free'))!;
     const cap = plan.limits.maxParticipantsPerSession;
 
-    if (presentation.audienceSize >= cap) {
+    const partSnap = await get(ref(rtdb, `live_sessions/${joinCode}/participants`));
+    const raw = partSnap.exists() ? (partSnap.val() as Record<string, unknown>) : {};
+    const ids = Object.keys(raw);
+    if (participantId && ids.includes(participantId)) {
+      return { allowed: true };
+    }
+    const participantCount = ids.length;
+    if (participantCount >= cap) {
       return {
         allowed: false,
         reason: `This session has reached its participant limit (${cap.toLocaleString()}).`,

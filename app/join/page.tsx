@@ -52,7 +52,7 @@ export default function JoinLandingPage() {
             onChange={e => { setCode(e.target.value); if (codeError) setCodeError('') }}
             onKeyDown={e => { if (e.key === 'Enter') handleJoin() }}
             placeholder="000 000"
-            className="w-full rounded-3xl px-5 sm:px-6 py-4 sm:py-5 text-center text-3xl sm:text-4xl md:text-5xl font-black tracking-[0.18em] sm:tracking-[0.25em] outline-none"
+            className="w-full max-w-full rounded-3xl px-5 sm:px-6 py-4 sm:py-5 text-center text-3xl sm:text-4xl md:text-5xl font-black tabular-nums tracking-[0.08em] sm:tracking-[0.1em] whitespace-nowrap outline-none overflow-x-auto"
             style={{ background: '#ece9e8', color: '#a9a2b8' }}
           />
           {codeError && <p className="text-sm font-semibold mt-2 text-center" style={{ color: '#dc2626' }}>{codeError}</p>}

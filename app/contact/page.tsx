@@ -49,7 +49,7 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="py-24">
+    <div className="py-24 pb-[max(6rem,calc(env(safe-area-inset-bottom,0px)+4rem))]">
       <div className="section-container">
         {/* Header */}
         <div className="text-center mb-16">

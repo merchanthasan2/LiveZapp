@@ -14,6 +14,8 @@ export interface AdminOverviewStats {
   mrr: number
   planDist: { id: string; name: string; count: number; color: string; textColor: string }[]
   recentUsers: { name: string; email: string; planId: string; createdAt: string | null }[]
+  /** Daily Zapp (presentation) creations for the area chart, last 30 UTC days. */
+  zappsCreatedByDay: { date: string; count: number }[]
   source: 'firestore' | 'rtdb'
 }
 
@@ -57,6 +59,28 @@ function isActivePaidUser(u: any): boolean {
 function asNumber(value: any): number {
   const n = Number(value)
   return Number.isFinite(n) ? n : 0
+}
+
+/** UTC calendar days, oldest → newest, for chart-friendly series. */
+function buildZappsCreatedLastNDays(presentations: any[], days: number): { date: string; count: number }[] {
+  const series: { date: string; count: number }[] = []
+  const todayUtc = new Date()
+  const y = todayUtc.getUTCFullYear()
+  const m = todayUtc.getUTCMonth()
+  const d = todayUtc.getUTCDate()
+  for (let i = days - 1; i >= 0; i--) {
+    const dt = new Date(Date.UTC(y, m, d - i))
+    series.push({ date: dt.toISOString().slice(0, 10), count: 0 })
+  }
+  const byDate = new Map(series.map(s => [s.date, s]))
+  for (const p of presentations) {
+    const cd = toDateValue(p?.createdAt)
+    if (!cd) continue
+    const key = cd.toISOString().slice(0, 10)
+    const slot = byDate.get(key)
+    if (slot) slot.count++
+  }
+  return series
 }
 
 function buildOverviewFromData(
@@ -103,7 +127,7 @@ function buildOverviewFromData(
       const aDate = toDateValue(a?.createdAt)?.getTime() ?? 0
       return bDate - aDate
     })
-    .slice(0, 5)
+    .slice(0, 8)
     .map(u => {
       const createdAt = toDateValue(u?.createdAt)
       return {
@@ -113,6 +137,8 @@ function buildOverviewFromData(
         createdAt: createdAt ? createdAt.toISOString() : null,
       }
     })
+
+  const zappsCreatedByDay = buildZappsCreatedLastNDays(allPresentations, 30)
 
   return {
     totalUsers,
@@ -125,6 +151,7 @@ function buildOverviewFromData(
     mrr,
     planDist,
     recentUsers,
+    zappsCreatedByDay,
     source,
   }
 }

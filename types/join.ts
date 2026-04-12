@@ -30,6 +30,17 @@ export const DEFAULT_QR_SETTINGS: QRSettings = {
 }
 
 /**
+ * Present a join code on one line with a space between halves for readability.
+ * Strips existing spaces first; does not change the value used in URLs or clipboard.
+ */
+export function formatJoinCodeDisplay(code: string): string {
+  const c = code.replace(/\s/g, '').trim()
+  if (c.length < 4) return code.trim()
+  const mid = Math.floor(c.length / 2)
+  return `${c.slice(0, mid)} ${c.slice(mid)}`
+}
+
+/**
  * Generates a numeric-only join code of the given length.
  * Checks uniqueness by querying Firebase to ensure no collision with active sessions.
  */

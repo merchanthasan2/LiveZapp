@@ -8,7 +8,7 @@ import {
   CheckCircle2, AlertCircle, Sparkles, BarChart3, Cloud,
   MessageSquare, Star, ChevronLeft, ChevronRight, Radio,
   Maximize2, Minimize2, Pause, Moon, Sun,
-  LayoutDashboard, List, X, ThumbsUp, ThumbsDown, Gift,
+  LayoutDashboard, List, X, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
@@ -22,7 +22,7 @@ import { BrandingService } from '@/lib/services/BrandingService'
 import ShareJoinLink from '@/components/ShareJoinLink'
 import BrandLockup from '@/components/BrandLockup'
 import { SITE_HOST, SITE_URL } from '@/lib/site'
-import { generateJoinCode } from '@/types/join'
+import { generateJoinCode, formatJoinCodeDisplay } from '@/types/join'
 import type {
   Presentation, Question, QuizQuestion, PollQuestion,
   FeedbackQuestion, QAQuestion, WordCloudQuestion,
@@ -88,6 +88,16 @@ function mix(hex: string, otherHex: string, weight: number): string {
   const clamp = Math.max(0, Math.min(1, weight))
   const toHex = (n: number) => Math.round(n).toString(16).padStart(2, '0')
   return `#${toHex(a.r + (b.r - a.r) * clamp)}${toHex(a.g + (b.g - a.g) * clamp)}${toHex(a.b + (b.b - a.b) * clamp)}`.toUpperCase()
+}
+
+function readableText(hex: string): string {
+  const { r, g, b } = hexToRgb(hex)
+  const [rs, gs, bs] = [r, g, b].map((v) => {
+    const c = v / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  })
+  const luminance = 0.2126 * rs + 0.7152 * gs + 0.0722 * bs
+  return luminance > 0.58 ? '#111827' : '#FFFFFF'
 }
 
 // â”€â”€â”€ Dashboard-mode BarChart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -326,7 +336,22 @@ function QRPanel({ joinCode }: { joinCode: string }) {
 
 // â”€â”€â”€ Fullscreen: Join/QR slide â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName, accentColor }: { joinCode: string; onStart: () => void; brandLogoUrl?: string; brandName?: string; accentColor?: string }) {
+function JoinSlide({
+  joinCode,
+  onStart,
+  brandLogoUrl,
+  brandName,
+  presentationTitle,
+  accentColor,
+}: {
+  joinCode: string
+  onStart: () => void
+  brandLogoUrl?: string
+  brandName?: string
+  /** Shown as the large headline (Zapp / session name). */
+  presentationTitle?: string
+  accentColor?: string
+}) {
   const prodOrigin = process.env.NEXT_PUBLIC_APP_URL ?? SITE_URL
   const accent = normalizeHexColor(accentColor)
   const accentDeep = mix(accent, '#12081F', 0.38)
@@ -353,6 +378,9 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName, accentColor }: 
     ? `${lanIp}${port ? `:${port}` : ''}/join/${joinCode}`
     : `${SITE_HOST}/join/${joinCode}`
 
+  const headline =
+    presentationTitle?.trim() || brandName?.trim() || 'LiveZapp Session'
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -368,20 +396,20 @@ function JoinSlide({ joinCode, onStart, brandLogoUrl, brandName, accentColor }: 
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 md:gap-5 min-w-0 text-center sm:text-left">
               {brandLogoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={brandLogoUrl} alt={brandName || 'Brand logo'} className="h-20 sm:h-24 max-w-[240px] object-contain shrink-0 drop-shadow-[0_8px_24px_rgba(0,0,0,0.30)]" />
+                <img src={brandLogoUrl} alt={headline} className="h-20 sm:h-24 max-w-[240px] object-contain shrink-0 drop-shadow-[0_8px_24px_rgba(0,0,0,0.30)]" />
               ) : (
                 <BrandLockup href="/" size="lg" theme="dark" />
               )}
               <div className="min-w-0 max-w-3xl">
                 <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: '#9CA3AF' }}>Join lobby</p>
-                <p className="text-3xl md:text-4xl xl:text-5xl font-black mt-2 break-words" style={{ color: '#f4efff' }}>{brandName || 'LiveZapp Session'}</p>
+                <p className="text-3xl md:text-4xl xl:text-5xl font-black mt-2 break-words" style={{ color: '#f4efff' }}>{headline}</p>
                 <p className="text-base md:text-lg mt-2 max-w-3xl" style={{ color: '#b6acc7' }}>Invite everyone in, let the room fill, then start the Zapp when you&apos;re ready.</p>
               </div>
             </div>
 
-            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-[1.35rem] px-5 sm:px-6 py-4 self-center xl:self-start min-w-[200px]" style={{ background: `linear-gradient(135deg, ${accent}, ${accentDeep})`, boxShadow: `0 16px 34px ${rgba(accent, 0.34)}` }}>
-              <span className="text-[11px] uppercase tracking-[0.18em] font-black" style={{ color: 'rgba(255,255,255,0.76)' }}>Game PIN</span>
-              <span className="text-3xl md:text-4xl font-black tracking-[0.22em]" style={{ color: '#ffffff' }}>{joinCode}</span>
+            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 rounded-[1.35rem] px-5 sm:px-6 py-4 self-center xl:self-start min-w-0 max-w-full" style={{ background: `linear-gradient(135deg, ${accent}, ${accentDeep})`, boxShadow: `0 16px 34px ${rgba(accent, 0.34)}` }}>
+              <span className="text-[11px] uppercase tracking-[0.18em] font-black shrink-0" style={{ color: 'rgba(255,255,255,0.76)' }}>Game PIN</span>
+              <span className="text-3xl md:text-4xl font-black tabular-nums tracking-[0.08em] whitespace-nowrap" style={{ color: '#ffffff' }}>{formatJoinCodeDisplay(joinCode)}</span>
             </div>
           </div>
 
@@ -1052,15 +1080,29 @@ export default function PresentPage() {
     await LiveSessionService.showThankYou(session.joinCode)
   }, [session, showJoinSlide, isThankYouStage, currentIndex, liveQuestionCount, navigateTo, handleEndSession])
 
-  // Keyboard navigation in fullscreen
+  // Keyboard navigation in fullscreen (arrows, space, Page Down/Up for clickers)
   useEffect(() => {
     if (!isFullscreen || !session) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') {
+      const el = e.target
+      if (
+        el instanceof HTMLInputElement ||
+        el instanceof HTMLTextAreaElement ||
+        el instanceof HTMLSelectElement ||
+        (el instanceof HTMLElement && el.isContentEditable)
+      ) {
+        return
+      }
+      const goNext =
+        e.key === 'ArrowRight' ||
+        e.key === ' ' ||
+        e.key === 'PageDown'
+      const goPrev = e.key === 'ArrowLeft' || e.key === 'PageUp'
+      if (goNext) {
         e.preventDefault()
         void handleAdvance()
       }
-      if (e.key === 'ArrowLeft') {
+      if (goPrev) {
         e.preventDefault()
         if (!showJoinSlide && currentIndex > 0) navigateTo(currentIndex - 1)
         else if (!showJoinSlide) setShowJoinSlide(true)
@@ -1145,22 +1187,10 @@ export default function PresentPage() {
           </button>
         </div>
 
-        <div className="mb-5 rounded-2xl p-4" style={{ background: 'linear-gradient(135deg, #0D1117, #1A1033)' }}>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(101,12,217,0.22)' }}>
-              <Gift className="w-5 h-5" style={{ color: '#c7b5ff' }} />
-            </div>
-            <p className="text-sm font-black" style={{ color: '#ffffff' }}>Offer 3 months free on LiveZapp</p>
-          </div>
-          <a
-            href="https://live-zapp.com/register?promo=8PNJX48R"
-            className="inline-flex items-center justify-center rounded-xl px-4 py-2.5 text-sm font-black"
-            style={{ background: 'linear-gradient(135deg, #650cd9, #8f63ff)', color: '#ffffff', textDecoration: 'none' }}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open Campaign Link
-          </a>
+        <div className="mb-5 rounded-2xl p-4" style={{ background: 'rgba(101,12,217,0.08)', border: '1px solid rgba(101,12,217,0.18)' }}>
+          <p className="text-sm font-semibold" style={{ color: '#4f4a63' }}>
+            Participants see a <strong style={{ color: '#1A1A2E' }}>3-month elevated trial</strong> offer on their own devices after you end the session — nothing to share from this screen.
+          </p>
         </div>
 
         {isComputingLeaderboard ? (
@@ -1346,6 +1376,23 @@ export default function PresentPage() {
 
   // â”€â”€ Fullscreen slideshow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (isFullscreen) {
+    const stageAccent = normalizeHexColor(session.brandAccentColor || presentation.brandAccentColor)
+    /** Lift toward white so the control stays readable on dark chrome while keeping the presenter’s hue */
+    const stageAccentBright = mix(stageAccent, '#FFFFFF', 0.36)
+    const stageAccentDeep = mix(stageAccent, '#0A0A10', 0.38)
+    const stageNavLabel = readableText(stageAccentBright)
+    const stageNavBtn: React.CSSProperties = {
+      color: stageNavLabel,
+      background: `linear-gradient(180deg, ${stageAccentBright} 0%, ${stageAccent} 52%, ${stageAccentDeep} 100%)`,
+      border: `2px solid ${rgba(mix(stageAccent, '#FFFFFF', 0.9), 0.85)}`,
+      boxShadow: `0 2px 0 rgba(0,0,0,0.45), 0 10px 32px ${rgba(stageAccent, 0.55)}`,
+    }
+    const stageNavBtnMuted: React.CSSProperties = {
+      color: rgba(mix(stageAccent, '#FFFFFF', 0.7), 0.55),
+      background: `linear-gradient(180deg, ${rgba(stageAccent, 0.28)} 0%, ${rgba(stageAccent, 0.14)} 100%)`,
+      border: `2px solid ${rgba(stageAccent, 0.42)}`,
+      boxShadow: 'none',
+    }
     return (
       <div
         ref={presenterRef}
@@ -1447,6 +1494,7 @@ export default function PresentPage() {
                   joinCode={session.joinCode}
                   brandLogoUrl={session.brandLogoUrl}
                   brandName={session.brandName}
+                  presentationTitle={presentation.title}
                   accentColor={session.brandAccentColor || presentation.brandAccentColor}
                   onStart={handleStartZapp}
                 />
@@ -1474,10 +1522,10 @@ export default function PresentPage() {
           {!showJoinSlide && !isThankYouStage && (
             <>
               <div className="absolute left-0 top-0 bottom-0 w-1/2 flex items-center justify-start pl-6 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                {currentIndex > 0 && <ChevronLeft className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
+                {currentIndex > 0 && <ChevronLeft className="w-12 h-12 drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]" style={{ color: stageAccentBright, filter: `drop-shadow(0 0 14px ${rgba(stageAccent, 0.75)})` }} />}
               </div>
               <div className="absolute right-0 top-0 bottom-0 w-1/2 flex items-center justify-end pr-6 opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                {currentIndex < liveQuestionCount - 1 && <ChevronRight className="w-12 h-12" style={{ color: 'rgba(255,255,255,0.25)' }} />}
+                {currentIndex < liveQuestionCount - 1 && <ChevronRight className="w-12 h-12 drop-shadow-[0_2px_12px_rgba(0,0,0,0.55)]" style={{ color: stageAccentBright, filter: `drop-shadow(0 0 14px ${rgba(stageAccent, 0.75)})` }} />}
               </div>
             </>
           )}
@@ -1512,8 +1560,8 @@ export default function PresentPage() {
 
         {/* â”€â”€ Bottom navigation bar â”€â”€ */}
         <div
-          className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 md:px-8 py-3"
-          style={{ background: 'rgba(0,0,0,0.40)', borderTop: '1px solid rgba(255,255,255,0.06)' }}
+          className="shrink-0 flex flex-wrap items-center justify-between gap-2 px-3 sm:px-5 md:px-8 py-3.5"
+          style={{ background: 'rgba(12,14,20,0.88)', borderTop: '1px solid rgba(255,255,255,0.08)' }}
         >
           <button
             onClick={() => {
@@ -1521,10 +1569,10 @@ export default function PresentPage() {
               else if (!showJoinSlide) setShowJoinSlide(true)
             }}
             disabled={showJoinSlide}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm disabled:opacity-30 transition-all whitespace-nowrap"
-            style={{ color: 'rgba(255,255,255,0.60)', background: 'rgba(255,255,255,0.06)' }}
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all whitespace-nowrap disabled:cursor-not-allowed min-h-[44px]"
+            style={showJoinSlide ? stageNavBtnMuted : stageNavBtn}
           >
-            <ChevronLeft className="w-4 h-4" /> Previous
+            <ChevronLeft className="w-5 h-5 shrink-0 opacity-95" /> Previous
           </button>
 
           {/* Slide dots */}
@@ -1533,7 +1581,7 @@ export default function PresentPage() {
             <button
               onClick={() => setShowJoinSlide(true)}
               className="w-2 h-2 rounded-full transition-all"
-              style={{ background: showJoinSlide ? '#8f63ff' : 'rgba(255,255,255,0.20)', transform: showJoinSlide ? 'scale(1.4)' : 'scale(1)' }}
+              style={{ background: showJoinSlide ? stageAccent : 'rgba(255,255,255,0.20)', transform: showJoinSlide ? 'scale(1.4)' : 'scale(1)', boxShadow: showJoinSlide ? `0 0 10px ${rgba(stageAccent, 0.65)}` : 'none' }}
               title="Join slide"
             />
             {liveQuestions.map((_, i) => (
@@ -1542,8 +1590,9 @@ export default function PresentPage() {
                 onClick={() => { setShowJoinSlide(false); navigateTo(i) }}
                 className="w-2 h-2 rounded-full transition-all"
                 style={{
-                  background: !showJoinSlide && i === currentIndex ? '#8f63ff' : 'rgba(255,255,255,0.20)',
+                  background: !showJoinSlide && i === currentIndex ? stageAccent : 'rgba(255,255,255,0.20)',
                   transform: !showJoinSlide && i === currentIndex ? 'scale(1.4)' : 'scale(1)',
+                  boxShadow: !showJoinSlide && i === currentIndex ? `0 0 10px ${rgba(stageAccent, 0.65)}` : 'none',
                 }}
                 title={`Question ${i + 1}`}
               />
@@ -1552,11 +1601,11 @@ export default function PresentPage() {
 
           <button
             onClick={() => { void handleAdvance() }}
-            className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl font-semibold text-xs sm:text-sm disabled:opacity-30 transition-all whitespace-nowrap"
-            style={{ color: 'rgba(255,255,255,0.60)', background: 'rgba(255,255,255,0.06)' }}
+            className="flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all whitespace-nowrap min-h-[44px]"
+            style={stageNavBtn}
           >
             {isThankYouStage ? 'End Session' : 'Next'}
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-5 h-5 shrink-0 opacity-95" />
           </button>
         </div>
       </div>
@@ -1671,7 +1720,7 @@ export default function PresentPage() {
         <main className="max-w-[1600px] mx-auto w-full px-3 sm:px-5 md:px-8 pt-4 md:pt-6 min-h-[calc(100vh-92px)] flex justify-center">
           <section className="flex-1 rounded-[2.5rem] border overflow-hidden relative" style={{ background: surfaceCard, borderColor: borderSoft }}>
             <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle at top left, rgba(101,12,217,0.24), transparent 32%), radial-gradient(circle at bottom right, rgba(83,216,209,0.10), transparent 24%)' }} />
-            <div className="relative z-10 p-5 sm:p-6 md:p-10 xl:p-12 grid gap-8 xl:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)] items-center min-h-[76vh] max-w-[1440px] mx-auto">
+            <div className="relative z-10 p-5 sm:p-6 md:p-10 xl:p-12 grid gap-8 xl:grid-cols-[minmax(0,1.04fr)_minmax(420px,0.96fr)] items-center min-h-[76vh] max-w-[1440px] mx-auto min-w-0">
               <div className="space-y-6 flex flex-col justify-center items-center xl:items-start text-center xl:text-left w-full max-w-[42rem] mx-auto xl:mx-0">
                 <div className="flex flex-col items-center xl:items-start justify-center gap-4 md:gap-5 w-full">
                   {session.brandLogoUrl ? (
@@ -1721,7 +1770,7 @@ export default function PresentPage() {
                 </div>
               </div>
 
-              <div className="grid gap-5 lg:gap-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(280px,0.96fr)] items-center w-full max-w-[46rem] mx-auto">
+              <div className="grid gap-5 lg:gap-6 lg:grid-cols-[minmax(0,1.04fr)_minmax(280px,0.96fr)] items-center w-full max-w-[46rem] mx-auto min-w-0">
                 <div className="rounded-[2rem] p-5 md:p-6 text-center border flex flex-col justify-center order-1" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
                   <div className="mx-auto w-full max-w-[min(78vw,26rem)] aspect-square rounded-[1.8rem] p-4 sm:p-5 flex items-center justify-center" style={{ background: '#ffffff' }}>
                     <div className="w-full h-full flex items-center justify-center">
@@ -1731,11 +1780,27 @@ export default function PresentPage() {
                   <p className="text-lg mt-5 font-semibold" style={{ color: textMuted }}>Scan to join the Zapp</p>
                 </div>
 
-                <div className="space-y-4 md:space-y-5 flex flex-col justify-center order-2 max-w-[26rem] mx-auto w-full">
-                  <div className="rounded-[2rem] p-6 border" style={{ background: surfaceCardAlt, borderColor: borderSoft }}>
+                <div className="space-y-4 md:space-y-5 flex flex-col justify-center order-2 max-w-[26rem] mx-auto w-full min-w-0">
+                  <div
+                    className="rounded-[2rem] p-6 border min-w-0 w-full"
+                    style={{
+                      background: surfaceCardAlt,
+                      borderColor: borderSoft,
+                      containerType: 'inline-size',
+                    }}
+                  >
                     <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: textMuted }}>Game PIN</p>
-                    <button onClick={copyCode} className="mt-4 text-4xl sm:text-5xl md:text-6xl font-black tracking-[0.18em] break-all text-center w-full" style={{ color: '#650cd9' }}>
-                      {session.joinCode}
+                    <button
+                      type="button"
+                      onClick={copyCode}
+                      className="mt-4 w-full min-w-0 max-w-full py-1 font-black tabular-nums tracking-[0.02em] whitespace-nowrap text-center leading-none rounded-lg outline-offset-2 hover:opacity-90 transition-opacity overflow-x-auto overflow-y-hidden"
+                      style={{
+                        color: '#650cd9',
+                        // Fits the PIN inside the card: scales with this card’s width (cqw), not full viewport.
+                        fontSize: 'clamp(1.25rem, 12cqw + 0.5rem, 2.75rem)',
+                      }}
+                    >
+                      {formatJoinCodeDisplay(session.joinCode)}
                     </button>
                     <p className="text-sm mt-3" style={{ color: textMuted }}>Share this code or the QR to bring participants into the Zapp lobby.</p>
                   </div>
@@ -1787,12 +1852,12 @@ export default function PresentPage() {
             <button
               type="button"
               onClick={copyCode}
-              className="text-lg font-black tracking-[0.18em]"
+              className="text-lg font-black tabular-nums tracking-[0.06em] whitespace-nowrap max-w-[min(100%,11rem)] overflow-x-auto"
               style={{ color: isDark ? '#ffffff' : '#25005a' }}
               aria-label="Copy game pin"
               title="Tap to copy"
             >
-              {session.joinCode}
+              {formatJoinCodeDisplay(session.joinCode)}
             </button>
             {codeCopied && <CheckCircle2 className="w-4 h-4" style={{ color: isDark ? '#71f8e4' : '#006b5f' }} />}
           </div>
@@ -1801,8 +1866,8 @@ export default function PresentPage() {
             <span className="text-[11px] uppercase tracking-[0.16em] font-bold mr-2" style={{ color: isDark ? '#efe3ff' : '#5a00c6' }}>
               Game PIN:
             </span>
-            <button onClick={copyCode} className="text-2xl font-black tracking-[0.2em]" style={{ color: isDark ? '#ffffff' : '#25005a' }}>
-              {session.joinCode}
+            <button type="button" onClick={copyCode} className="text-2xl font-black tabular-nums tracking-[0.06em] whitespace-nowrap" style={{ color: isDark ? '#ffffff' : '#25005a' }}>
+              {formatJoinCodeDisplay(session.joinCode)}
             </button>
             {codeCopied && <CheckCircle2 className="w-4 h-4 ml-2" style={{ color: isDark ? '#71f8e4' : '#006b5f' }} />}
           </div>

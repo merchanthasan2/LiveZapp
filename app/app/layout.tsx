@@ -44,6 +44,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setMobileMenuOpen(false)
   }, [pathname])
 
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileMenuOpen])
+
   if (isLoading || !user) return null
   if (pathname.startsWith('/app/present/')) return <>{children}</>
 
@@ -70,7 +79,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const signOutIcon = isDark ? '#ffb4ab' : '#ba1a1a'
 
   return (
-    <div className="min-h-screen md:flex md:h-screen md:overflow-hidden" style={{ background: shellBg, color: textBase }}>
+    <div
+      className="flex h-[100dvh] min-h-0 max-w-[100dvw] flex-col overflow-hidden md:h-screen"
+      style={{ background: shellBg, color: textBase }}
+    >
       <aside className="hidden md:flex fixed left-0 top-0 h-screen w-64 flex-col p-4 space-y-2 z-40" style={{ background: sidebarBg, borderRight: `1px solid ${cardBorder}` }}>
         <div className="flex items-center gap-3 px-2 py-6 mb-4">
           <div>
@@ -126,17 +138,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden md:ml-64 md:h-screen">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:ml-64 md:h-screen md:min-h-0">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
+          className="pointer-events-none absolute inset-0 z-0 hidden md:block"
           style={{
             background: isDark
               ? 'radial-gradient(circle at 12% 18%, rgba(101,12,217,0.18), transparent 22%), radial-gradient(circle at 86% 10%, rgba(0,107,95,0.10), transparent 18%)'
               : 'radial-gradient(circle at 12% 18%, rgba(101,12,217,0.08), transparent 22%), radial-gradient(circle at 86% 10%, rgba(167,139,250,0.10), transparent 18%)',
           }}
         />
-        <header className="sticky top-0 z-30 shrink-0 backdrop-blur-md shadow-sm border-b" style={{ background: headerBg, borderColor: cardBorder }}>
+        <header
+          className="sticky top-0 z-30 shrink-0 border-b shadow-sm backdrop-blur-none md:backdrop-blur-md"
+          style={{ background: headerBg, borderColor: cardBorder }}
+        >
           <div className="flex justify-between items-center w-full px-3 sm:px-6 md:px-8 lg:px-10 py-3.5 sm:py-4 max-w-[1520px] mx-auto gap-2">
             <div className="flex items-center gap-2 sm:gap-8 min-w-0">
               <button
@@ -187,7 +202,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <section className="relative z-[1] flex-1 min-h-0 w-full max-w-[1520px] mx-auto overflow-y-auto overscroll-y-contain px-4 sm:px-6 md:px-8 lg:px-10 py-4 md:py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-10">
+        <section className="scroll-touch relative z-[1] mx-auto flex min-h-0 w-full min-w-0 max-w-[1520px] flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain px-4 py-4 sm:px-6 md:px-8 md:py-6 lg:px-10 pb-[calc(7rem+env(safe-area-inset-bottom))] md:pb-10">
           {children}
         </section>
       </main>
@@ -201,12 +216,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             aria-label="Close side menu backdrop"
           />
           <aside
-            className="absolute inset-y-0 left-0 w-[82%] max-w-[320px] p-4 flex flex-col"
+            className="absolute inset-y-0 left-0 flex h-full min-h-0 w-[82%] max-w-[320px] flex-col overflow-hidden p-4"
             style={{ background: sidebarBg, borderRight: `1px solid ${cardBorder}` }}
           >
-            <div className="mb-4 flex items-center justify-between px-1 py-2">
+            <div className="mb-3 flex shrink-0 items-center justify-between px-1 py-2">
               <BrandLockup href="/" size="sm" theme={isDark ? 'dark' : 'light'} />
               <button
+                type="button"
                 className="w-11 h-11 rounded-full flex items-center justify-center"
                 style={{ color: iconMuted, background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(101,12,217,0.06)' }}
                 onClick={() => setMobileMenuOpen(false)}
@@ -216,7 +232,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
 
-            <nav className="flex-1 space-y-1 pt-2" aria-label="Mobile app navigation">
+            <nav className="scroll-touch min-h-0 flex-1 space-y-1 overflow-y-auto pt-1" aria-label="Mobile app navigation">
               {sidebarLinks.map(({ icon: Icon, label, href }) => {
                 const isActive = pathname === href || (href !== '/app/dashboard' && pathname.startsWith(href))
                 return (
@@ -228,7 +244,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     style={
                       isActive
                         ? { background: activeBg, color: activeText, border: activeBorder }
-                        : { color: textMuted }
+                        : { color: textMuted, border: '1px solid transparent' }
                     }
                   >
                     <Icon className="w-4 h-4" />
@@ -236,9 +252,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   </Link>
                 )
               })}
+
+              <p className="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest" style={{ color: textMuted }}>
+                Website
+              </p>
+              <Link
+                href="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200"
+                style={{ color: textMuted, border: '1px solid transparent' }}
+              >
+                <House className="w-4 h-4" />
+                <span>Home</span>
+              </Link>
+              <Link
+                href="/plans"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200"
+                style={{ color: textMuted, border: '1px solid transparent' }}
+              >
+                <span>Pricing</span>
+              </Link>
+              <Link
+                href="/#how-it-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200"
+                style={{ color: textMuted, border: '1px solid transparent' }}
+              >
+                <span>How it works</span>
+              </Link>
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200"
+                style={{ color: textMuted, border: '1px solid transparent' }}
+              >
+                <span>Help</span>
+              </Link>
             </nav>
 
-            <div className="pt-5 pb-2 px-1 border-t space-y-2" style={{ borderColor: cardBorder }}>
+            <div className="mt-3 shrink-0 space-y-2 border-t pt-4 pb-[env(safe-area-inset-bottom,0px)] px-1" style={{ borderColor: cardBorder }}>
               {isAdmin && (
                 <Link
                   href="/admin"
@@ -255,6 +308,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 </Link>
               )}
               <button
+                type="button"
                 onClick={() => { setMobileMenuOpen(false); logout() }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left"
                 style={{ color: signOutText, background: signOutBg, border: signOutBorder }}
@@ -267,18 +321,35 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-40 flex justify-around items-center px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-xl rounded-t-3xl border-t" style={{ background: isDark ? '#141626f2' : 'rgba(255,255,255,0.95)', boxShadow: isDark ? '0 -8px 30px rgba(0,0,0,0.35)' : '0 -8px 30px rgba(63,40,98,0.10)', borderColor: cardBorder }}>
-        <Link className="flex flex-col items-center justify-center transition-colors" style={{ color: textMuted }} href="/app/dashboard">
-          <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[10px] font-semibold mt-1">My Zapps</span>
+      <nav
+        className="md:hidden fixed bottom-0 left-0 z-40 flex w-full items-end justify-around gap-1 rounded-t-3xl border-t pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 backdrop-blur-none md:backdrop-blur-xl"
+        style={{ background: isDark ? '#141626f2' : 'rgba(255,255,255,0.95)', boxShadow: isDark ? '0 -8px 30px rgba(0,0,0,0.35)' : '0 -8px 30px rgba(63,40,98,0.10)', borderColor: cardBorder }}
+        aria-label="App bottom navigation"
+      >
+        <Link className="flex min-h-[48px] min-w-[4rem] flex-col items-center justify-end gap-0.5 pb-1 transition-colors" style={{ color: textMuted }} href="/app/dashboard">
+          <LayoutDashboard className="w-5 h-5 shrink-0" />
+          <span className="text-[9px] font-semibold leading-tight text-center">My Zapps</span>
         </Link>
-        <Link className="flex flex-col items-center justify-center bg-violet-600 text-white rounded-full w-12 h-12 mb-4 shadow-lg shadow-violet-600/50" href="/app/create">
-          <PlusCircle className="w-5 h-5" />
+        <Link className="flex flex-col items-center justify-end -mt-3" href="/app/create">
+          <span className="mb-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-600/50">
+            <PlusCircle className="w-5 h-5" />
+          </span>
+          <span className="text-[9px] font-semibold leading-tight text-center" style={{ color: textMuted }}>Create</span>
         </Link>
-        <Link className="flex flex-col items-center justify-center transition-colors" style={{ color: textMuted }} href="/app/settings">
-          <Settings className="w-5 h-5" />
-          <span className="text-[10px] font-semibold mt-1">Settings</span>
+        <Link className="flex min-h-[48px] min-w-[4rem] flex-col items-center justify-end gap-0.5 pb-1 transition-colors" style={{ color: textMuted }} href="/app/settings">
+          <Settings className="w-5 h-5 shrink-0" />
+          <span className="text-[9px] font-semibold leading-tight text-center">Settings</span>
         </Link>
+        {isAdmin ? (
+          <Link
+            className="flex min-h-[48px] min-w-[4rem] flex-col items-center justify-end gap-0.5 pb-1 transition-colors"
+            style={{ color: pathname.startsWith('/admin') ? activeText : textMuted }}
+            href="/admin"
+          >
+            <Shield className="w-5 h-5 shrink-0" />
+            <span className="text-[9px] font-semibold leading-tight text-center">Admin</span>
+          </Link>
+        ) : null}
       </nav>
     </div>
   )
